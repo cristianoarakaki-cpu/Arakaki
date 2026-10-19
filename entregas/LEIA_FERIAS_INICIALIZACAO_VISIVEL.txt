@@ -1,0 +1,33 @@
+FERIAS DCE — INICIALIZACAO VISIVEL
+
+OBJETIVO
+Revisar o iniciador de um aplicativo proprio sem ocultar a janela do PowerShell nem alterar a politica de execucao. Este pacote NAO libera regras do antivirus/EDR, nao contorna bloqueios corporativos, nao instala certificado e nao habilita scripts proibidos. O fato de o diagnostico antigo funcionar com Bypass nao comprova autorizacao da instituicao.
+
+INSTALACAO
+1. Feche o aplicativo. Guarde uma copia dos arquivos atuais em uma pasta de backup separada.
+2. Extraia o ZIP e substitua, NA MESMA PASTA DO SISTEMA, estes quatro arquivos:
+   FeriasDCE.ps1
+   FeriasDCE_Launcher.ps1
+   INICIAR_FERIAS_DCE_REDE.bat
+   DIAGNOSTICO_FERIAS_DCE.bat
+3. Nao substitua nem mova Dados, Backups, Logs ou quaisquer JSON. Este pacote nao inclui uma base de dados.
+4. Inicie pelo BAT revisado INICIAR_FERIAS_DCE_REDE.bat. Os atalhos antigos que apontam para INICIAR_FERIAS_DCE.vbs continuam usando a cadeia antiga e nao foram modificados por este pacote.
+5. A janela do PowerShell permanecera visivel enquanto o aplicativo estiver aberto. Em falha, a mensagem e o caminho do log serao mostrados; o BAT pausara a janela. O BAT de diagnostico sempre pausa ao final.
+6. Se houver novo bloqueio da politica de execucao, assinatura ou endpoint, nao use o BAT antigo com Bypass como alternativa. Preserve a mensagem e encaminhe o aplicativo para autorizacao conforme as regras da instituicao. Este pacote nao garante liberacao automatica.
+
+O QUE MUDOU
+- Os BATs usam o Windows PowerShell do Windows, em STA, com -NoProfile e -File; sem ExecutionPolicy Bypass, WindowStyle Hidden ou chamada de VBScript/wscript.
+- O launcher mantem validacao de sintaxe antes de executar o aplicativo, mostra erros no console e, quando disponivel, na caixa de mensagem do Windows, e retorna codigo de falha.
+- A criacao de Logs agora e tratada. Se a pasta nao permitir escrita, tenta FeriasDCELogs dentro do TEMP do usuario. Se ambas falharem, ainda mostra o erro no console.
+- O FeriasDCE.ps1 foi alterado em SOMENTE DUAS LINHAS de Initialize-AppBranding: comentario e comando de reabertura associado ao aplicativo. O comando de reabertura tambem deixa de usar Bypass e janela oculta. Calculos, aprovacoes, salvamento, backups e dados nao foram alterados.
+- Nao ha configuracao persistente de politica, registro, ACL, antivirus ou Trusted Sites.
+
+COMANDO DE VALIDACAO OPCIONAL
+O launcher admite -ValidarSomente para verificar sintaxe sem abrir a interface. A propria politica do computador ainda precisa permitir executar o launcher. A validacao sintatica nao verifica a licenca/seguranca nem substitui teste funcional.
+
+SOBRE OS BLOQUEIOS ANTERIORES
+O alerta relatado identificou a cadeia VBScript iniciando PowerShell. Ele nao prova sozinho que o programa e malware nem que o programa e seguro. A nova inicializacao e transparente e respeita a politica vigente, mas o endpoint pode continuar bloqueando a execucao. A negacao de File.Replace ao salvar na rede e OUTRO problema e nao e corrigida por este pacote de inicializacao.
+
+TESTES E LIMITES
+Oito verificacoes passaram em PowerShell 7.4.6/Linux: execucao de script sintetico, rejeicao de sintaxe invalida, captura de excecao, principal ausente, log alternativo com Logs indisponivel, validacao sem executar, parser do FeriasDCE.ps1 real e comparacao das duas linhas alteradas. Nenhum codigo de negocios do aplicativo foi executado nesses testes.
+Windows PowerShell 5.1, interface WinForms, HD externo, servidor SMB e protecao corporativa NAO foram executados neste ambiente. A inicializacao real precisa ser confirmada no computador do usuario.
