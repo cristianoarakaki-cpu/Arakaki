@@ -1,0 +1,41 @@
+AGENDA SISDENF V1.9.11 — EDIÇÃO DE COMPROMISSOS
+
+COMO USAR
+1. Abra os detalhes do compromisso pela seta do cartão.
+2. Clique em Editar compromisso.
+3. Altere categoria, assunto, data inicial/final e horários.
+4. Clique em Salvar alterações e confirme.
+O mesmo registro é atualizado, mantendo o ID. Não é criado outro compromisso. Cancelar não envia uma gravação.
+
+INSTALAÇÃO
+Faça backup e feche a agenda. Abra CODIGO_PARA_COLAR_modAgendaSISDENF.txt e substitua todo o código do módulo existente modAgendaSISDENF. Compile em Depurar > Compilar. Não substitua o formulário nem modAgendaSISDENF_Alertas.
+O TXT já omite Attribute VB_Name. Se preferir importar o BAS, substitua o módulo anterior e evite procedimentos públicos duplicados.
+
+REGRAS DA EDIÇÃO
+- Permite alterar assunto, categoria, datas e horários, incluindo intervalo noturno com data final posterior.
+- Preserva ID, Login original, Data da Informação, Nome, Lida e os demais campos não editados.
+- Preserva as ciências anteriores. O formulário avisa que os envolvidos devem ser comunicados: as confirmações podem se referir aos dados anteriores. Não são apagadas nem solicitadas novamente automaticamente.
+- Permite manter a categoria atual mesmo se inativa. Para trocar, é preciso selecionar uma categoria ativa. A categoria inativa temporária não fica disponível para novos compromissos.
+- Não utiliza transação explícita no cadastro/edição, mantendo a correção da V1.9.10 para o erro 3246.
+- O caminho de edição usa Edit/Update no registro selecionado por ID; o de criação usa AddNew/Update.
+- Se o registro foi excluído ou seus campos editáveis mudaram desde a exibição, a edição é recusada antes de salvar e o usuário deve atualizar e revisar os dados. Durante Edit/Update usa o controle otimista do DAO, sem forçar sobrescrita. O comportamento real de concorrência depende do provedor e precisa de teste com duas instâncias.
+- Cada edição leva uma cópia exata dos valores originais, comparada no VBA; não é um hash curto. Parâmetros comuns mantêm seu limite; a cópia de versão admite até 65.535 caracteres. Registros excepcionalmente longos podem precisar de tratamento específico.
+- Mantidos os tratamentos de falha antes/depois de Update. Não há tentativa automática de gravar novamente.
+- Textos livres começando com números, como 20 profissionais, não perdem o prefixo numérico na gravação.
+- Não foram criadas tabelas, colunas, trilha de auditoria ou novas regras de permissão. A autorização continua a do banco/aplicação existente.
+
+TESTES EXECUTADOS
+JavaScript extraído e executado no Chromium: edição preenchida com dados atuais, envio de update com ID/versão, alteração de texto Unicode e intervalo noturno, cancelamento, novo cadastro após edição sem reaproveitar ID, categoria inativa, bloqueio de abertura sem versão e aviso de ciências. Foram 12 verificações de edição, incluindo revisão estática, além das regressões de interface. Zero erros JavaScript nos cenários testados. PNGs usam dados fictícios, não são capturas do Access.
+
+LIMITES
+Não há Microsoft Access neste ambiente Linux. Compilação VBA, gravação DAO real e conflitos entre usuários não foram executados. As verificações estáticas não substituem o compilador do Access.
+
+VALIDAÇÃO NA CÓPIA DO BANCO
+- Compile e edite texto, data e hora de um compromisso de teste; confirme que o ID e a quantidade de registros permanecem iguais.
+- Abra de novo para conferir os valores persistidos.
+- Teste Cancelar, data inválida e evento noturno.
+- Depois de editar, teste Novo compromisso: deve criar outro ID.
+- Confirme que Login/Data da Informação/Lida e ciências não mudaram.
+- Em duas instâncias, exiba o mesmo evento; altere e salve na primeira; a segunda, ainda com dados antigos, deve recusar a edição e pedir atualização.
+- Teste um evento excluído por outra instância e mantenha backup.
+Se ocorrer erro, envie a mensagem inteira, que inclui a etapa da operação.
