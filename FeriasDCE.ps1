@@ -1,6 +1,6 @@
 ﻿#requires -version 5.1
 #requires -PSEdition Desktop
-# Férias DCE V1.0.135-R1 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.135-R2 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -43,7 +43,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.135-R1 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.135-R2 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1017,7 +1017,7 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 }
 
 
-# V1.0.135-R1 - duas autorizacoes independentes do mesmo aquisitivo.
+# V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
 function Get-NumeroFRConfirmada($r){
     if($null -eq $r){return 0}
     $n=0; try{$n=[int]$r.fr_opcao_aprovada}catch{$n=0}
@@ -6258,7 +6258,7 @@ function Refresh-Grid {
     $chefia=if($null -ne $script:cmbFiltroChefia -and $script:cmbFiltroChefia.SelectedItem){[string]$script:cmbFiltroChefia.SelectedItem}else{"TODOS"}
     $sol=if($null -ne $script:cmbFiltroSolicitacao -and $script:cmbFiltroSolicitacao.SelectedItem){[string]$script:cmbFiltroSolicitacao.SelectedItem}else{"TODOS"}
     $just=if($null -ne $script:cmbFiltroJustificativa -and $script:cmbFiltroJustificativa.SelectedItem){[string]$script:cmbFiltroJustificativa.SelectedItem}else{"TODOS"}
-    # V1.0.135-R1: evita custo de agrupamento e ordenacao a cada tecla.
+    # V1.0.135-R2: evita custo de agrupamento e ordenacao a cada tecla.
     # Cache invalidado em gravacao e carregamento; nao altera dados persistidos.
     $script:grid.SuspendLayout()
     try {
@@ -7051,7 +7051,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.135-R1"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.135-R2"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8053,8 +8053,8 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
     $totalCriticos=0;$totalAtencao=0;$totalPendentes=0;$totalEventos=0
     foreach($g in $grupos){
         $arr=@($g.Itens)
-        [void]$htmlPartes.Append('<section><h2>'+(& $enc $g.Nome.ToUpperInvariant())+'</h2>')
-        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidencia identificada.</p></section>');continue}
+        [void]$htmlPartes.Append('<section class="setor"><h2>'+(& $enc $g.Nome)+'</h2>')
+        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada.</p></section>');continue}
         # Pontos de corte: inicio e dia seguinte ao termino (fim inclusivo).
         $pontos=New-Object 'System.Collections.Generic.List[datetime]'
         foreach($it in $arr){$pontos.Add($it.Inicio.Date);if($it.Fim.Date -lt [datetime]::MaxValue.Date){$pontos.Add($it.Fim.Date.AddDays(1))}}
@@ -8121,9 +8121,9 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
                 $eventos[$eventos.Count-1].Fim=$fim
             }else{$eventos.Add([pscustomobject]@{Inicio=$ini;Fim=$fim;Chave=$chave;Participantes=$ativos;Grau=$grau;Confirmacao=$confirmacao})}
         }
-        if($eventos.Count -eq 0){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidencia identificada neste escopo.</p></section>');continue}
-        [void]$htmlPartes.Append('<p>'+ $eventos.Count +' ocorrencia(s), com servidores agrupados por intervalo de datas coincidentes.</p>')
-        [void]$htmlPartes.Append('<table><thead><tr><th>GRAVIDADE</th><th>STATUS</th><th>PERIODO COINCIDENTE</th><th>DIAS</th><th>SERVIDORES COINCIDENTES (MATRICULA / SETOR / TURNO / FERIAS)</th><th>QTDE</th></tr></thead><tbody>')
+        if($eventos.Count -eq 0){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada neste escopo.</p></section>');continue}
+        [void]$htmlPartes.Append('<p class="section-caption">'+ $eventos.Count +' ocorrência(s) neste setor ou grupo. Cada linha reúne um intervalo de coincidência.</p>')
+        [void]$htmlPartes.Append('<div class="table-wrap"><table><caption class="sr-only">Ocorrências de coincidência de férias: '+(& $enc $g.Nome)+'</caption><thead><tr><th scope="col">Classificação</th><th scope="col">Situação</th><th scope="col">Período coincidente</th><th scope="col">Dias</th><th scope="col">Servidores e férias programadas</th><th scope="col">Pessoas</th></tr></thead><tbody>')
         foreach($e in $eventos){
             $totalEventos++
             switch($e.Grau){'CRITICO'{$totalCriticos++}'ATENCAO'{$totalAtencao++}}
@@ -8131,28 +8131,86 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
             $classe=if($e.Grau -eq 'CRITICO'){'critico'}else{'atencao'}
             $nomes=New-Object System.Text.StringBuilder
             foreach($it in @($e.Participantes | Sort-Object Setor,Turno,Nome)){
-                $det=(& $enc ($it.Nome+' ('+$it.Matricula+') — '+$it.Setor+' / '+$it.Turno+' / '+$it.Situacao+' — '+$it.Inicio.ToString('dd/MM/yyyy')+' a '+$it.Fim.ToString('dd/MM/yyyy')))
-                [void]$nomes.Append('<div class="pessoa">'+$det+'</div>')
+                $nome=(& $enc $it.Nome);$matricula=(& $enc $it.Matricula)
+                $setor=(& $enc $it.Setor);$turno=(& $enc $it.Turno);$situacao=(& $enc $it.Situacao)
+                $iconeTurno=if($it.Turno -eq 'NOTURNO'){'moon'}elseif($it.Turno -in @('MATUTINO','VESPERTINO','DIURNO')){'sun'}else{'clock'}
+                $datas=$it.Inicio.ToString('dd/MM/yyyy')+' a '+$it.Fim.ToString('dd/MM/yyyy')
+                [void]$nomes.Append('<div class="pessoa"><div class="person-name"><svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg>'+$nome+' <span class="matricula">Matrícula '+$matricula+'</span></div><div class="person-meta"><span>'+$setor+'</span><span class="turno"><svg class="icon" aria-hidden="true"><use href="#i-'+$iconeTurno+'"></use></svg>'+$turno+'</span><span>'+$situacao+'</span></div><div class="person-dates">Férias: '+$datas+'</div></div>')
             }
             $q=($e.Fim-$e.Inicio).Days+1
-            [void]$htmlPartes.Append('<tr class="'+$classe+'"><td><strong>'+$e.Grau+'</strong></td><td>'+(& $enc $e.Confirmacao)+'</td><td>'+$e.Inicio.ToString('dd/MM/yyyy')+' a '+$e.Fim.ToString('dd/MM/yyyy')+'</td><td>'+$q+'</td><td>'+$nomes.ToString()+'</td><td>'+$e.Participantes.Count+'</td></tr>')
+            $rotulo=if($e.Grau -eq 'CRITICO'){'Crítico'}else{'Atenção'}
+            $motivo=if($e.Grau -eq 'CRITICO'){'Há coincidência de datas no mesmo turno conhecido.'}else{'Datas coincidentes com turnos diferentes ou não informados.'}
+            $statusRotulo=if($e.Confirmacao -eq 'ENVOLVE PENDENTE'){'Envolve pendente'}else{'Confirmado'}
+            $statusClasse=if($e.Confirmacao -eq 'ENVOLVE PENDENTE'){'pending'}else{'confirmed'}
+            $iconeGravidade=if($e.Grau -eq 'CRITICO'){'critical'}else{'alert'}
+            $iconeStatus=if($e.Confirmacao -eq 'ENVOLVE PENDENTE'){'clock'}else{'check'}
+            $periodo=if($e.Inicio.Date -eq $e.Fim.Date){$e.Inicio.ToString('dd/MM/yyyy')}else{$e.Inicio.ToString('dd/MM/yyyy')+'<span class="date-separator">até</span>'+$e.Fim.ToString('dd/MM/yyyy')}
+            [void]$htmlPartes.Append('<tr class="ocorrencia '+$classe+'" data-gravidade="'+$e.Grau+'" data-status="'+$e.Confirmacao+'"><td><span class="badge '+$classe+'"><svg class="icon" aria-hidden="true"><use href="#i-'+$iconeGravidade+'"></use></svg>'+$rotulo+'</span><p class="reason">'+$motivo+'</p></td><td><span class="badge '+$statusClasse+'"><svg class="icon" aria-hidden="true"><use href="#i-'+$iconeStatus+'"></use></svg>'+$statusRotulo+'</span></td><td class="periodo">'+$periodo+'</td><td class="number">'+$q+'</td><td>'+$nomes.ToString()+'</td><td class="number">'+$e.Participantes.Count+'</td></tr>')
         }
-        [void]$htmlPartes.Append('</tbody></table></section>')
+        [void]$htmlPartes.Append('</tbody></table></div></section>')
     }
     $modoTitulo=if($Modo -eq 'ENTRE_SETORES'){'Entre setores selecionados (somente pares de setores diferentes)'}else{'Dentro de cada setor selecionado'}
     $pendTitulo=if($IncluirPendentes){'SIM, apenas 1a opcao pendente'}else{'NAO'}
     $turnoTitulo=if($ExigirMesmoTurno){'SIM — mostrar somente coincidencias de datas no MESMO turno conhecido'}else{'NAO — mostrar TODAS as datas coincidentes, independentemente do turno'}
     $setoresTitulo=(& $enc (($Setores | Sort-Object) -join ', '))
     $html=@'
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>CONFLITOS_FERIAS_2027_2028</title><style>
-@page{size:A4 landscape;margin:9mm}body{font:12px Arial,sans-serif;color:#102338;margin:16px}h1{text-align:center;color:#133b65;font-size:23px}h2{background:#dbe8f8;padding:10px;color:#153c64}table{width:100%;border-collapse:collapse;margin:14px 0 22px}th,td{border:1px solid #a5b2c3;padding:8px;text-align:left;vertical-align:top}th{background:#15477a;color:white}tr.critico{background:#ffd7db}tr.atencao{background:#fff0ba}tr.pendente{background:#e0eafa}.ok{background:#d4f2df;padding:12px}.pessoa{padding:5px 2px;border-bottom:1px solid #d0d5dd}.pessoa:last-child{border-bottom:0}.resumo{display:flex;gap:14px;margin:16px 0;flex-wrap:wrap}.resumo span{padding:12px;border:1px solid #abbcd1;font-weight:bold}.escopo{padding:12px;background:#f0f5fc;line-height:1.8}section{break-inside:avoid-page}thead{display:table-header-group}tr{break-inside:avoid}.toolbar{text-align:right}@media print{.toolbar{display:none}body{margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>RELATORIO DE CONFLITOS DE FERIAS — 2027/2028</h1>
-<div class="escopo"><strong>Setores:</strong> SETORES_AQUI<br><strong>Modo:</strong> MODO_AQUI<br><strong>Tipos:</strong> FIXAS e ACEITAS | <strong>Incluir pendentes:</strong> PENDENTES_AQUI<br><strong>Filtro por turno:</strong> TURNO_AQUI<br>CRITICO = datas sobrepostas e mesmo turno conhecido; ATENCAO = datas sobrepostas com turnos diferentes ou nao informados; ENVOLVE PENDENTE = inclui solicitacao nao aprovada (a gravidade CRITICO/ATENCAO e mantida). DIURNO (D) nao e presumido equivalente a MATUTINO/VESPERTINO. Cada ocorrencia e um intervalo continuo com o mesmo grupo de participantes; um mesmo servidor pode integrar varios intervalos. Coincidencia nao significa necessariamente erro de lancamento.</div>
-<div class="resumo"><span>CRITICOS: TOTAL_CRITICO</span><span>ATENCAO: TOTAL_ATENCAO</span><span>ENVOLVENDO PENDENTES: TOTAL_PENDENTE</span><span>OCORRENCIAS: TOTAL_EVENTOS</span></div>
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conferência de férias — 2027/2028</title>
+<style>
+:root{--ink:#162b43;--muted:#52657a;--line:#d9e2ec;--blue:#174979;--red:#a92333;--amber:#805000}
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden}.icon{width:18px;height:18px;display:inline-block;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.badge .icon{width:14px;height:14px;vertical-align:-2px;margin-right:4px}button .icon{margin-right:7px}.card .icon{width:22px;height:22px;vertical-align:-5px;margin-right:6px}.heading-icon{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:#e6eef8;color:var(--blue);width:46px;height:46px;margin-right:12px;vertical-align:middle}.heading-icon .icon{width:26px;height:26px}.person-name>.icon{width:15px;height:15px;color:var(--muted);margin-right:5px}.turno .icon{width:14px;height:14px;margin-right:4px}.notice>.icon{margin-right:6px}*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:var(--ink);font:14px/1.5 "Segoe UI",Arial,sans-serif}
+main{max-width:1480px;margin:auto;padding:32px 28px 48px}h1,h2,p{margin-top:0}h1{font-size:28px;line-height:1.2;margin-bottom:8px;letter-spacing:-.5px}h2{font-size:19px;margin-bottom:6px;color:var(--blue)}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px}.eyebrow{font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--blue);margin-bottom:8px}.subtitle{color:var(--muted);margin-bottom:0}.emitido{font-size:12px;color:var(--muted);margin-top:10px}
+button,input,select{font:inherit}button{border:1px solid var(--blue);background:var(--blue);color:white;border-radius:8px;padding:11px 18px;cursor:pointer;white-space:nowrap;font-weight:600}button.secondary{background:white;color:var(--blue);border-color:var(--line)}button:hover{filter:brightness(.94)}:focus-visible{outline:3px solid #598dd7;outline-offset:3px}
+.escopo{background:white;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:18px}.scope-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px 24px}.field-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px}.scope-turno{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:13px}.notice{padding:12px 16px;border-left:4px solid #4d7ba4;background:#eaf1f9;color:#2e4c69;border-radius:0 8px 8px 0;margin-bottom:20px}
+.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}.card{background:white;border:1px solid var(--line);border-radius:10px;padding:15px 18px;border-top:4px solid #5a7897}.card strong{display:block;font-size:30px;line-height:1.2;margin:5px 0}.card span{font-size:13px;color:var(--muted)}.card.critical{border-top-color:var(--red)}.card.critical strong{color:var(--red)}.card.warning{border-top-color:#d19625}.card.warning strong{color:var(--amber)}.card.pending{border-top-color:#6875bd}
+.filters{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:12px}.filters label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600}.filters .search{flex:1;min-width:220px}input,select{border:1px solid #b9c8d7;border-radius:7px;padding:10px 12px;background:white;color:var(--ink);min-height:43px}input{width:100%}.filter-summary{font-size:13px;color:var(--muted);margin:0 0 18px}.filter-summary strong{color:var(--ink)}
+.setor{background:white;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}.section-caption{font-size:13px;color:var(--muted);margin-bottom:14px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}caption{text-align:left}th{text-align:left;background:#edf3f9;color:#26496c;font-size:12px;padding:11px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}td{padding:14px 12px;border-bottom:1px solid var(--line);vertical-align:top}tbody tr:last-child td{border-bottom:0}td:first-child{width:17%;border-left:4px solid #d19625}tr.critico td:first-child{border-left-color:var(--red)}td:nth-child(2){width:12%}td:nth-child(3){width:13%}.badge{display:inline-block;border-radius:5px;padding:4px 8px;font-size:12px;font-weight:700;white-space:nowrap}.badge.critico{background:#fbe6e9;color:#9c1e30}.badge.atencao{background:#fff0ca;color:#7a4d00}.badge.confirmed{background:#edf2f7;color:#405670}.badge.pending{background:#ececfc;color:#4c478c}.reason{font-size:12px;color:var(--muted);margin:9px 0 0;max-width:240px}.periodo{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}.date-separator{display:block;font-size:11px;color:var(--muted);font-weight:400;padding:2px 0}.number{font-weight:700;text-align:center;font-variant-numeric:tabular-nums}.pessoa{padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e6ecf2}.pessoa:last-child{padding:0;margin:0;border:0}.person-name{font-weight:600}.matricula{font-weight:400;color:var(--muted);font-size:12px;display:block}.person-meta{display:flex;gap:5px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:5px 0}.turno{font-weight:700;color:#345778}.person-dates{font-size:12px}.ok{color:#226342;background:#edf8f1;border-radius:7px;padding:12px;margin:12px 0 0}.empty{background:white;padding:24px;text-align:center;border:1px dashed #aabccd;border-radius:10px;color:var(--muted)}details{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:13px}summary{cursor:pointer;font-weight:600;color:var(--blue)}details ul{padding-left:20px;max-width:1000px}footer{color:var(--muted);font-size:12px;margin-top:24px}.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}[hidden]{display:none!important}
+@media(max-width:800px){main{padding:20px 14px}header{flex-direction:column;gap:14px}h1{font-size:24px}.scope-grid{grid-template-columns:1fr}.resumo{grid-template-columns:repeat(2,1fr)}.setor{padding:14px}table{min-width:880px}.filters label{flex:1;min-width:140px}}
+@page{size:A4 landscape;margin:10mm}
+@media print{body{background:white;font-size:10pt}main{max-width:none;padding:0}header{margin-bottom:12px}h1{font-size:21px}.toolbar,.filters,details{display:none!important}.scope-grid{grid-template-columns:1.5fr 1fr 1fr}.escopo,.setor{border-radius:0;padding:10px}.notice{font-size:9pt;margin-bottom:12px}.resumo{grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.card{padding:8px 12px}.card strong{font-size:22px}.setor{break-inside:auto}h2,.section-caption{break-after:avoid}thead{display:table-header-group}tr,.pessoa{break-inside:avoid}td{padding:9px 7px}.table-wrap{overflow:visible}table{min-width:0;font-size:9pt}.matricula,.person-meta,.person-dates,.reason{font-size:8pt}footer{font-size:8pt}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{body{font-size:9pt;line-height:1.3}header{margin-bottom:8px;gap:12px}.eyebrow{font-size:9px;margin-bottom:3px}h1{font-size:18px;margin-bottom:3px}.heading-icon{width:28px;height:28px;margin-right:7px;border-radius:6px}.heading-icon .icon{width:19px;height:19px}.subtitle{font-size:10px}.emitido{font-size:9px;margin-top:3px}.escopo{padding:7px 10px;margin-bottom:8px;font-size:10px}.scope-grid{gap:4px 14px}.field-label{font-size:9px;margin-bottom:2px}.scope-turno{font-size:9px;margin-top:6px;padding-top:5px}.notice{padding:6px 10px;font-size:9px;margin-bottom:8px}.resumo{gap:8px;margin-bottom:8px}.card{padding:6px 10px}.card span{font-size:10px}.card>span:last-child{display:none}.card strong{font-size:20px;margin:3px 0 0}.card .icon{width:16px;height:16px;vertical-align:-3px}.filter-summary{font-size:9px;margin-bottom:8px}.setor{padding:8px 10px;margin-bottom:10px}h2{font-size:15px;margin-bottom:3px}.section-caption{font-size:9px;margin-bottom:6px}th{padding:7px;font-size:9px}td{padding:7px;font-size:9px}.reason,.matricula,.person-meta,.person-dates{font-size:9px}.badge{font-size:9px;padding:3px 5px}.badge .icon{width:11px;height:11px}.pessoa{padding-bottom:6px;margin-bottom:6px}.person-meta{margin:3px 0}footer{font-size:8px;margin-top:12px}}
+</style></head>
+<body><svg class="icon-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 2 18.2A2 2 0 0 0 3.7 21h16.6a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol><symbol id="i-critical" viewBox="0 0 24 24"><path d="m8 2-6 6v8l6 6h8l6-6V8l-6-6Z"/><path d="M12 7v6M12 17h.01"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6zM18 12h.01"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></symbol><symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 0 1 11.2 3 9 9 0 1 0 21 12.8Z"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/></symbol></defs></svg><main>
+<header><div><div class="eyebrow">Planejamento de férias · DCE</div><h1><span class="heading-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>Conferência de coincidências de férias</h1><p class="subtitle">2027 / 2028 · Datas, turnos e servidores envolvidos</p><div class="emitido">Emitido em EMISSAO_AQUI</div></div><div class="toolbar"><button type="button" onclick="window.print()"><svg class="icon" aria-hidden="true"><use href="#i-print"></use></svg>Imprimir / Salvar em PDF</button></div></header>
+<div class="escopo"><div class="scope-grid"><div><span class="field-label">Setores selecionados</span>SETORES_AQUI</div><div><span class="field-label">Comparação</span>MODO_AQUI</div><div><span class="field-label">Base da conferência</span>Férias fixas e aprovadas<br>Pendentes: PENDENTES_AQUI</div></div><div class="scope-turno"><strong>Mesmo turno obrigatório:</strong> TURNO_AQUI</div></div>
+<div class="notice"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg><strong>Como interpretar:</strong> datas coincidentes em turnos diferentes são um alerta para conferência. Uma coincidência não significa, por si só, erro de lançamento.</div>
+<div class="resumo" aria-label="Totais do relatório completo"><div class="card critical"><span><svg class="icon" aria-hidden="true"><use href="#i-critical"></use></svg>Críticos · mesmo turno</span><strong>TOTAL_CRITICO</strong><span>Coincidências no mesmo turno conhecido</span></div><div class="card warning"><span><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>Atenção · revisar turnos</span><strong>TOTAL_ATENCAO</strong><span>Turnos diferentes ou não informados</span></div><div class="card pending"><span><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>Envolvendo pendentes</span><strong>TOTAL_PENDENTE</strong><span>Também incluídos nas classificações ao lado</span></div><div class="card"><span><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>Total de ocorrências</span><strong>TOTAL_EVENTOS</strong><span>Intervalos com participantes constantes</span></div></div>
+<div class="filters" role="search" aria-label="Filtrar ocorrências"><label class="search" for="busca"><span><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg> Buscar servidor, matrícula, setor ou turno</span><input id="busca" type="search" placeholder="Digite para filtrar as ocorrências…"></label><label for="gravidade">Classificação<select id="gravidade"><option value="">Todas</option><option value="CRITICO">Crítico</option><option value="ATENCAO">Atenção</option></select></label><label for="situacao">Situação<select id="situacao"><option value="">Todas</option><option value="CONFIRMADO">Confirmado</option><option value="ENVOLVE PENDENTE">Envolve pendente</option></select></label><button id="limpar" class="secondary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-reset"></use></svg>Limpar filtros</button></div>
+<p id="resultado-filtro" class="filter-summary" role="status" aria-live="polite">Exibindo todas as ocorrências. Os totais acima correspondem ao relatório completo.</p>
+<div id="sem-resultados" class="empty" hidden>Nenhuma ocorrência corresponde aos filtros. Use “Limpar filtros” para voltar ao relatório completo.</div>
 CONTEUDO_AQUI
-</body></html>
+<details><summary><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg> Critérios da conferência e legenda</summary><ul><li><strong>Crítico:</strong> datas sobrepostas no mesmo turno conhecido, respeitando o modo de comparação selecionado.</li><li><strong>Atenção:</strong> datas sobrepostas com turnos diferentes ou não informados.</li><li><strong>Envolve pendente:</strong> existe solicitação ainda não aprovada. A classificação Crítico/Atenção é mantida.</li><li>Diurno (D) não é presumido equivalente a Matutino ou Vespertino.</li><li>Cada ocorrência é um intervalo contínuo com o mesmo grupo de participantes. Um servidor pode participar de vários intervalos; as ocorrências não representam o total de pessoas distintas.</li></ul></details>
+<footer>Férias DCE · Relatório de conferência 2027/2028 · A impressão respeita os filtros aplicados. Os totais dos cartões sempre representam o relatório completo.</footer>
+</main>
+<script>
+(function(){
+'use strict';
+const rows=Array.from(document.querySelectorAll('tr.ocorrencia'));
+const sections=Array.from(document.querySelectorAll('section.setor'));
+const search=document.getElementById('busca'),severity=document.getElementById('gravidade'),status=document.getElementById('situacao');
+const fold=v=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
+const index=rows.map(row=>({row,text:fold(row.textContent)}));
+function update(){
+ const term=fold(search.value.trim());let shown=0;
+ index.forEach(item=>{const row=item.row;const visible=(!term||item.text.includes(term))&&(!severity.value||row.dataset.gravidade===severity.value)&&(!status.value||row.dataset.status===status.value);row.hidden=!visible;if(visible)shown++;});
+ const active=Boolean(term||severity.value||status.value);
+ sections.forEach(section=>{const own=Array.from(section.querySelectorAll('tr.ocorrencia'));section.hidden=active&&!own.some(row=>!row.hidden);});
+ document.getElementById('sem-resultados').hidden=!(active&&shown===0);
+ let label='Exibindo '+shown+' de '+rows.length+' ocorrência(s). ';
+ if(active){label+='Filtros: '+(search.value.trim()?'busca “'+search.value.trim()+'”; ':'')+(severity.value?severity.options[severity.selectedIndex].text+'; ':'')+(status.value?status.options[status.selectedIndex].text+'; ':'');}
+ document.getElementById('resultado-filtro').textContent=label+'Os cartões mostram os totais do relatório completo.';
+}
+search.addEventListener('input',update);severity.addEventListener('change',update);status.addEventListener('change',update);
+document.getElementById('limpar').addEventListener('click',()=>{search.value='';severity.value='';status.value='';update();search.focus();});
+update();
+})();
+</script></body></html>
+
 '@
-    $html=$html.Replace('SETORES_AQUI',$setoresTitulo).Replace('MODO_AQUI',(& $enc $modoTitulo)).Replace('PENDENTES_AQUI',$pendTitulo).Replace('TURNO_AQUI',(& $enc $turnoTitulo))
+    $html=$html.Replace('EMISSAO_AQUI',(Get-Date -Format 'dd/MM/yyyy HH:mm')).Replace('SETORES_AQUI',$setoresTitulo).Replace('MODO_AQUI',(& $enc $modoTitulo)).Replace('PENDENTES_AQUI',$pendTitulo).Replace('TURNO_AQUI',(& $enc $turnoTitulo))
     $html=$html.Replace('TOTAL_CRITICO',[string]$totalCriticos).Replace('TOTAL_ATENCAO',[string]$totalAtencao).Replace('TOTAL_PENDENTE',[string]$totalPendentes).Replace('TOTAL_EVENTOS',[string]$totalEventos).Replace('CONTEUDO_AQUI',$htmlPartes.ToString())
     $dir=Join-Path $PSScriptRoot 'Relatorios';if(-not(Test-Path -LiteralPath $dir)){[void](New-Item -ItemType Directory -Path $dir -Force)}
     $file=Join-Path $dir ('CONFLITOS_TURNOS_'+$(if($Modo -eq 'ENTRE_SETORES'){'ENTRE_SETORES'}else{'POR_SETOR'})+'_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.html')
@@ -11769,7 +11827,7 @@ function Abrir-CentralAprovacaoServidor {
         return @($p | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Sort-Object -Unique)
     }
 
-    # V1.0.135-R1: Cache efemero da CENTRAL para filtros repetidos.
+    # V1.0.135-R2: Cache efemero da CENTRAL para filtros repetidos.
     # Dependencia: hash da base, numero de registros, ano e id.
     # Nunca serializar esse cache nem reutilizar apos gravacao.
     $centralCacheStamp=''
@@ -11813,7 +11871,7 @@ function Abrir-CentralAprovacaoServidor {
         $centralFaixaCacheKey=$keyFaixa
     }
 
-    # V1.0.135-R1: prepara uma vez as 12 marcas mensais de cada registro.
+    # V1.0.135-R2: prepara uma vez as 12 marcas mensais de cada registro.
     # Antes a grade reconstruia os mesmos blocos ate 12 vezes por registro.
     $getMesCellsFast={
         param($r,[int]$ano)
