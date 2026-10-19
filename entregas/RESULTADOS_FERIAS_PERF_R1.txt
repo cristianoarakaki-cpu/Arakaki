@@ -1,0 +1,15 @@
+FERIAS DCE — PERF-R1 — RESULTADOS
+
+Carga sintetica de 180 registros, com pendentes, aprovadas, fixas, 15+15 dias, FR, matriculas duplicadas e periodos em 2027/2028.
+Resultados identicos em 48 consultas compostas e 168 pesos de casos de borda. Alteracao das datas no mesmo objeto testada para evitar cache obsoleto.
+
+Primeira carga de calculos: 6549 ms antes; 4149 ms depois; reducao de 36.7%.
+Repeticao da mesma carga: 3862 ms antes; 2184 ms depois; reducao de 43.4%.
+Tempos de uma medicao por versao em PowerShell 7.4.6/Linux. Sao tempos das funcoes de calculo, nao da abertura completa da interface WinForms no computador do usuario.
+
+Cache da Central: com o bloco original, duas chamadas recalcularam os 12 meses duas vezes; com o patch, a segunda chamada reutilizou o resultado. Invalidation por mudanca do hash, configuracao e recarga da colecao de registros verificada.
+Eventos do painel: executado o bloco real com controles sinteticos capazes de disparar SelectedIndexChanged. Na versao anterior houve 6 atualizacoes de historico para duas renderizacoes; no patch, 2. Flags de supressao liberadas mesmo com retorno antecipado.
+
+Parser: sem erros. Comparacao AST: apenas seis funcoes previstas alteradas. Funcoes de salvamento/rollback/backup/lock/SMB e os handlers de aprovacao/desaprovacao iguais a versao anterior que funcionou na rede.
+
+NAO EXECUTADOS: interface WinForms real, Windows PowerShell 5.1, dados de producao, tempos da rede/HD externo ou medicao real de abertura das janelas.

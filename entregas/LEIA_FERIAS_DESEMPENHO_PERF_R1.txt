@@ -1,0 +1,31 @@
+FERIAS DCE — DESEMPENHO PERF-R1
+
+INSTALACAO
+1. Feche o sistema antes de substituir o script. Se outras pessoas usam a mesma copia, combine a substituicao e peca que reabram o aplicativo depois.
+2. Guarde uma copia do FeriasDCE.ps1 atual em uma pasta de backup separada.
+3. Extraia o ZIP e substitua SOMENTE FeriasDCE.ps1 na pasta do sistema.
+4. NAO substitua Dados, Backups, JSON, launcher ou arquivos BAT.
+5. Abra pelo iniciador visivel revisado. O titulo principal e o da Central mostram PERF-R1 para identificar a instalacao.
+
+O QUE FOI MELHORADO
+- Cache da Central agora persiste entre os blocos de evento. Antes algumas chaves eram atribuicoes em escopo filho e eram perdidas, provocando novos calculos e limpezas na proxima atualizacao.
+- Cache da grade invalida por hash, quantidade/configuracao relevante e identidade da colecao apos recarga; dados de uma colecao antiga nao sao reutilizados.
+- Mudancas de opcao e competencia feitas pelo proprio preenchimento da tela nao disparam a mesma analise/historico repetidamente. Atualizacoes manuais continuam funcionando.
+- Cache limitado para conversao de datas (8192 entradas) e peso mensal por opcao (32768 entradas). As chaves incluem todos os dados de entrada, incluindo ano/mes/tipo/datas; alteracao de datas ou modalidade gera outra chave. Nao usa apenas ID e nao guarda registros do usuario.
+- Calculo do primeiro dia do mes nos percursos de blocos usa DateTime em vez de executar o comando Get-Date para cada bloco. Meses/competencias retornados foram comparados antes/depois.
+- Um evento duplicado de selecao nao apaga o comparativo anual ja montado.
+- Tempos de montagem e detalhes da Central registrados no log (CENTRAL PERF-R1), alem dos tempos de Planejamento ja existentes.
+
+PRESERVADO
+Aprovacao, desaprovacao, fixas, FR, regra dos pesos institucionais, datas, limites, historico e formatos de dados. A correcao SMB que funcionou na rede esta incluida SEM ALTERACOES. Mantidos lock, backup, validacoes e renomeacao alternativa quando autorizada. Nenhuma mudanca de politica de execucao ou de protecao do Windows.
+
+VALIDACAO
+Consulte RESULTADOS_TESTES.txt. Em carga de calculos sintetica com 180 registros, resultados identicos e reducoes de aproximadamente 37% na primeira carga e 43% na repeticao. Isso NAO e promessa de ganho igual na interface Windows. Foram testados parser, funcoes reais e blocos reais da Central com dados/controles sinteticos; nao foi executado WinForms nem o banco do usuario.
+
+TESTE NO WINDOWS
+- Abra Planejamento por Setor e a Central. Compare a demora com a versao anterior.
+- Pesquise, troque situacao, ano e mes; confira quantidades/cores, selecao e detalhes.
+- Abra uma opcao aprovada e uma pendente; alterne as opcoes em analise e verifique o historico.
+- Se necessario, aprove/desaprove um registro de teste conforme o fluxo normal e confirme persistencia ao reabrir.
+- Se continuar lento, envie o log FeriasDCE_*.log do dia (pasta Logs), sobretudo linhas CENTRAL PERF-R1, CENTRAL PERF e PERF Refresh-PlanejamentoSetor. Os logs ajudam a separar montagem, calculos e detalhes.
+- Para voltar, feche o sistema e restaure somente o script anterior. Nao restaure JSON antigo por causa de uma troca de versao do script.
