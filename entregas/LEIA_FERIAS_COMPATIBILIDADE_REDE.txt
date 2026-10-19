@@ -1,0 +1,33 @@
+FERIAS DCE — COMPATIBILIDADE DE GRAVACAO NA REDE
+
+IMPORTANTE: TESTE ANTES DE SUBSTITUIR O PROGRAMA
+O diagnostico anterior mostrou que criar e excluir funciona, mas File.Replace recebe acesso negado ate com arquivos descartaveis. Este pacote adiciona uma alternativa de renomeacao Windows com substituicao. Nao altera politicas, permissoes nem protecoes. Se a rede tambem negar a renomeacao, nao ha garantia de correcao apenas pelo script.
+
+PASSO 1 — TESTE SEM TOCAR NOS DADOS
+Extraia o ZIP em uma pasta separada. Copie SOMENTE os arquivos TESTAR_REDE.bat e Testar_Compatibilidade_Rede.ps1 para a mesma pasta do FeriasDCE.ps1 usado na rede. Eles devem ficar NA MESMA LISTA de FeriasDCE.ps1, Dados e Backups; NAO copie apenas a pasta do ZIP inteira nem coloque dentro de Dados.
+Feche sua instancia do sistema e execute TESTAR_REDE.bat com seu usuario habitual. O teste usa somente arquivos descartaveis com GUID dentro de Dados, verifica os conteudos e o backup ficticios e limpa os arquivos da propria execucao. Nao le nem altera o JSON real. Mostra PASSOU ou NAO PASSOU e salva um TXT no TEMP local.
+Se NAO PASSOU, envie o TXT e nao substitua o programa para forcar uma gravacao. Nao desative protecoes para executar o teste.
+
+PASSO 2 — INSTALAR SOMENTE SE O TESTE PASSAR
+Feche o aplicativo e faca backup do FeriasDCE.ps1 atual e da base antes da substituicao, sem sobrescrever backups existentes. Copie somente o FeriasDCE.ps1 deste pacote para a pasta do sistema, substituindo o script antigo. NAO substitua Dados, Backups, JSON nem outras pastas. Mantenha o launcher visivel revisado e execute pelo iniciador normal, sem flags de bypass.
+O teste descartavel nao comprova que a seguranca do JSON existente e igual a de um arquivo novo. O programa fara verificacoes adicionais antes de aplicar a alternativa ao JSON real e pode recusar com uma mensagem especifica.
+
+PASSO 3 — CONFIRMAR
+Abra o sistema e tente desfazer uma aprovacao de teste uma vez. Confira PENDENTE, opcoes e datas preservadas. Feche e reabra para verificar persistencia. Depois corrija as datas conforme o fluxo habitual.
+Se houver falha, envie a mensagem completa e o log em Logs. Verifique o estado atual antes de repetir; um erro de comunicacao pode tornar incerto se o servidor concluiu a operacao.
+
+IMPLEMENTACAO
+- Mantidos lock de arquivo, deteccao de conflito por hash/revisao, backup antes da alteracao, validacao do temporario e verificacao posterior do JSON/hash.
+- File.Replace continua sendo a primeira tentativa.
+- Somente erros de acesso negado ou operacao nao suportada elegiveis permitem avaliar a alternativa. Bloqueios de compartilhamento comuns continuam com o tratamento original.
+- Antes da alternativa, origem e destino devem continuar presentes e com os mesmos hashes de antes da falha. Uma falha parcial de Replace ou alteracao externa impede continuar.
+- Cria/verifica copia de backup antes do rename. Nenhuma copia e feita por cima da base ativa.
+- Exige igualdade de proprietario, grupo e DACL entre temporario e destino, e de atributos sensiveis (somente leitura, oculto, sistema, criptografia e compressao). Nao modifica ACL nem remove atributos. O marcador somente leitura bloqueia a alternativa.
+- Usa MoveFileExW com REPLACE_EXISTING e WRITE_THROUGH, SEM COPY_ALLOWED, com temporario e destino na mesma pasta. Nao apaga primeiro o destino e nao trunca o JSON.
+- A verificacao posterior permanece; se necessario, a tentativa de rollback usa o mesmo mecanismo. Falha de rollback e registrada e o backup e preservado. Arquivos antes_rollback/replacebak preservados em falhas nao devem ser apagados sem verificar a base.
+- Nao muda regras de aprovacao/desaprovacao, datas, limites ou dados. Mantem a revisao anterior da inicializacao visivel.
+- Nao muda permissao de compartilhamento, registro, politica de execucao, antivirus ou configuracao do servidor. A alternativa so funciona se o Windows/SMB autorizar a operacao.
+
+LIMITES
+Nao foi possivel executar Windows PowerShell 5.1, MoveFileExW, WinForms, ACL NTFS ou o seu servidor SMB. A integridade/durabilidade final tambem depende do servidor e da conexao; nao ha promessa de ausencia de falhas de hardware/rede.
+Oito cenarios passaram em PowerShell 7.4.6/Linux. File.Replace normal e validacao JSON foram exercitados em arquivos locais. A alternativa e seu rollback foram testados com adaptadores de IO simulados; isso testa a logica, NAO valida o Win32 real. O teste standalone passou em dados sinteticos sem alterar o arquivo sentinela. Por isso o PASSO 1 e necessario no seu computador.
