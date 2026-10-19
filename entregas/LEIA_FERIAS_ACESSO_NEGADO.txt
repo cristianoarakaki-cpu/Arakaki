@@ -1,0 +1,39 @@
+FERIAS DCE — DIAGNOSTICO DE ACESSO NEGADO NA GRAVACAO
+
+O QUE FOI IDENTIFICADO
+A tela mostra falha em System.IO.File.Replace, com acesso negado, na base em pasta de rede. O script enviado e o mesmo arquivo ja existente no repositorio (SHA-256 b4abe709d2f6043aacb078539307c62a68076daf710f3de5d09145b581339f7e).
+O botao Desfazer aprovacao altera opcao_aprovada e chama Save-Database. O salvamento exige substituir atomicamente o JSON. Conseguir criar backup/temporario nao comprova poder substituir o arquivo existente. A falha e compativel com permissao insuficiente, atributo somente leitura, bloqueio de processo ou restricao do provedor SMB. A mensagem sozinha nao identifica qual deles.
+Nao foi observado defeito especifico da regra de desaprovacao que explique o acesso negado. Outros comandos que salvam a mesma base tambem podem falhar.
+
+ESTE PACOTE NAO SUBSTITUI FeriasDCE.ps1
+Nao altera o aplicativo nem a base. Nao enfraquece a gravacao atomica, nao faz sobrescrita direta, nao aplica ACL, nao remove somente leitura e nao desativa protecoes. A correcao efetiva pode exigir acao da TI no servidor.
+
+COMO EXECUTAR NO COMPUTADOR QUE APRESENTA O ERRO
+1. Extraia os arquivos do ZIP.
+2. Copie SOMENTE Diagnosticar-GravacaoFerias.ps1 e Executar_Diagnostico.cmd para a mesma pasta de FeriasDCE.ps1, ao lado das pastas Dados e Backups. Nao coloque dentro de Dados nem Backups.
+3. Feche o aplicativo nesse computador e execute Executar_Diagnostico.cmd com o usuario que recebeu o erro, sem trocar para um administrador (isso mudaria a identidade testada).
+4. O console mostrara as etapas. Ao final, copie o caminho exibido em RELATORIO SALVO EM e envie o TXT. O relatorio e gravado no TEMP local, nao na base compartilhada.
+5. Se a politica de execucao bloquear o PS1, encaminhe o pacote para a TI conforme as regras da instituicao; o iniciador nao usa ExecutionPolicy Bypass.
+
+ALTERNATIVA PARA A TI
+No Windows PowerShell, usando o caminho real do sistema:
+powershell.exe -NoProfile -File "C:\caminho\Diagnosticar-GravacaoFerias.ps1" -AppRoot "\servidor\compartilhamento\pasta-do-sistema"
+
+O QUE O DIAGNOSTICO FAZ
+- Le caminho e atributos do JSON real, sem ler/exibir seu conteudo e sem abri-lo para escrita.
+- Consulta ACL da pasta e do arquivo no Windows. As entradas nao equivalem a calculo de permissao efetiva e nao mostram toda a autorizacao do compartilhamento SMB.
+- Cria arquivos descartaveis com prefixo .diagnostico_ferias_ e GUID na pasta Dados; testa o mesmo File.Replace com backup usado pelo aplicativo; confere somente os conteudos ficticios; testa renomeacao e remove apenas os descartaveis da propria execucao.
+- Nao abre nem apaga o lock real do aplicativo e nao restaura arquivos de resgate.
+- Se a limpeza for negada, informa o nome dos descartaveis para a TI verificar. Nao faz limpeza geral da pasta.
+- O relatorio contem usuario/grupos/caminhos das entradas ACL. Envie-o apenas a quem administra o sistema; nao publique sem revisar essas informacoes.
+
+TEXTO PARA ENCAMINHAR A TI
+Ao desfazer uma aprovacao no Ferias DCE, o salvamento do arquivo Dados\ferias_2027.json falha em System.IO.File.Replace com acesso negado. Favor verificar, para o usuario afetado, a permissao efetiva de Modificar na pasta Dados e no JSON existente, tanto no compartilhamento SMB quanto no NTFS, incluindo criar, gravar, substituir/renomear e excluir; verificar heranca/negacoes explicitas, atributo somente leitura e bloqueios por processo ou protecao de endpoint. Nao e necessario liberar controle total para Todos nem desativar antivirus. Segue diagnostico com teste de substituicao em arquivos descartaveis.
+
+DEPOIS DA CORRECAO
+Abra novamente o aplicativo para carregar a versao atual da base e tente desfazer a aprovacao uma vez. Confira que ficou PENDENTE com as opcoes preservadas. Depois corrija as datas e aprove novamente conforme o fluxo normal.
+Preserve Backups e ERRO_SALVAMENTO_*.json. Nao copie automaticamente um resgate inteiro sobre a base: ele pode conter uma versao antiga de outros registros, pois outros usuarios podem ter salvo alteracoes depois.
+
+VALIDACAO EXECUTADA AQUI
+Parser PowerShell do script recebido: zero erros. Em PowerShell 7.4.6/Linux, usando apenas funcoes extraidas e diretorios temporarios sinteticos: commit valido, rejeicao de JSON invalido preservando a base, negacao real de permissao preservando a base, criacao inicial e diagnostico sem alterar a base sintetica. Cinco cenarios passaram.
+A interface Windows completa, Windows PowerShell 5.1, ACL NTFS e o compartilhamento real nao foram executados. Testes locais nao comprovam permissoes do servidor.
