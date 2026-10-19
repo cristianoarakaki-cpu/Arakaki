@@ -1,0 +1,36 @@
+AGENDA SISDENF V1.9.10 — CORREÇÃO DO CADASTRO / ERRO 3246
+
+ALTERE SOMENTE modAgendaSISDENF
+O formulário e modAgendaSISDENF_Alertas recebidos foram analisados e não precisam ser substituídos para esta correção. Cópias exatas dos arquivos enviados estão na subpasta REFERENCIA_ORIGINAIS, apenas para referência. Não importe a classe do formulário como uma classe nova.
+
+PARA SUBSTITUIR O CÓDIGO
+1. Faça backup do banco e feche a agenda.
+2. Abra CODIGO_PARA_COLAR_modAgendaSISDENF.txt e copie todo o conteúdo.
+3. No Access, Alt+F11, abra o módulo existente modAgendaSISDENF. Substitua todo o código pelo TXT, sem criar outro módulo.
+4. Execute Depurar > Compilar e salve.
+5. Abra a agenda e cadastre UM compromisso de teste. Confira se foi criado uma única vez e se o ID aparece na mensagem.
+
+ALTERNATIVA: importar modAgendaSISDENF_V1_9_10.bas, substituindo o módulo anterior após backup. O BAS inclui a linha de importação Attribute VB_Name; ela já foi retirada do TXT para colagem.
+
+DIAGNÓSTICO
+A captura mostra erro 3246, operação sem suporte em transações. A versão 1.9.9 abriu uma transação explícita no Workspace padrão antes de inserir uma única linha. O erro é compatível com uma operação/tabela/provedor incompatível com esse contexto. A captura não informa qual linha VBA gerou a exceção; sem o banco e o Access, não foi possível reproduzir a operação DAO ou determinar essa linha.
+
+CORREÇÃO APLICADA
+- Retirada a transação explícita APENAS do cadastro de um compromisso.
+- Mantida uma única inclusão por AddNew/Update, sem repetição automática e sem alterar tabelas, registros existentes ou configurações do Access.
+- Mantida a consulta de confirmação pelo ID após Update.
+- Se Update retornar sem erro, mas a obtenção do ID/conferência falhar, o aviso informa que a gravação foi aceita e orienta conferir a lista antes de repetir.
+- Em falha antes da confirmação do Update, o aviso inclui a etapa e orienta verificar o banco antes de tentar novamente; não é prometido que uma falha de comunicação nunca gravou.
+- Cancelamento do buffer de edição pendente em caso de falha.
+- Acrescentada a etapa da operação à mensagem e à janela Imediato para diagnóstico.
+- A transação da exclusão foi preservada: ela modifica DUAS tabelas e precisa manter consistência. Este pacote não declara que exclusão funciona com provedores sem suporte a transações.
+- Ícones, layout, validações, procedimentos públicos e eventos foram preservados.
+
+TESTES EXECUTADOS AQUI
+- Regressão do JavaScript extraído: inicialização sem erro, envio dos comandos de cadastro, evento noturno aceito, botões acessíveis em 800/1024/1366 pixels.
+- 27 verificações adicionais de interface/estrutura passaram.
+- Comparação textual: funções de exclusão, validação de data/hora, CSS e JavaScript idênticas às recebidas.
+- Revisão estática: uma chamada Update e nenhuma transação explícita na função de cadastro; sinalização de Update aceito antes de recuperar o ID; literais balanceados e linhas abaixo do limite VBA.
+
+LIMITES
+O ambiente é Linux: não foram executados Microsoft Access, compilação VBA, DAO ou gravação real em ACCDB/MDB. O pacote corrige a incompatibilidade introduzida pela transação explícita, mas o resultado no seu banco precisa do teste acima. Se o erro persistir, envie a mensagem COMPLETA da versão 1.9.10, agora com a etapa (por exemplo: preparação do registro, gravação (Update), recuperação do ID ou conferência do registro). Não repita vários cadastros sem verificar a lista.

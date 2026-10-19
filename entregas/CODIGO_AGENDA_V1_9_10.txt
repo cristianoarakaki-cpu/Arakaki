@@ -1,0 +1,1178 @@
+﻿Option Compare Database
+Option Explicit
+' V1.9.10 - Validacao, transacoes e interface com icones SVG locais
+Private Const AG_PAGE_SIZE As Long = 30
+Private mQ As String, mData As String, mCat As String, mTipo As String, mPeriodo As String, mPage As Long
+Private mBusy As Boolean
+Private mAviso As String
+Private mAvisoErro As Boolean
+Private mAtualizacaoPendente As Boolean
+Private mAtualizacaoEmCurso As Boolean
+Private mArquivoIndice As Long
+Private mPastaTemporaria As String
+
+Public Sub AgendaSISDENF_Abrir(ByVal frm As Access.Form)
+    mQ = "": mData = "": mCat = "": mTipo = "todos": mPeriodo = "": mPage = 1: mAviso = "": mAvisoErro = False
+    mAtualizacaoPendente = False: mAtualizacaoEmCurso = False: mArquivoIndice = 0
+    AgendaSISDENF_Atualizar frm
+End Sub
+
+Public Sub AgendaSISDENF_Atualizar(ByVal frm As Access.Form)
+    On Error GoTo Trata
+    Dim caminho As String, urlArquivo As String
+    Dim navegador As Object
+    If mBusy Or mAtualizacaoEmCurso Then
+        mAtualizacaoPendente = True
+        Exit Sub
+    End If
+    mBusy = True
+    mAtualizacaoEmCurso = True
+    caminho = AgendaSISDENF_GerarHTML()
+    If Len(caminho) = 0 Then Err.Raise vbObjectError + 1930, , "Geracao do HTML retornou caminho vazio."
+    If Len(Dir$(caminho)) = 0 Then Err.Raise vbObjectError + 1931, , "Arquivo HTML nao encontrado: " & caminho
+    urlArquivo = "file:///" & Replace(caminho, Chr$(92), "/")
+    Set navegador = frm.Controls("WebBrowser1").Object
+    navegador.Navigate urlArquivo
+    mAtualizacaoPendente = False
+Saida:
+    mAtualizacaoEmCurso = False
+    mBusy = False
+    Set navegador = Nothing
+    Exit Sub
+Trata:
+    mAtualizacaoPendente = False
+    Debug.Print "Agenda SISDENF falha Navigate/GerarHTML: " & Err.Number & " - " & Err.Description
+    MsgBox "Agenda - falha ao atualizar: " & Err.Number & " - " & Err.Description, vbExclamation
+    Resume Saida
+End Sub
+
+Public Sub AgendaSISDENF_VerificarComando(ByVal frm As Access.Form)
+    ' Processar no Timer: nao navegar novamente durante evento do navegador.
+    On Error GoTo Falha
+    Dim doc As Object, ponte As Object, comando As String, cancelar As Boolean
+    If mBusy Or mAtualizacaoEmCurso Then Exit Sub
+    If mAtualizacaoPendente Then
+        mAtualizacaoPendente = False
+        AgendaSISDENF_Atualizar frm
+        Exit Sub
+    End If
+    Set doc = frm.Controls("WebBrowser1").Object.Document
+    If doc Is Nothing Then Exit Sub
+    Set ponte = doc.getElementById("agBridge")
+    If ponte Is Nothing Then Exit Sub
+    comando = CStr(Nz(ponte.getAttribute("data-command"), ""))
+    If Len(comando) = 0 Then Exit Sub
+    ponte.setAttribute "data-command", ""
+    cancelar = False
+    AgendaSISDENF_Navegar frm, "about:blank?" & comando, cancelar
+    Exit Sub
+Falha:
+    Debug.Print "Agenda SISDENF ponte: " & Err.Number & " - " & Err.Description
+End Sub
+
+Private Sub AgSolicitarAtualizacao()
+    mAtualizacaoPendente = True
+End Sub
+
+Public Sub AgendaSISDENF_Navegar(ByVal frm As Access.Form, ByVal Endereco As String, ByRef Cancel As Boolean)
+    On Error GoTo Falha
+    Dim p As Long, s As String, acao As String
+    If InStr(1, Endereco, "about:blank?", vbTextCompare) <> 1 Then Exit Sub
+    p = InStr(1, Endereco, "?", vbBinaryCompare)
+    s = Mid$(Endereco, p + 1)
+    acao = AgGet(s, "agcmd")
+    If Len(acao) = 0 Then Exit Sub
+    Cancel = True
+    ' Excluir somente por ID valido, com confirmacao e transacao DAO.
+    If acao = "delete" Then
+        Dim idExcluir As Long
+        idExcluir = AgIDValido(AgGet(s, "id"))
+        If AgExcluirCompromisso(idExcluir) Then
+            mAviso = "Compromisso ID " & CStr(idExcluir) & " excluido com sucesso."
+            mAvisoErro = False
+            AgSolicitarAtualizacao
+        End If
+        Exit Sub
+    End If
+    If acao = "science" Then
+        Cancel = True
+        On Error GoTo Falha
+        Dim idC As Long
+        idC = AgIDValido(AgGet(s, "id"))
+        Agenda18_ConfirmarCiencia idC, Environ$("USERNAME")
+        mAviso = "Ciência registrada para o compromisso ID " & CStr(idC) & "."
+        mAvisoErro = False
+        AgSolicitarAtualizacao
+        Exit Sub
+    End If
+    If acao = "category" Then
+        Cancel = True
+        Agenda18_CadastrarCategoria AgGet(s, "code"), AgGet(s, "name"), AgGet(s, "color")
+        mAviso = "Categoria cadastrada com sucesso."
+        mAvisoErro = False
+        AgSolicitarAtualizacao
+        Exit Sub
+    End If
+    If acao = "editcategory" Then
+        Cancel = True
+        AgEditarCategoria AgGet(s, "code"), AgGet(s, "name"), _
+                          AgGet(s, "color"), AgGet(s, "active")
+        mAviso = "Categoria atualizada com sucesso."
+        mAvisoErro = False
+        AgSolicitarAtualizacao
+        Exit Sub
+    End If
+    If acao = "save" Then
+        Cancel = True
+        If AgendaSISDENF_Gravar(s) Then
+            mPage = 1: mQ = "": mData = AgGet(s, "data"): mCat = "": mTipo = "todos": mPeriodo = ""
+        End If
+        AgSolicitarAtualizacao
+        Exit Sub
+    End If
+    If acao <> "search" Then Err.Raise vbObjectError + 1954, , "Comando desconhecido."
+    Cancel = True
+    mQ = AgGet(s, "q"): mData = AgGet(s, "dt")
+    mCat = AgGet(s, "cat"): mTipo = AgGet(s, "tipo"): mPeriodo = AgGet(s, "periodo")
+    If mTipo <> "lidos" And mTipo <> "pendentes" Then mTipo = "todos"
+    If Len(mCat) <> 2 Or Not (mCat Like "##") Then mCat = ""
+    Dim dataPeriodo As Date
+    If Len(mPeriodo) > 0 And mPeriodo <> "10" Then
+        If Not AgParseDate(mPeriodo, dataPeriodo) Then Err.Raise vbObjectError + 1956, , "Periodo invalido."
+    End If
+    Dim paginaTexto As String
+    paginaTexto = AgGet(s, "page")
+    If Len(paginaTexto) = 0 Then paginaTexto = "1"
+    If Len(paginaTexto) > 6 Or Not (paginaTexto Like String$(Len(paginaTexto), "#")) Then _
+        Err.Raise vbObjectError + 1955, , "Pagina invalida."
+    mPage = CLng(paginaTexto)
+    If mPage < 1 Then mPage = 1
+    If mPage > 100000 Then mPage = 100000
+    AgSolicitarAtualizacao
+    Exit Sub
+Falha:
+    Cancel = True
+    mAviso = "OPERACAO NAO CONCLUIDA: " & Err.Description
+    mAvisoErro = True
+    AgSolicitarAtualizacao
+End Sub
+
+Private Function AgExcluirCompromisso(ByVal idEvento As Long) As Boolean
+    ' Nao exclui sem mostrar ao usuario o registro real encontrado no banco.
+    ' A transacao reverte ambas as tabelas se existir alguma restricao.
+    On Error GoTo Falha
+    Dim db As DAO.Database, ws As DAO.Workspace, rs As DAO.Recordset
+    Dim assunto As String, dataTexto As String
+    Dim emTransacao As Boolean, qtdExcluida As Long
+    If idEvento <= 0 Then Err.Raise vbObjectError + 1952, , "ID de compromisso invalido."
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT [ID],[Agenda],[Data] FROM [T_Agendamento] WHERE [ID]=" & CStr(idEvento), dbOpenSnapshot)
+    If rs.EOF Then
+        mAviso = "O compromisso ID " & CStr(idEvento) & " nao existe mais. Atualize a lista."
+        mAvisoErro = True
+        AgSolicitarAtualizacao
+        GoTo Saida
+    End If
+    assunto = Left$(Nz(rs.Fields("Agenda").Value, ""), 180)
+    dataTexto = AgDate(rs.Fields("Data").Value)
+    rs.Close: Set rs = Nothing
+    If MsgBox("EXCLUIR DEFINITIVAMENTE O COMPROMISSO?" & vbCrLf & vbCrLf & _
+              "ID: " & CStr(idEvento) & vbCrLf & _
+              "Data: " & dataTexto & vbCrLf & _
+              "Assunto: " & assunto & vbCrLf & vbCrLf & _
+              "As confirmacoes de ciencia deste evento tambem serao excluidas." & vbCrLf & _
+              "Esta operacao nao pode ser desfeita.", _
+              vbYesNo + vbQuestion + vbDefaultButton2, "Agenda SISDENF - Confirmar exclusao") <> vbYes Then
+        GoTo Saida
+    End If
+    Set ws = DBEngine.Workspaces(0)
+    ws.BeginTrans
+    emTransacao = True
+    db.Execute "DELETE FROM [T_AgendaCiencia] WHERE [IDAgendamento]=" & CStr(idEvento), dbFailOnError
+    db.Execute "DELETE FROM [T_Agendamento] WHERE [ID]=" & CStr(idEvento), dbFailOnError
+    qtdExcluida = db.RecordsAffected
+    If qtdExcluida <> 1 Then Err.Raise vbObjectError + 1953, , "Exclusao nao confirmada (ID alterado ou removido por outro usuario)."
+    ws.CommitTrans
+    emTransacao = False
+    AgExcluirCompromisso = True
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing: Set db = Nothing: Set ws = Nothing
+    Exit Function
+Falha:
+    Dim numeroErro As Long, textoErro As String
+    numeroErro = Err.Number: textoErro = Err.Description
+    On Error Resume Next
+    If emTransacao Then ws.Rollback
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing: Set db = Nothing: Set ws = Nothing
+    On Error GoTo 0
+    Err.Raise numeroErro, "AgExcluirCompromisso", textoErro
+End Function
+
+Private Function AgendaSISDENF_Gravar(ByVal qs As String) As Boolean
+    On Error GoTo Falha
+    Dim db As DAO.Database, rs As DAO.Recordset, ver As DAO.Recordset
+    Dim gravacaoAceita As Boolean, etapa As String
+    Dim numeroFalha As Long, descricaoFalha As String
+    Dim assunto As String, categoria As String, dataTxt As String
+    Dim horaTxt As String, fimTxt As String, dataEvento As Date
+    Dim hInicio As Date, hFim As Variant, novoID As Long, termino As Date
+    Dim dataFimTxt As String, dataFim As Date
+    etapa = "validacao"
+    mAvisoErro = False
+    assunto = Trim$(AgGet(qs, "assunto"))
+    categoria = AgGet(qs, "categoria")
+    dataTxt = AgGet(qs, "data")
+    horaTxt = AgGet(qs, "hora")
+    fimTxt = Trim$(AgGet(qs, "fim"))
+    dataFimTxt = Trim$(AgGet(qs, "datafim"))
+    If Len(assunto) = 0 Or Len(assunto) > 450 Then Err.Raise vbObjectError + 1001, , "Informe um assunto de ate 450 caracteres."
+    If Len(categoria) <> 2 Or Not (categoria Like "##") Then Err.Raise vbObjectError + 1002, , "Categoria invalida."
+    If Not Agenda18_CategoriaAtiva(categoria) Then Err.Raise vbObjectError + 1008, , "Categoria nao cadastrada ou inativa."
+    If Not AgParseDate(dataTxt, dataEvento) Then Err.Raise vbObjectError + 1003, , "Data invalida. Use dd/mm/aaaa."
+    If Len(dataFimTxt) > 0 Then
+        If Not AgParseDate(dataFimTxt, dataFim) Then Err.Raise vbObjectError + 1009, , "Data final invalida."
+        If dataFim < dataEvento Then Err.Raise vbObjectError + 1010, , "A data final nao pode ser anterior a inicial."
+    End If
+    If Not AgHoraValida(horaTxt, hInicio) Then Err.Raise vbObjectError + 1004, , "Hora inicial invalida. Use HH:MM."
+    hFim = Null
+    If Len(fimTxt) > 0 Then
+        If Not AgHoraValida(fimTxt, termino) Then Err.Raise vbObjectError + 1005, , "Hora de termino invalida."
+        If IIf(Len(dataFimTxt) > 0, dataFim, dataEvento) + termino < dataEvento + hInicio Then Err.Raise vbObjectError + 1006, , "Hora final anterior a inicial: revise os horarios."
+        hFim = termino
+    End If
+    assunto = AgAssuntoExibicao(assunto)
+    If Len(assunto) = 0 Then Err.Raise vbObjectError + 1001, , "Informe o assunto do compromisso."
+    assunto = categoria & " - " & assunto
+    etapa = "abertura da tabela"
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("T_Agendamento", dbOpenDynaset)
+    If rs.Fields("Agenda").Type = dbText Then
+        If Len(assunto) > rs.Fields("Agenda").Size Then Err.Raise vbObjectError + 1011, , "Assunto excede o tamanho permitido na tabela."
+    End If
+    ' Uma unica inclusao: nao abrir transacao explicita no Workspace compartilhado.
+    ' Alguns provedores/tabelas Access nao aceitam essas operacoes em transacoes.
+    ' Nao tentar novamente automaticamente depois de rs.Update.
+    etapa = "preparacao do registro"
+    rs.AddNew
+    rs.Fields("Agenda").Value = assunto
+    rs.Fields("Data").Value = dataEvento
+    If Len(dataFimTxt) > 0 Then
+        rs.Fields("DataFimEvento").Value = dataFim
+    Else
+        rs.Fields("DataFimEvento").Value = Null
+    End If
+    rs.Fields("Hora").Value = hInicio
+    rs.Fields("HoraTermino").Value = hFim
+    rs.Fields("Data da Informação").Value = Date
+    rs.Fields("Login").Value = Left$(Environ$("USERNAME"), 255)
+    rs.Fields("Lida").Value = False
+    etapa = "gravacao (Update)"
+    rs.Update
+    gravacaoAceita = True
+    etapa = "recuperacao do ID"
+    rs.Bookmark = rs.LastModified
+    novoID = CLng(rs.Fields("ID").Value)
+    etapa = "conferencia do registro"
+    Set ver = db.OpenRecordset("SELECT ID FROM T_Agendamento WHERE ID=" & CStr(novoID), dbOpenSnapshot)
+    If ver.EOF Then Err.Raise vbObjectError + 1007, , "A gravacao nao foi confirmada na tabela. Consulte o ID antes de repetir."
+    ver.Close: Set ver = Nothing
+    mAviso = "Compromisso gravado e confirmado. ID " & CStr(novoID) & "."
+    AgendaSISDENF_Gravar = True
+Saida:
+    On Error Resume Next
+    If Not ver Is Nothing Then ver.Close
+    If Not rs Is Nothing Then rs.Close
+    Set db = Nothing: Set rs = Nothing: Set ver = Nothing
+    Exit Function
+Falha:
+    numeroFalha = Err.Number
+    descricaoFalha = Err.Description
+    mAvisoErro = True
+    If gravacaoAceita Then
+        ' Update terminou sem erro: uma falha posterior nao autoriza nova inclusao.
+        AgendaSISDENF_Gravar = True
+        mAviso = "GRAVACAO ACEITA"
+        If novoID > 0 Then mAviso = mAviso & " - ID " & CStr(novoID)
+        mAviso = mAviso & ". A conferencia complementar falhou (" & etapa & "): " & _
+                 CStr(numeroFalha) & " - " & descricaoFalha & _
+                 ". Confira a lista antes de cadastrar novamente."
+    Else
+        mAviso = "CADASTRO NAO CONFIRMADO (" & etapa & "): " & CStr(numeroFalha) & _
+                 " - " & descricaoFalha & ". Confira a lista antes de repetir o cadastro."
+    End If
+    Debug.Print "Agenda SISDENF cadastro | " & etapa & " | " & CStr(numeroFalha) & " - " & descricaoFalha
+    On Error Resume Next
+    If Not rs Is Nothing Then
+        If rs.EditMode <> dbEditNone Then rs.CancelUpdate
+    End If
+    GoTo Saida
+End Function
+
+Private Function AgHoraValida(ByVal s As String, ByRef t As Date) As Boolean
+    On Error GoTo Invalida
+    Dim p() As String, h As Long, m As Long
+    p = Split(Trim$(s), ":")
+    If UBound(p) <> 1 Then Exit Function
+    If Len(p(0)) < 1 Or Len(p(0)) > 2 Or Len(p(1)) <> 2 Then Exit Function
+    If Not (p(0) Like String$(Len(p(0)), "#")) Or Not (p(1) Like "##") Then Exit Function
+    h = CLng(p(0)): m = CLng(p(1))
+    If h > 23 Or h < 0 Or m > 59 Or m < 0 Then Exit Function
+    t = TimeSerial(h, m, 0): AgHoraValida = True
+Invalida:
+End Function
+
+Private Function AgGet(ByVal qs As String, ByVal k As String) As String
+    Dim parts() As String, i As Long, a As String, v As String
+    parts = Split(qs, "&")
+    For i = LBound(parts) To UBound(parts)
+        a = parts(i)
+        If Left$(a, Len(k) + 1) = k & "=" Then
+            v = Mid$(a, Len(k) + 2)
+            AgGet = AgUnescape(v)
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Function AgUnescape(ByVal s As String) As String
+    Dim i As Long, h As String, r As String
+    i = 1
+    Do While i <= Len(s)
+        If Mid$(s, i, 2) = "%u" And i + 5 <= Len(s) Then
+            h = Mid$(s, i + 2, 4)
+            If h Like "[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]" Then
+                r = r & ChrW$(CLng("&H" & h)): i = i + 6
+            Else
+                r = r & Mid$(s, i, 1): i = i + 1
+            End If
+        ElseIf Mid$(s, i, 1) = "%" And i + 2 <= Len(s) Then
+            h = Mid$(s, i + 1, 2)
+            If h Like "[0-9A-Fa-f][0-9A-Fa-f]" Then
+                r = r & ChrW$(CLng("&H" & h)): i = i + 3
+            Else
+                r = r & "%": i = i + 1
+            End If
+        Else
+            r = r & Mid$(s, i, 1): i = i + 1
+        End If
+    Loop
+    AgUnescape = Left$(r, 750)
+End Function
+
+Private Function AgSafe(ByVal s As String) As String
+    AgSafe = Replace(Replace(Replace(Replace(Replace(s, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), Chr$(34), "&quot;"), "'", "&#39;")
+End Function
+
+Private Function AgDate(ByVal v As Variant) As String
+    If Not IsNull(v) Then If IsDate(v) Then AgDate = Format$(CDate(v), "dd/mm/yyyy")
+End Function
+Private Function AgTime(ByVal v As Variant) As String
+    AgTime = "--:--"
+    If Not IsNull(v) Then If IsDate(v) Then AgTime = Format$(CDate(v), "hh:nn")
+End Function
+Private Function AgCatName(ByVal c As String) As String
+    Select Case c
+    Case "00": AgCatName = "Lembrete"
+    Case "01": AgCatName = "Reuniões"
+    Case "02": AgCatName = "Urgente"
+    Case "03": AgCatName = "Retorno Servidor"
+    Case "04": AgCatName = "EMS_NUP Ouvidoria"
+    Case Else: AgCatName = "Outros"
+    End Select
+End Function
+
+Private Function AgMesCurto(ByVal m As Long) As String
+    Select Case m
+        Case 1: AgMesCurto = "JAN"
+        Case 2: AgMesCurto = "FEV"
+        Case 3: AgMesCurto = "MAR"
+        Case 4: AgMesCurto = "ABR"
+        Case 5: AgMesCurto = "MAI"
+        Case 6: AgMesCurto = "JUN"
+        Case 7: AgMesCurto = "JUL"
+        Case 8: AgMesCurto = "AGO"
+        Case 9: AgMesCurto = "SET"
+        Case 10: AgMesCurto = "OUT"
+        Case 11: AgMesCurto = "NOV"
+        Case 12: AgMesCurto = "DEZ"
+        Case Else: AgMesCurto = "---"
+    End Select
+End Function
+
+Private Function AgTemplate() As String
+    Dim s As String
+    s = s & "<!DOCTYPE html><html><head><meta http-equiv=""X-UA-Compatible"" content=""IE=edge""><meta charset="""
+    s = s & "utf-8""><title>Agenda SISDENF</title><style>"
+    s = s & vbCrLf
+    s = s & "*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{font:12p"
+    s = s & "x Arial,sans-serif;color:#102747;background:#eef3fa}button,input{font:12px Arial,sans-serif}but"
+    s = s & "ton{border:1px solid #c8d6e6;border-radius:4px;background:white;color:#154773;padding:7px;curso"
+    s = s & "r:pointer}button:hover{background:#dfecfa}button:disabled{color:#98a7b9;background:#eee}input{b"
+    s = s & "order:1px solid #b9cde4;border-radius:4px;padding:7px;max-width:24%;width:190px}.top{height:65p"
+    s = s & "x;background:#124673;color:white;padding:13px 15px}.top strong{font-size:21px}.top small{displa"
+    s = s & "y:block;margin-top:3px;color:#c8ddf1}.bar{height:49px;background:#e1ebfa;padding:7px 9px;white-"
+    s = s & "space:nowrap;overflow:hidden;border-bottom:1px solid #cbd8ea}.bar button{padding:7px 6px}.colum"
+    s = s & "ns{display:table;table-layout:fixed;border-spacing:7px;height:calc(100% - 114px);width:100%}.co"
+    s = s & "l{display:table-cell;vertical-align:top;background:white;border:1px solid #d6e2f1;border-radius"
+    s = s & ":7px;padding:10px;overflow:hidden}.left{width:166px}.right{width:248px}h3{font-size:15px;margin"
+    s = s & ":4px 0 8px;color:#143c68}.left button{width:100%;text-align:left;display:block;margin:4px 0;whi"
+    s = s & "te-space:normal}.sub{color:#627e9e;font-size:11px}.list,.detail,.nav{overflow-x:hidden;overflow"
+    s = s & "-y:auto}.evt{border:1px solid #d5e5f6;border-left:4px solid #4796e8;border-radius:5px;padding:1"
+    s = s & "0px 43px 9px 70px;margin:6px 0;position:relative;min-height:73px;word-wrap:break-word}.evt.sele"
+    s = s & "cted{background:#eef7ff;border-color:#4796e8}.clock{position:absolute;left:7px;top:12px;width:5"
+    s = s & "7px}.clock b{font-size:14px}.clock small{display:block;color:#73859b;margin-top:5px}.etitle{fon"
+    s = s & "t-weight:bold;line-height:1.4}.meta{font-size:11px;color:#496b8f;margin-top:7px;line-height:1.4"
+    s = s & "}.meta span{display:inline-block;margin-right:9px}.tag{display:inline-block;background:#d8eafb;"
+    s = s & "border-radius:4px;padding:3px 6px}.tag01{background:#e6d9ff}.tag02{background:#ffd8df}.tag03{ba"
+    s = s & "ckground:#dcf6e3}.tag04{background:#ffebd4}.view{position:absolute;right:6px;top:15px;width:34p"
+    s = s & "x;font-size:10px;padding:7px 2px}.field{border-bottom:1px solid #e2eaf4;padding:8px 0;line-heig"
+    s = s & "ht:1.4;word-wrap:break-word}.field b{display:block;margin-top:3px}.pager{height:33px;padding-to"
+    s = s & "p:3px}.pager button{font-size:11px;padding:5px 9px}.hidden{display:none}@media(max-width:980px)"
+    s = s & "{.left{width:130px}.right{width:200px}.col{padding:7px}.evt{padding-left:60px;padding-right:38p"
+    s = s & "x}.clock{width:48px}.top strong{font-size:18px}}@media(max-width:700px){.left{width:104px}.righ"
+    s = s & "t{width:155px}.bar input{width:110px}.bar button{font-size:10px;padding:7px 3px}}"
+    s = s & vbCrLf
+    s = s & "</style></head><body><div class=""top""><strong>AGENDA | AGENDAMENTO_SISDENF</strong><small>Compr"
+    s = s & "omissos e eventos da enfermagem | V1.8.5 - Layout painel</small></div><div class=""bar"">Ass"
+    s = s & "unto: <input id=""q"" value=""%%Q%%"" onkeydown=""if(event.keyCode==13)buscar()"" placeholder=""Digite"
+    s = s & " e pressione Enter""> Data: <input id=""dt"" value=""%%DATA%%"" onkeydown=""if(event.keyCode==13)busc"
+    s = s & "ar()"" placeholder=""dd/mm/aaaa""> <button onclick=""buscar()"">&#8981; Pesquisar</button> <button onclick="""
+    s = s & "dia(0)"">Hoje</button> <button onclick=""dia(-1)"">Ontem</button> <button onclick=""dia(1)"">Amanhã<"
+    s = s & "/button> <button onclick=""dez()"">10 dias</button> <button onclick=""limpar()"">&#8634; Limpar</button></d"
+    s = s & "iv><div class=""columns""><aside class=""col left""><h3>Filtros</h3><div id=""nav"" class=""nav""><butt"
+    s = s & "on onclick=""tipo('todos')"">&#9776; Todos os eventos</button><button onclick=""tipo('pendentes')"">Não lid"
+    s = s & "os</button><button onclick=""tipo('lidos')"">&#10003; Lidos</button><h3 style=""margin-top:13px"">Categorias"
+    s = s & "</h3>%%CATEGORIAS%%<button onclick=""cat('')"">Todas as categorias</button>" & _
+        "<button onclick=""categoriaNova()"">&#10010; Nova categoria</button>" & _
+        "</div></aside><main class=""col center""><h3>Compromissos"
+    s = s & " agendados</h3><div class=""sub"">%%STATUS%%</div><div class=""pager""><button onclick=""pag(-1)"" %%"
+    s = s & "PREVDISABLED%%>« Anterior</button> &nbsp; Página %%PAGE%% &nbsp; <button onclick=""pag(1)"" %%NEX"
+    s = s & "TDISABLED%%>Próxima »</button></div><div id=""list"" class=""list"">%%ROWS%%</div></main><aside cla"
+    s = s & "ss=""col right""><h3>Detalhes do evento</h3><div id=""detail"" class=""detail"">Selecione um compromi"
+    s = s & "sso.</div></aside></div><script>"
+    s = s & vbCrLf
+    s = s & "var state={q:'%%QJS%%',dt:'%%DATAJS%%',cat:'%%CAT%%',tipo:'%%TIPO%%',periodo:'%%PERIODO%%',page"
+    s = s & ":%%PAGE%%};var selected=null;"
+    s = s & vbCrLf
+    s = s & "function el(id){return document.getElementById(id)}"
+    s = s & vbCrLf
+    s = s & "function att(e,k){return e.getAttribute('data-'+k)||''}"
+    s = s & vbCrLf
+    s = s & "function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'"
+    s = s & ").replace(/""/g,'&quot;')}"
+    s = s & vbCrLf
+    s = s & "function request(page){state.q=el('q').value;state.dt=el('dt').value;var s='about:blank?agcmd=s"
+    s = s & "earch&q='+escape(state.q)+'&dt='+escape(state.dt)+'&cat='+escape(state.cat)+'&tipo='+escape(sta"
+    s = s & "te.tipo)+'&periodo='+escape(state.periodo)+'&page='+page;agSend(s)}"
+    s = s & vbCrLf
+    s = s & "function buscar(){state.periodo='';request(1)}function dia(n){var d=new Date();d.setDate(d.getD"
+    s = s & "ate()+n);state.periodo=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.g"
+    s = s & "etFullYear();el('dt').value='';request(1)}function dez(){state.periodo='10';el('dt').value='';r"
+    s = s & "equest(1)}function limpar(){state.cat='';state.tipo='todos';state.periodo='';el('q').value='';e"
+    s = s & "l('dt').value='';request(1)}function cat(c){state.cat=c;request(1)}function tipo(t){state.tipo="
+    s = s & "t;request(1)}function pag(n){request(state.page+n)}"
+    s = s & vbCrLf
+    s = s & "function field(k,v){return '<div class=""field"">'+esc(k)+'<b>'+esc(v||'-')+'</b></div>'}"
+    s = s & vbCrLf
+    s = s & "function ver(btn){var e=btn.parentNode,info=e.getElementsByTagName('i')[0];if(selected)selected"
+    s = s & ".className=selected.className.replace(' selected','');selected=e;e.className+=' selected';var h"
+    s = s & "='<div class=""sub"">'+esc(att(info,'catnome'))+'</div>';h+=field('Assunto / descrição',att(info,"
+    s = s & "'titulo'));h+=field('Hora de início',att(info,'hora'));h+=field('Hora de término',att(info,'fim"
+    s = s & "'));h+=field('Data da informação',att(info,'recebida'));h+=field('Data do evento',att(info,'eve"
+    s = s & "nto'));h+=field('Responsável / Login',att(info,'login'));h+=field('Nome',att(info,'nome'));h+=f"
+    s = s & "ield('Leitura',att(info,'lida')==='1'?'Lido':'Pendente');" & _
+        "h+=field('Data final',att(info,'datafim')||'Mesmo dia');" & _
+        "h+=field('Ciência do usuário',att(info,'ciencia')==='1'?'Confirmada':'Não confirmada');" & _
+        "if(att(info,'ciencia')!=='1')h+='<button onclick=confirmarCiencia('+att(info,'id')+')>Confirmar ciência</button>';" & _
+        "h+='<button class=""deleteEvt"" type=""button"" onclick=""excluirEvento('+att(info,'id')+')"">&#128465; Excluir compromisso</button>';" & _
+        "h+='<p class=""sub"">Dados do compromisso sem edicao nesta tela. An"
+    s = s & "exos serão integrados em versão posterior.</p>';el('detail').innerHTML=h}"
+    s = s & vbCrLf
+    s = s & "function fit(){var a=el('list'),b=el('detail'),c=el('nav'),h=document.documentElement.clientHei"
+    s = s & "ght;if(a)a.style.height=Math.max(100,h-a.getBoundingClientRect().top-17)+'px';if(b)b.style.heig"
+    s = s & "ht=Math.max(100,h-b.getBoundingClientRect().top-16)+'px';if(c)c.style.height=Math.max(100,h-c.g"
+    s = s & "etBoundingClientRect().top-16)+'px'}window.onresize=fit;fit();"
+    s = s & vbCrLf
+    s = s & "</script></body></html>"
+    s = s & vbCrLf
+    s = Replace(s, "</style>", AgVisualCSS() & "</style>")
+    s = Replace(s, "<body><div class=""top""><strong>AGENDA | AGENDAMENTO_SISDENF</strong><small>Compromissos e eventos da enfermagem | V1.8.5 - Layout painel</small></div><div class=""bar"">", _
+        "<body><div class=""top""><div class=""topInner""><div class=""brandWrap""><div class=""brandIcon"">&#128197;</div><div class=""brandText""><strong>AGENDA | AGENDAMENTO_SISDENF</strong><small>Compromissos e eventos da enfermagem | V1.9.10 - Cadastro corrigido</small></div></div><div class=""clockBox""><span id=""agDia"">--/--/----</span><strong id=""agClock"">--:--:--</strong></div><div class=""userBox""><span>Usuário logado</span><b>%%USRLOGADO%%</b></div></div></div><div class=""bar"">")
+    s = Replace(s, ">Filtros</h3>", ">&#9776; Filtros</h3>")
+    s = Replace(s, ">Categorias</h3>", ">&#9670; Categorias</h3>")
+    s = Replace(s, ">Compromissos agendados</h3>", ">&#128197; Compromissos agendados</h3>")
+    s = Replace(s, ">Detalhes do evento</h3>", ">&#9432; Detalhes do evento</h3>")
+    s = Replace(s, "</small></div><div class=""bar"">", "</small></div><div class=""bar"">")
+    s = Replace(s, "<button onclick=""buscar()"">&#8981; Pesquisar</button>", "<button type=""button"" onclick=""calAbrir()"" title=""Escolher no calendario"">&#128197;</button> <button onclick=""buscar()"">&#8981; Pesquisar</button>")
+    s = Replace(s, "<button onclick=""limpar()"">&#8634; Limpar</button>", "<button onclick=""limpar()"">&#8634; Limpar</button> <button class=""createBtn"" onclick=""novoAbrir()"">&#10010; Novo compromisso</button>")
+    s = Replace(s, "<div class=""sub"">%%STATUS%%</div>", "<div class=""sub"">%%STATUS%%</div><div class=""%%AVISO_CLASSE%%"" %%AVISO_DISPLAY%%>%%AVISO%%</div><div class=""alarm"" style=""display:%%ALARM_DISPLAY%%"">%%ALERTA%%</div>")
+    s = Replace(s, "<button onclick=""dia(0)"">Hoje</button>", "<button onclick=""dia(0)"">&#128197; Hoje</button>")
+    s = Replace(s, "<button onclick=""dia(-1)"">Ontem</button>", "<button onclick=""dia(-1)"">&#8249; Ontem</button>")
+    s = Replace(s, "<button onclick=""dia(1)"">Amanh", "<button onclick=""dia(1)"">&#8250; Amanh")
+    s = Replace(s, "<button onclick=""dez()"">10 dias</button>", "<button onclick=""dez()"">&#128197; 10 dias</button>")
+    s = Replace(s, "<button onclick=""buscar()"">&#8981; Pesquisar</button>", "<button class=""searchBtn"" onclick=""buscar()"">&#128269; Pesquisar</button>")
+    s = Replace(s, "<button onclick=""limpar()"">&#8634; Limpar</button>", "<button onclick=""limpar()"">&#8634; Limpar</button>")
+    s = Replace(s, "</script></body></html>", "</script></body></html>")
+    s = Replace(s, "</body>", AgVisualHTML() & AgRelogioJS() & "</body>")
+    s = Replace(s, "<body>", "<body><input type='hidden' id='agBridge' data-command='' value=''>")
+    s = Replace(s, "</body>", "<script>function agSend(url){" & _
+        "var x=document.getElementById('agBridge');if(!x)return;" & _
+        "if(x.getAttribute('data-command')){alert('Aguarde a atualizacao anterior.');return;}" & _
+        "x.setAttribute('data-command',url.substring(url.indexOf('?')+1));}" & _
+        "</script></body>")
+
+    AgTemplate = s
+End Function
+
+
+
+
+Private Function AgNomeCategoria(ByVal codigo As String) As String
+    Dim rs As DAO.Recordset
+    If Len(codigo) <> 2 Or Not codigo Like "##" Then
+        AgNomeCategoria = "Sem categoria"
+        Exit Function
+    End If
+    Set rs = CurrentDb.OpenRecordset("SELECT [Descricao] FROM [T_AgendaCategorias] WHERE [Codigo]='" & codigo & "'", dbOpenSnapshot)
+    If Not rs.EOF Then AgNomeCategoria = Nz(rs!descricao, "") Else AgNomeCategoria = codigo
+    rs.Close
+End Function
+
+Private Sub AgEditarCategoria(ByVal codigo As String, ByVal descricao As String, _
+                              ByVal Cor As String, ByVal ativo As String)
+    Dim db As DAO.Database, rs As DAO.Recordset
+    Dim i As Long, ch As String
+    descricao = Trim$(descricao)
+    Cor = UCase$(Trim$(Cor))
+    If Len(codigo) <> 2 Or Not codigo Like "##" Then _
+        Err.Raise vbObjectError + 1851, , "Codigo invalido."
+    If Len(descricao) = 0 Or Len(descricao) > 80 Then _
+        Err.Raise vbObjectError + 1852, , "Descricao deve ter de 1 a 80 caracteres."
+    If Len(Cor) <> 7 Or Left$(Cor, 1) <> "#" Then _
+        Err.Raise vbObjectError + 1853, , "Cor invalida (#RRGGBB)."
+    For i = 2 To 7
+        ch = Mid$(Cor, i, 1)
+        If InStr(1, "0123456789ABCDEF", ch, vbBinaryCompare) = 0 Then _
+            Err.Raise vbObjectError + 1854, , "Cor hexadecimal invalida."
+    Next i
+    If ativo <> "0" And ativo <> "1" Then _
+        Err.Raise vbObjectError + 1855, , "Estado ativo invalido."
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT [Codigo],[Descricao],[CorHex],[Ativa] " & _
+        "FROM [T_AgendaCategorias] WHERE [Codigo]='" & codigo & "'", dbOpenDynaset)
+    If rs.EOF Then Err.Raise vbObjectError + 1856, , "Categoria nao encontrada."
+    rs.Edit
+    rs.Fields("Descricao").Value = descricao
+    rs.Fields("CorHex").Value = Cor
+    rs.Fields("Ativa").Value = (ativo = "1")
+    rs.Update
+    rs.Close
+End Sub
+
+Private Function AgCategoriasBotoes() As String
+    Dim rs As DAO.Recordset, b As String, c As String, t As String
+    Dim Cor As String, ativ As Boolean, texto As String
+    Set rs = CurrentDb.OpenRecordset("SELECT [Codigo],[Descricao],[CorHex],[Ativa] " & _
+        "FROM [T_AgendaCategorias] ORDER BY [Codigo]", dbOpenSnapshot)
+    Do Until rs.EOF
+        c = Nz(rs!codigo, ""): t = Nz(rs!descricao, "")
+        Cor = Nz(rs!corHex, "#4477AA"): ativ = Nz(rs!Ativa, False)
+        If Len(c) = 2 And c Like "##" Then
+            texto = c & " - " & AgSafe(t)
+            b = b & "<div class='catRow'>"
+            If ativ Then
+                b = b & "<button type='button' onclick=""cat('" & c & "')"">" & texto & "</button>"
+            Else
+                b = b & "<span class='catInactive'>" & texto & " (inativa)</span>"
+            End If
+            b = b & "<button class='catEdit' type='button' title='Editar categoria' " & _
+                "data-code='" & AgSafe(c) & "' data-name='" & AgSafe(t) & _
+                "' data-color='" & AgSafe(Cor) & "' data-active='" & _
+                IIf(ativ, "1", "0") & "' onclick='categoriaEditar(this)'>&#9998;</button></div>"
+        End If
+        rs.MoveNext
+    Loop
+    rs.Close
+    AgCategoriasBotoes = b
+End Function
+
+Private Function AgCategoriasOpcoes() As String
+    Dim rs As DAO.Recordset, b As String, c As String, t As String
+    Set rs = CurrentDb.OpenRecordset("SELECT [Codigo],[Descricao] FROM [T_AgendaCategorias] WHERE [Ativa]=True ORDER BY [Codigo]", dbOpenSnapshot)
+    Do Until rs.EOF
+        c = Nz(rs!codigo, ""): t = Nz(rs!descricao, "")
+        If Len(c) = 2 And c Like "##" Then b = b & "<option value='" & c & "'>" & c & " - " & AgSafe(t) & "</option>"
+        rs.MoveNext
+    Loop
+    rs.Close
+    AgCategoriasOpcoes = b
+End Function
+
+Private Function AgBuscaLikeAcentos(ByVal texto As String) As String
+    Dim i As Long, ch As String, r As String
+    ' Sintaxe LIKE ANSI-89 do Access: * e classes [abc].
+    ' Nao usar Replace em classes prontas para nao corromper colchetes.
+    For i = 1 To Len(texto)
+        ch = Mid$(texto, i, 1)
+        Select Case LCase$(ch)
+            Case "a", "á", "à", "â", "ã", "ä"
+                r = r & "[aáàâãäAÁÀÂÃÄ]"
+            Case "e", "é", "è", "ê", "ë"
+                r = r & "[eéèêëEÉÈÊË]"
+            Case "i", "í", "ì", "î", "ï"
+                r = r & "[iíìîïIÍÌÎÏ]"
+            Case "o", "ó", "ò", "ô", "õ", "ö"
+                r = r & "[oóòôõöOÓÒÔÕÖ]"
+            Case "u", "ú", "ù", "û", "ü"
+                r = r & "[uúùûüUÚÙÛÜ]"
+            Case "c", "ç"
+                r = r & "[cçCÇ]"
+            Case "n", "ñ"
+                r = r & "[nñNÑ]"
+            Case "*"
+                r = r & "[*]"
+            Case "?"
+                r = r & "[?]"
+            Case "#"
+                r = r & "[#]"
+            Case "["
+                r = r & "[[]"
+            Case "]"
+                ' Colchete de fechamento isolado e literal no LIKE Access.
+                r = r & "]"
+            Case "'"
+                r = r & "''"
+            Case Else
+                r = r & ch
+        End Select
+    Next i
+    AgBuscaLikeAcentos = r
+End Function
+
+Private Function AgVisualCSS() As String
+    Dim css As String
+    css = vbNullString
+    css = css & "body{background:linear-gradient(180deg,#dfeaf7 0%,#d5e3f3 42%,#c9daee 100%);color:#123659}"
+    css = css & ".createBtn{background:linear-gradient(180deg,#2f8cff,#1167d6)!important;color:#fff!important;font-weight:bold;border:1px solid #0f67d3!important;"
+    css = css & "box-shadow:0 4px 12px rgba(19,95,198,.22)}"
+    css = css & ".createBtn:hover{background:linear-gradient(180deg,#2a83ef,#0e5fc6)!important;color:#fff!important}.top{padding:10px 16px;background:linear-gradi"
+    css = css & "ent(90deg,#0d4472,#0d5b96 52%,#0f70b6 100%);box-shadow:0 8px 22px rgba(9,44,78,.28)}"
+    css = css & ".topInner{display:table;width:100%}.brandWrap,.userBox,.clockBox{display:table-cell;vertical-align:middle}.brandIcon{display:inline-block;width:4"
+    css = css & "2px;height:42px;line-height:40px;text-align:center;font-size:24px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-"
+    css = css & "radius:12px;color:#fff;margin-right:10px;vertical-align:middle}"
+    css = css & ".brandText{display:inline-block;vertical-align:middle}.top strong{display:block;font-size:22px;letter-spacing:.2px}.top small{display:block;margi"
+    css = css & "n-top:3px;color:#d9e9f8}.clockBox{text-align:center}.clockBox span{display:block;font-size:12px;color:#d7e8fb}.clockBox strong{display:inline-blo"
+    css = css & "ck;min-width:248px;padding:8px 18px;border-radius:16px;background:linear-gradient(180deg,#0c4b84,#0b3f70);border:1px solid rgba(255,255,255,.16);"
+    css = css & "box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 8px 18px rgba(7,38,69,.20);color:#fff;font-size:22px;letter-spacing:1px}.userBox{text-align:righ"
+    css = css & "t}.userBox span{display:block;font-size:11px;color:#d8e8f7}.userBox b{display:inline-block;margin-top:4px;padding:8px 12px;border-radius:999px;ba"
+    css = css & "ckground:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.20);color:#fff;font-size:13px}"
+    css = css & ".bar{height:56px;background:linear-gradient(180deg,#e7f0fb,#dfeaf7);padding:10px 10px;white-space:nowrap;overflow:hidden;border-bottom:1px solid "
+    css = css & "#bfd2e7;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}"
+    css = css & ".bar button{background:linear-gradient(180deg,#ffffff,#eef5fc);border-color:#b7cbe2;border-radius:8px;padding:8px 10px;color:#194a79;box-shadow:0"
+    css = css & " 2px 4px rgba(18,46,78,.05)}.bar button:hover{background:#f4f9ff}.bar input{background:#fff;border-radius:8px;border:1px solid #b9cee4;box-shadow"
+    css = css & ":inset 0 1px 2px rgba(0,0,0,.03)}"
+    css = css & ".columns{display:table;table-layout:fixed;border-spacing:9px;height:calc(100% - 118px);width:100%;padding:0 2px 4px}.col{display:table-cell;verti"
+    css = css & "cal-align:top;border:1px solid #bfd3e8;border-radius:18px;padding:12px;overflow:hidden;box-shadow:0 10px 24px rgba(18,46,78,.10),inset 0 1px 0 rg"
+    css = css & "ba(255,255,255,.55)}"
+    css = css & ".left{width:172px;background:linear-gradient(180deg,#f3f8fe,#e8f1fb)}.center{background:linear-gradient(180deg,#eef5fc,#e2edf9)}.right{width:274p"
+    css = css & "x;background:linear-gradient(180deg,#f4f8fd,#e7eff9)}"
+    css = css & "h3{font-size:16px;margin:4px 0 10px;color:#123f6c}.left button{width:100%;text-align:left;display:block;margin:5px 0;white-space:normal;border-ra"
+    css = css & "dius:10px;background:linear-gradient(180deg,#ffffff,#edf4fb);border:1px solid #c5d8ec;box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 5px rg"
+    css = css & "ba(18,46,78,.04)}.left button:hover{background:#eef6ff}"
+    css = css & ".sub{color:#5f7f9f;font-size:11px}.list,.detail,.nav{overflow-x:hidden;overflow-y:auto;border-radius:14px}.evt{border:1px solid #bdd3ea;border-le"
+    css = css & "ft:6px solid #4796e8;border-radius:18px;padding:14px 56px 13px 118px;margin:10px 0;position:relative;min-height:96px;word-wrap:break-word;backgro"
+    css = css & "und:linear-gradient(180deg,#fcfeff,#edf4fb);box-shadow:0 8px 18px rgba(18,53,89,.08)}"
+    css = css & ".evt:hover{background:linear-gradient(180deg,#ffffff,#e9f3fd);box-shadow:0 12px 22px rgba(18,53,89,.12)}.evt.selected{background:linear-gradient("
+    css = css & "180deg,#eef7ff,#deecfb);border-color:#4b94ed;box-shadow:0 12px 22px rgba(32,92,160,.14)}.evt.cat00{border-left-color:#7ab3eb}.evt.cat01{border-le"
+    css = css & "ft-color:#8b63f2}.evt.cat02{border-left-color:#ff4c6a}.evt.cat03{border-left-color:#49b96d}.evt.cat04{border-left-color:#f2a24a}.evt.cat05{border"
+    css = css & "-left-color:#8894a4}"
+    css = css & ".clock{position:absolute;left:14px;top:13px;width:88px;height:70px;padding:7px 6px;border-radius:16px;background:linear-gradient(180deg,#ffffff,#"
+    css = css & "ddeafb);border:1px solid #bdd5ec;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 4px 10px rgba(27,78,128,.08);text-align:center}.clockIcon{displ"
+    css = css & "ay:block;font-size:12px;line-height:1;color:#2b74c7;margin-bottom:2px}.clock b{display:block;font-size:28px;line-height:1.05;color:#123e6e;letter"
+    css = css & "-spacing:-1px;font-weight:bold}.clock .clockDate{display:block;margin-top:3px;font-size:10px;font-weight:bold;color:#2b5f95;letter-spacing:.5px}."
+    css = css & "clock .clockEnd{display:block;margin-top:3px;font-size:10px;color:#6c7e91}"
+    css = css & ".etitle{font-weight:bold;line-height:1.35;font-size:16px;color:#0f2d4d;padding-right:12px}.meta{font-size:11px;color:#4d6e8e;margin-top:8px;line-"
+    css = css & "height:1.65}.meta span{display:inline-block;margin:0 8px 6px 0;padding:4px 8px;border-radius:999px;background:linear-gradient(180deg,#f8fbfe,#edf"
+    css = css & "3f9);border:1px solid #d4e3f1}.tag{display:inline-block;background:#d9eafb;border-radius:8px;padding:4px 8px;border:1px solid rgba(0,0,0,.04);min"
+    css = css & "-width:28px;text-align:center}.tag01{background:#eadcff;color:#5231b1}.tag02{background:#ffdce4;color:#ae2148}.tag03{background:#def8e6;color:#21"
+    css = css & "7d42}.tag04{background:#ffe9d0;color:#b66d18}.tag05{background:#ececec;color:#56606b}"
+    css = css & ".meta .statusPendente{background:#fff1d3;border-color:#efd7a1;color:#7a5200}.meta .statusLido{background:#e4f5e8;border-color:#cae3d1;color:#1e6a"
+    css = css & "40}.view{position:absolute;right:14px;top:50%;margin-top:-20px;width:38px;height:38px;border-radius:999px;border:1px solid #bfd3e7;background:lin"
+    css = css & "ear-gradient(180deg,#f8fbff,#e5eef8);color:#2c66a1;font-size:20px;line-height:34px;text-align:center}.view:hover{background:#eef5fc}"
+    css = css & ".detail{background:linear-gradient(180deg,#f8fbff,#edf3fb);border:1px solid #c7d9eb;padding:4px 0}.drow{padding:10px 12px;border-bottom:1px solid"
+    css = css & " #d9e5f1}.dlabel{font-size:11px;color:#6d86a1;margin-bottom:4px}.dvalue{font-size:13px;color:#15365b;font-weight:bold;line-height:1.35;word-wrap:"
+    css = css & "break-word}.notice{padding:10px 12px;margin:6px 0 8px;border-radius:10px;background:linear-gradient(180deg,#eef6ff,#e7f1fd);border:1px solid #cfe"
+    css = css & "0f2;color:#245687}.notice.warn{background:linear-gradient(180deg,#fff6dd,#ffefc5);border-color:#efd69c;color:#845b00}.pager button{min-width:72px"
+    css = css & "}.empty{padding:14px 4px;color:#5e7f9f}.filterHead{display:flex;justify-content:space-between;align-items:center}"
+    css = css & ".alarm{display:none;margin-top:8px;padding:10px 12px;border-radius:12px;background:linear-gradient(180deg,#fff7e8,#ffefcf);border:1px solid #efda"
+    css = css & "b0;color:#7a5400}.dialogMask{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(7,28,49,.32);z-index:900;display:none}.dialog{position:"
+    css = css & "fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:901;background:linear-gradient(180deg,#ffffff,#f7fbff);border:1px solid #c8d9ea;bor"
+    css = css & "der-radius:16px;box-shadow:0 18px 42px rgba(14,39,70,.22);width:420px;max-width:92%;padding:16px}.dialog h4{margin:0 0 12px;color:#123f6c;font-si"
+    css = css & "ze:18px}.dialog .row{margin-bottom:10px}.dialog label{display:block;font-size:12px;color:#4f6e8a;margin-bottom:4px}.dialog input,.dialog textarea"
+    css = css & ",.dialog select{width:100%;box-sizing:border-box;background:#fff;border:1px solid #c1d4e8;border-radius:8px;padding:8px;color:#173f67}.dialog tex"
+    css = css & "tarea{height:72px;resize:vertical}.dialog .actions{text-align:right;margin-top:10px}.dialog .actions button{margin-left:8px}.calendarBtn{width:13"
+    css = css & "8px}.muted{color:#7b90a7;font-size:11px}"
+    'Restaurar controles ocultos ao carregar: sem isso o modal abre sozinho.
+    css = css & ".overlay{display:none;position:fixed;left:0;top:0;right:0;bottom:0;"
+    css = css & "z-index:900;background:rgba(8,31,56,.46);overflow:auto}"
+    css = css & ".overlay .dialog{position:relative;left:auto;top:auto;transform:none;"
+    css = css & "margin:5% auto 24px;max-width:94%;box-sizing:border-box}"
+    css = css & ".calendar{display:none;position:absolute;z-index:950;background:#fff;"
+    css = css & "border:1px solid #b9cee5;border-radius:12px;padding:8px;"
+    css = css & "box-shadow:0 12px 25px rgba(17,45,75,.18);width:258px}"
+    css = css & ".calendar table{border-collapse:collapse;width:100%;text-align:center}"
+    css = css & ".calendar td{padding:0}.calendar button{margin:1px;padding:5px 0;width:31px}"
+    css = css & ".calendar .calTitle{display:inline-block;width:160px;text-align:center;"
+    css = css & "font-weight:bold;color:#173e68}"
+    css = css & ".datePickRow{display:table;width:100%}"
+    css = css & ".datePickRow input{display:table-cell;width:60%}"
+    css = css & ".datePickRow button{display:table-cell;margin-left:6px}"
+    css = css & ".dialog .duo{display:table;width:100%}"
+    css = css & ".dialog .half{display:table-cell;width:50%;padding-right:8px}"
+    css = css & ".dialog .half:last-child{padding-right:0}"
+    'V1.9.1.3: ajuste exclusivo do alinhamento do relogio e aviso vazio.
+    css = css & ".top{height:70px;padding:6px 14px;box-sizing:border-box}"
+    css = css & ".topInner{height:58px;table-layout:fixed}"
+    css = css & ".brandWrap{width:57%;vertical-align:middle}"
+    css = css & ".clockBox{width:28%;height:54px;vertical-align:middle;"
+    css = css & "background:linear-gradient(180deg,#0d4a80,#0a3e6e);"
+    css = css & "border:1px solid rgba(255,255,255,.20);border-radius:14px;"
+    css = css & "box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}"
+    css = css & ".clockBox span{display:block;padding-top:5px;line-height:15px;"
+    css = css & "font-size:11px;color:#d6e9ff}"
+    css = css & ".clockBox strong{display:block;min-width:0;padding:0;"
+    css = css & "margin:0;font-size:24px;line-height:30px;letter-spacing:1px;"
+    css = css & "background:transparent;border:0;border-radius:0;box-shadow:none}"
+    css = css & ".userBox{width:15%;vertical-align:middle}"
+    css = css & ".notice:empty{display:none!important;margin:0;padding:0;border:0}"
+    css = css & ".catRow{display:table;width:100%;table-layout:fixed;margin:4px 0}"
+    css = css & ".catRow>button{display:table-cell;vertical-align:middle;margin:0}"
+    css = css & ".catRow>button:first-child{width:calc(100% - 30px)}"
+    css = css & ".left .catEdit{display:table-cell;width:29px;text-align:center;"
+    css = css & "padding:6px 2px;margin-left:3px;color:#164f8a;font-weight:bold}"
+    css = css & ".catInactive{display:table-cell;font-size:11px;color:#6a7889}"
+    css = css & ".deleteEvt{margin-top:12px;padding:9px 12px;border-radius:9px;background:#fff0ef;color:#a12e26;" & _
+        "border:1px solid #e6aaa5;font-weight:bold}.deleteEvt:hover{background:#ffe0dd}"
+    'V1.9.6 revisada: modal compacto para caber inteiramente no WebBrowser1 do Access.
+    'O tamanho dos controles usa altura fixa; nao altera cadastro ou navegacao.
+    css = css & ".overlay{overflow:auto}"
+    css = css & ".overlay .dialog{width:540px;max-width:94%;padding:12px 19px 12px;"
+    css = css & "border-radius:16px;margin:8px auto 8px;box-sizing:border-box}"
+    css = css & ".overlay .dialog h2{margin:0 0 8px;font-size:19px;line-height:24px;color:#143b62}"
+    css = css & ".overlay .dialog label{display:block;font-size:12px;font-weight:bold;"
+    css = css & "color:#355a80;margin:7px 0 3px;line-height:15px}"
+    css = css & ".overlay .dialog select,.overlay .dialog textarea,.overlay .dialog input{"
+    css = css & "font:13px Arial,sans-serif;padding:6px 9px;border-radius:8px;"
+    css = css & "border:1px solid #b6cce3;background:#fff;color:#163a60;max-width:none}"
+    css = css & ".overlay .dialog select{display:block;width:100%;height:34px}"
+    css = css & ".overlay .dialog textarea{display:block;width:100%;height:68px;"
+    css = css & "min-height:68px;resize:none;line-height:17px}"
+    css = css & ".overlay .dialog .datePickRow{display:table;table-layout:fixed;width:100%;border-spacing:0}"
+    css = css & ".overlay .dialog .datePickRow input{display:table-cell;width:69%;"
+    css = css & "height:34px;vertical-align:middle}"
+    css = css & ".overlay .dialog .datePickRow button{display:table-cell;width:28%;"
+    css = css & "height:34px;margin:0 0 0 2%;padding:4px;vertical-align:middle;"
+    css = css & "border:1px solid #b8cfe8;border-radius:8px;background:#eef5fd;color:#164779}"
+    css = css & ".overlay .dialog .duo{display:table;table-layout:fixed;width:100%;border-spacing:0;margin-top:0}"
+    css = css & ".overlay .dialog .half{display:table-cell;width:50%;padding-right:7px;vertical-align:top}"
+    css = css & ".overlay .dialog .half:last-child{padding-left:7px;padding-right:0}"
+    css = css & ".overlay .dialog .half input{display:block;width:100%;height:34px}"
+    css = css & ".overlay .dialog .actions{margin-top:10px;padding-top:9px;"
+    css = css & "border-top:1px solid #dfebf5;text-align:right;white-space:nowrap}"
+    css = css & ".overlay .dialog .actions button{padding:7px 12px;"
+    css = css & "height:34px;border-radius:8px;margin-left:7px;font-size:12px}"
+    css = css & "@media(max-height:510px){.overlay .dialog{margin:3px auto;padding:8px 15px}"
+    css = css & ".overlay .dialog textarea{height:52px;min-height:52px}"
+    css = css & ".overlay .dialog label{margin:4px 0 2px}}"
+    css = css & "/* V1.9.9: barra adaptavel, contraste e icones vetoriais locais */"
+    css = css & "body{background:#edf2f7;color:#18334f}"
+    css = css & ".top{background:#123f67;box-shadow:none}.top strong{font-size:19px}.brandIcon{border-radius:10px;background:#ffffff18}"
+    css = css & ".bar{height:auto;min-height:56px;white-space:normal;overflow:visible;line-height:38px;padding:8px 10px}"
+    css = css & ".bar input{width:150px;max-width:20%;height:34px}.bar button{margin:2px 1px;line-height:18px;vertical-align:middle}"
+    css = css & ".bar .createBtn{background:#1769c2!important;border-color:#1769c2!important;box-shadow:none}"
+    css = css & ".columns{height:auto}.col{border-radius:12px;box-shadow:none;background:#fff}.left{width:174px}.right{width:260px}"
+    css = css & ".evt{border-radius:12px;box-shadow:none;background:#fff;padding-left:108px}.evt:hover{box-shadow:none;background:#f5f9ff}"
+    css = css & ".etitle{font-size:14px;font-weight:600}.clock{width:80px;left:12px;background:#eff6ff;border-radius:10px;box-shadow:none}.clock b{font-size:25px}"
+    css = css & ".meta span{border-radius:6px}.view{font-size:16px;line-height:normal}.detail{background:#fff}.field{padding:10px 12px}"
+    css = css & ".catRow{margin:5px 0}.left .catEdit{border-radius:7px}.notice.error{background:#fff0ef;border-color:#e3a5a0;color:#8e2520}"
+    css = css & "button:focus,input:focus,select:focus,textarea:focus{outline:2px solid #327dc2;outline-offset:2px}"
+    css = css & ".agIcon{display:inline-block;width:17px;height:17px;background-position:center;background-repeat:no-repeat;background-size:17px 17px;vertical-align:-3px;margin-right:5px}"
+    css = css & ".brandIcon .agIcon{width:26px;height:26px;background-size:26px;margin:7px 0 0;filter:none}.view .agIcon,.catEdit .agIcon{margin-right:0}"
+    css = css & "@media(max-width:1000px){.left{width:150px}.right{width:224px}.brandWrap{width:53%}.clockBox{width:29%}.userBox{width:18%}.top strong{font-size:16px}}"
+    css = css & "@media(max-width:760px){.left{width:125px}.right{width:190px}.bar input{max-width:none;width:125px}.top strong{font-size:13px}.brandIcon{display:none}}"
+    css = css & ".clockIcon .agIcon{width:12px;height:12px;background-size:12px;margin-right:0}.bar .createBtn{white-space:nowrap}"
+    css = css & ".ag-i-calendar{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D"
+    css = css & "%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23dbeafe%22%2F%3E%3Cg%20stroke%3D%22%232563eb%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stro"
+    css = css & "ke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Crect%20x%3D%227%22%20y%3D%228%22%20width%3D%2218%22%20height%3D%2219%22%20rx%3D%223%22%20fill%3D%22white%22%2F%3E%3Cpat"
+    css = css & "h%20d%3D%22M7%2014h18M12%205v6m8-6v6%22%2F%3E%3Cpath%20d%3D%22M11%2018h3m4%200h3m-10%205h3%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-search{background-image:url(""data:image"
+    css = css & "/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20f"
+    css = css & "ill%3D%22%23cffafe%22%2F%3E%3Cg%20stroke%3D%22%23087c98%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3"
+    css = css & "E%3Ccircle%20cx%3D%2214%22%20cy%3D%2214%22%20r%3D%227%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22m19%2019%207%207%22%20stroke-width%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%"
+    css = css & "3E"")}.ag-i-plus{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%"
+    css = css & "3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23dbeafe%22%2F%3E%3Cg%20stroke%3D%22%232563eb%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20st"
+    css = css & "roke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Crect%20x%3D%226%22%20y%3D%228%22%20width%3D%2217%22%20height%3D%2219%22%20rx%3D%223%22%20fill%3D%22white%22%2F%3E%3Cp"
+    css = css & "ath%20d%3D%22M11%205v6m7-6v6M6%2014h17%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2223%22%20r%3D%226%22%20fill%3D%22%232563eb%22%20stroke%3D%22white%22%2F%3E%3Cpath%20d%3D"
+    css = css & "%22M24%2020v6m-3-3h6%22%20stroke%3D%22white%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-list{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3."
+    css = css & "org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23e0e7ff%22%2F%3E%3Cg%20stroke%3D%22%23"
+    css = css & "5362c9%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Crect%20x%3D%227%22%20y%3D%226%22%20width%3D%2"
+    css = css & "219%22%20height%3D%2222%22%20rx%3D%223%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M12%2012h1m4%200h5m-10%205h1m4%200h5m-10%205h1m4%200h5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+    css = css & """)}.ag-i-check{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3"
+    css = css & "D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23dcfce7%22%2F%3E%3Cg%20stroke%3D%22%2316844d%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20str"
+    css = css & "oke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2211%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22m10%2016%204%204%208-"
+    css = css & "9%22%20stroke-width%3D%222.7%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-pending{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2"
+    css = css & "Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23fef3c7%22%2F%3E%3Cg%20stroke%3D%22%23b7790d%22%20"
+    css = css & "stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Crect%20x%3D%226%22%20y%3D%227%22%20width%3D%2217%22%20hei"
+    css = css & "ght%3D%2221%22%20rx%3D%223%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M11%205h7v5h-7zM10%2015h6m-6%205h3%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2221%22%20r%3D%226%2"
+    css = css & "2%20fill%3D%22%23fff8e1%22%2F%3E%3Cpath%20d%3D%22M24%2018v4l3%201%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-clock{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D"
+    css = css & "%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23dbeafe%22%2F%3"
+    css = css & "E%3Cg%20stroke%3D%22%232563eb%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2216%22"
+    css = css & "%20cy%3D%2216%22%20r%3D%2211%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M16%209v8l5%203%22%20stroke-width%3D%222.4%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-tag{backgrou"
+    css = css & "nd-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%22"
+    css = css & "32%22%20rx%3D%229%22%20fill%3D%22%23f3e8ff%22%2F%3E%3Cg%20stroke%3D%22%238653c7%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%"
+    css = css & "22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M6%207h12l9%209-11%2011L6%2017z%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22%2F%3E%3C%2F"
+    css = css & "g%3E%3C%2Fsvg%3E"")}.ag-i-edit{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3"
+    css = css & "Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23fef3c7%22%2F%3E%3Cg%20stroke%3D%22%23a86b0a%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%2"
+    css = css & "2round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22m8%2020%2013-13%205%205-13%2013-7%201z%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22m18%"
+    css = css & "2010%205%205M8%2020l5%205%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-trash{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%"
+    css = css & "22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23fee2e2%22%2F%3E%3Cg%20stroke%3D%22%23c74343%22%20strok"
+    css = css & "e-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M9%2011h15l-1%2015H10z%22%20fill%3D%22white%22%2"
+    css = css & "F%3E%3Cpath%20d%3D%22M7%2010h19M12%2010V6h9v4m-7%205v7m5-7v7%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-info{background-image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22htt"
+    css = css & "p%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%23cffafe%22%2F%3E%3Cg%"
+    css = css & "20stroke%3D%22%23087c98%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%3Ccircle%20cx%3D%2216%22%20cy%"
+    css = css & "3D%2216%22%20r%3D%2211%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M16%2015v8m0-14v1%22%20stroke-width%3D%222.8%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-left{background-"
+    css = css & "image:url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%"
+    css = css & "22%20rx%3D%229%22%20fill%3D%22%23e2e8f0%22%2F%3E%3Cg%20stroke%3D%22%2345658c%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%"
+    css = css & "20fill%3D%22none%22%3E%3Cpath%20d%3D%22m18%209-7%207%207%207%22%20fill%3D%22none%22%20stroke-width%3D%222.7%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-right{background-image"
+    css = css & ":url(""data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20"
+    css = css & "rx%3D%229%22%20fill%3D%22%23dbeafe%22%2F%3E%3Cg%20stroke%3D%22%232563eb%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fil"
+    css = css & "l%3D%22none%22%3E%3Cpath%20d%3D%22m13%209%207%207-7%207%22%20fill%3D%22none%22%20stroke-width%3D%222.7%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-reset{background-image:url("
+    css = css & """data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D"
+    css = css & "%229%22%20fill%3D%22%23cffafe%22%2F%3E%3Cg%20stroke%3D%22%23087c98%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%"
+    css = css & "22none%22%3E%3Cpath%20d%3D%22M8%2014a9%209%200%201%201%201%209M7%207v8h8%22%20fill%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.ag-i-close{background-image:url(""data:imag"
+    css = css & "e/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20"
+    css = css & "fill%3D%22%23e2e8f0%22%2F%3E%3Cg%20stroke%3D%22%2364748b%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%"
+    css = css & "3E%3Cpath%20d%3D%22m11%2011%2010%2010m-10%200%2010-10%22%20stroke-width%3D%222.4%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"")}.agIcon{width:24px;height:24px;background-size:24px 24"
+    css = css & "px;vertical-align:-7px;margin-right:7px}.bar button{padding:6px 9px;line-height:24px}.bar .createBtn{padding:7px 12px}.brandIcon{background:transparent;border:0;width:4"
+    css = css & "4px;height:44px;line-height:44px;margin-right:9px}.brandIcon .agIcon{width:38px;height:38px;background-size:38px 38px;margin:3px 0 0;vertical-align:top}h3 .agIcon{width"
+    css = css & ":26px;height:26px;background-size:26px 26px;vertical-align:-7px;margin-right:7px}.view{width:36px;height:36px;padding:4px;border-radius:10px;background:#eff6ff;border-co"
+    css = css & "lor:#c4d8f1;box-shadow:none}.view .agIcon{width:26px;height:26px;background-size:26px 26px;vertical-align:middle;margin:0}.left .catEdit{padding:4px 2px}.catEdit .agIco"
+    css = css & "n{width:23px;height:23px;background-size:23px 23px;margin:0}.clockIcon .agIcon{width:17px;height:17px;background-size:17px 17px;margin:0}.clock{height:77px}.left button"
+    css = css & "{padding:7px 8px;line-height:24px}.left .catRow button{line-height:20px}.deleteEvt .agIcon{background-color:#fee2e2}.deleteEvt{line-height:25px}button:disabled .agIcon{"
+    css = css & "opacity:.45}"
+    AgVisualCSS = css
+End Function
+
+Private Function AgVisualHTML() As String
+    Dim x As String
+    x = "<div id='calendar' class='calendar'><button onclick='calMove(-1)'>&lt;</button><span id='calTitle' class='calTitle'></span>" & _
+       "<button onclick='calMove(1)'>&gt;</button><table><thead><tr><th>D</th><th>S</th><th>T</th><th>Q</th><th>Q</th><th>S</th><th>S</th></tr></thead>" & _
+       "<tbody id='calBody'></tbody></table><button style='width:100%' onclick='calToday()'>Hoje</button></div>"
+    x = x & "<div id='overlay' class='overlay'><div class='dialog' role='dialog' aria-modal='true' aria-labelledby='agNewHeading'><h2 id='agNewHeading'>Novo compromisso</h2>" & _
+       "<label>Categoria</label><select id='newCat'>%%CATEGORIAS_SELECT%%</select><label>Assunto / descrição</label><textarea id='newTitle' maxlength='450'></textarea>" & _
+       "<label>Data inicial</label><div class='datePickRow'><input id='newDate' placeholder='dd/mm/aaaa'>" & _
+       "<button type='button' onclick='calAbrirNovo()'>&#128197; Calendário</button></div>" & _
+       "<label>Data final (opcional; evento de varios dias)</label><div class='datePickRow'><input id='newDateFim' placeholder='Mesmo dia se vazio'>" & _
+       "<button type='button' onclick=""calOpenFor('newDateFim')"">&#128197; Calendário</button></div>" & _
+       "<div class='duo'><div class='half'><label>Hora de início</label><input id='newTime' value='08:00' placeholder='08:00'></div>" & _
+       "<div class='half'><label>Hora de término (opcional)</label><input id='newEnd' value='' placeholder='Opcional - deixe vazio'></div></div>" & _
+       "<div class='actions'><button onclick='novoFechar()'>Cancelar</button><button class='createBtn' onclick='novoSalvar()'>Salvar compromisso</button></div>" & _
+       "</div></div><script>" & AgVisualJS() & "</script>"
+    AgVisualHTML = x
+End Function
+
+Private Function AgRelogioJS() As String
+    Dim j As String
+    j = "<script type='text/javascript'>" & _
+        "function agDois(n){return (n<10?'0':'')+n;}" & _
+        "function agTick(){var d=new Date(),a=document.getElementById('agClock'),b=document.getElementById('agDia');" & _
+        "if(a){a.innerHTML=agDois(d.getHours())+':'+agDois(d.getMinutes())+':'+agDois(d.getSeconds());}" & _
+        "if(b){var ds=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];" & _
+        "b.innerHTML=ds[d.getDay()]+' - '+agDois(d.getDate())+'/'+agDois(d.getMonth()+1)+'/'+d.getFullYear();}}" & _
+        "agTick();setInterval(agTick,1000);</script>"
+    AgRelogioJS = j
+End Function
+
+Private Function AgVisualJS() As String
+    Dim s As String
+    s = s & "var calYear=0,calMonth=0,calTarget='dt';function z2(n){return (n<10?'0':'')+n;}function fmtDate(d){return z2(d.getDate())+'/'+z2(d.getMonth()+1)+'/'+d.getFullYear();}function calAb"
+    s = s & "rir(){calOpenFor('dt');}function calAbrirNovo(){calOpenFor('newDate');}function calOpenFor(target){calTarget=target;var c=el('calendar'),r=el(target).getBoundingClientRect(),v=el(t"
+    s = s & "arget).value.split('/'),d=new Date();if(v.length===3&&+v[2]>1900){d=new Date(+v[2],+v[1]-1,+v[0]);}calYear=d.getFullYear();calMonth=d.getMonth();c.style.left=Math.max(8,Math.min(r."
+    s = s & "left,document.documentElement.clientWidth-268))+'px';c.style.top=(r.bottom+2)+'px';c.style.display='block';calRender();var ch=c.offsetHeight,vh=document.documentElement.clientHeigh"
+    s = s & "t;c.style.top=Math.max(4,Math.min(r.bottom+2,vh-ch-6))+'px';}function calMove(n){calMonth+=n;if(calMonth<0){calMonth=11;calYear--;}if(calMonth>11){calMonth=0;calYear++;}calRender()"
+    s = s & ";}function calRender(){var a=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];el('calTitle').innerHTML=a[calMonth]"
+    s = s & "+' '+calYear;var first=new Date(calYear,calMonth,1).getDay(),num=new Date(calYear,calMonth+1,0).getDate();var h='',i,j,k=1;for(i=0;i<6;i++){h+='<tr>';for(j=0;j<7;j++){if((i===0&&j<"
+    s = s & "first)||k>num){h+='<td></td>';}else{h+='<td><button onclick=calPick('+k+')>'+k+'</button></td>';k++;}}h+='</tr>';if(k>num)break;}el('calBody').innerHTML=h;}function calPick(n){el(c"
+    s = s & "alTarget).value=z2(n)+'/'+z2(calMonth+1)+'/'+calYear;el('calendar').style.display='none';if(calTarget==='dt')buscar();}function calToday(){var d=new Date();el(calTarget).value=fmtD"
+    s = s & "ate(d);el('calendar').style.display='none';if(calTarget==='dt')buscar();}function novoAbrir(){el('overlay').style.display='block';el('newTitle').value='';el('newDate').value=fmtDat"
+    s = s & "e(new Date());el('newTime').value='08:00';el('newDateFim').value='';el('newEnd').value='';el('newTitle').focus();}function novoFechar(){el('calendar').style.display='none';el('over"
+    s = s & "lay').style.display='none';var b=document.querySelector('.bar .createBtn');if(b)b.focus();}function isDateValid(s){var p=s.split('/');if(!/^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/.test("
+    s = s & "s)||+p[2]<100||+p[2]>9998)return false;var d=new Date(+p[2],+p[1]-1,+p[0]);return d.getFullYear()==+p[2]&&d.getMonth()==(+p[1]-1)&&d.getDate()==+p[0];}function dateNum(s){var p=s.s"
+    s = s & "plit('/');return +p[2]*10000+(+p[1])*100+(+p[0]);}function hourNum(s){var p=s.split(':');return (+p[0])*60+(+p[1]);}function hourValid(s){return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/."
+    s = s & "test(s);}function novoSalvar(){var t=el('newTitle').value.replace(/^\s+|\s+$/g,''),d=el('newDate').value,h=el('newTime').value,f=el('newEnd').value;if(!t||t.length>450){alert('Info"
+    s = s & "rme um assunto de até 450 caracteres.');return;}if(!isDateValid(d)){alert('Data inválida.');return;}if(el('newDateFim').value&&(!isDateValid(el('newDateFim').value)||dateNum(el('ne"
+    s = s & "wDateFim').value)<dateNum(d))){alert('Data final invalida ou anterior a inicial.');return;}if(!hourValid(h)||(f&&!hourValid(f))){alert('Use horário HH:MM.');return;}if(f&&dateNum(e"
+    s = s & "l('newDateFim').value||d)===dateNum(d)&&hourNum(f)<hourNum(h)){alert('Término antes do início.');return;}if(!confirm('Cadastrar este compromisso?'))return;var u='about:blank?agcmd="
+    s = s & "save&categoria='+escape(el('newCat').value)+'&assunto='+escape(t)+'&data='+escape(d)+'&datafim='+escape(el('newDateFim').value)+'&hora='+escape(h)+'&fim='+escape(f);agSend(u);}func"
+    s = s & "tion excluirEvento(id){if(!/^[0-9]+$/.test(String(id))||Number(id)<=0){alert('ID invalido');return;}agSend('about:blank?agcmd=delete&id='+id);} function confirmarCiencia(id){if(!co"
+    s = s & "nfirm('Confirmar ciência deste compromisso?'))return;agSend('about:blank?agcmd=science&id='+id);}function categoriaNova(){var c=prompt('Codigo de 2 digitos (ex.: 06):','06');if(c=="
+    s = s & "=null)return;if(!/^[0-9]{2}$/.test(c)){alert('Codigo invalido');return;}var n=prompt('Nome da categoria:','');if(!n)return;var cor=prompt('Cor hexadecimal #RRGGBB:','#4477AA');if(!"
+    s = s & "cor)return;if(!/^#[0-9A-Fa-f]{6}$/.test(cor)){alert('Cor invalida');return;}if(!confirm('Cadastrar categoria '+c+' - '+n+'?'))return;agSend('about:blank?agcmd=category&code='+escap"
+    s = s & "e(c)+'&name='+escape(n)+'&color='+escape(cor));}function categoriaEditar(b){var c=b.getAttribute('data-code'),n=b.getAttribute('data-name');var cor=b.getAttribute('data-color'),a=b"
+    s = s & ".getAttribute('data-active');var nn=prompt('Descricao da categoria '+c+':',n);if(nn===null)return;nn=nn.replace(/^\s+|\s+$/g,'');if(!nn||nn.length>80){alert('Descricao invalida.');"
+    s = s & "return;}var cc=prompt('Cor hexadecimal (#RRGGBB):',cor);if(cc===null)return;if(!/^#[0-9a-fA-F]{6}$/.test(cc)){alert('Cor invalida.');return;}var aa=prompt('Situacao da categoria (1"
+    s = s & "=ativa, 0=inativa):',a);if(aa===null)return;if(aa!=='1'&&aa!=='0'){alert('Use 1 ou 0.');return;}if(!confirm('Salvar alteracoes da categoria '+c+'?'))return;agSend('about:blank?agcm"
+    s = s & "d=editcategory&code='+escape(c)+'&name='+escape(nn)+'&color='+escape(cc)+'&active='+aa);}function agDecorate(){var bs=document.getElementsByTagName('button'),i,b,t,k,ic;for(i=0;i<b"
+    s = s & "s.length;i++){b=bs[i];if(b.getAttribute('data-icon-ready'))continue;t=b.textContent||b.innerText||'';k='';if((b.getAttribute('onclick')||'').indexOf('calAbrir(')>=0)k='calendar';el"
+    s = s & "se if(b.className.indexOf('deleteEvt')>=0)k='trash';else if(b.className==='view')k='right';else if(b.className.indexOf('catEdit')>=0)k='edit';else if(/Novo compromisso|Nova categor"
+    s = s & "ia|Salvar compromisso/.test(t))k='plus';else if(/Pesquisar/.test(t))k='search';else if(/Calend.rio|Hoje|10 dias/.test(t))k='calendar';else if(/Ontem|Anterior/.test(t))k='left';else"
+    s = s & " if(/Amanh|Pr.xima/.test(t))k='right';else if(/Limpar/.test(t))k='reset';else if(/Cancelar/.test(t))k='close';else if(/N.o lidos/.test(t))k='pending';else if(/Confirmar ci|Lidos/.t"
+    s = s & "est(t))k='check';else if(/Todos os eventos|Todas as categorias/.test(t))k='list';else if((b.getAttribute('onclick')||'').indexOf(""cat('"")>=0)k='tag';if(!k)continue;t=t.replace(/^[^"
+    s = s & "A-Za-z0-9À-ÿ]+/,'');if(b.className==='view'||b.className.indexOf('catEdit')>=0)t='';b.innerHTML='';ic=document.createElement('span');ic.className='agIcon ag-i-'+k;ic.setAttribute('"
+    s = s & "aria-hidden','true');b.appendChild(ic);b.appendChild(document.createTextNode(t));b.setAttribute('data-icon-ready','1');}var hs=document.getElementsByTagName('h3');for(i=0;i<hs.leng"
+    s = s & "th;i++){b=hs[i];if(b.getAttribute('data-icon-ready'))continue;t=(b.textContent||b.innerText||'').replace(/^[^A-Za-z0-9À-ÿ]+/,'');k=/Detalhes/.test(t)?'info':/Categorias/.test(t)?'t"
+    s = s & "ag':/Filtros/.test(t)?'list':'calendar';b.innerHTML='<span class=""agIcon ag-i-'+k+'"" aria-hidden=""true""></span>'+esc(t);b.setAttribute('data-icon-ready','1');}b=document.querySelec"
+    s = s & "tor('.brandIcon');if(b)b.innerHTML='<span class=""agIcon ag-i-calendar"" aria-hidden=""true""></span>';var labs=el('overlay').getElementsByTagName('label'),ids=['newCat','newTitle','ne"
+    s = s & "wDate','newDateFim','newTime','newEnd'];for(i=0;i<labs.length;i++)labs[i].htmlFor=ids[i];}agDecorate();fit();var agOldVer=ver;ver=function(b){agOldVer(b);agDecorate();};document.ad"
+    s = s & "dEventListener('keydown',function(e){e=e||window.event;if(e.keyCode===27)novoFechar();if(e.keyCode===9&&el('overlay').style.display==='block'){var fs=el('overlay').querySelectorAll"
+    s = s & "('input,select,textarea,button'),first=fs[0],last=fs[fs.length-1];if(e.shiftKey&&document.activeElement===first){last.focus();e.preventDefault();}else if(!e.shiftKey&&document.acti"
+    s = s & "veElement===last){first.focus();e.preventDefault();}}});"
+    AgVisualJS = s
+End Function
+
+Public Function AgendaSISDENF_GerarHTML() As String
+    Dim saidaHTML As Object
+    On Error GoTo Falha
+    Dim db As DAO.Database, rs As DAO.Recordset, st As Object
+    Dim whereSql As String, sql As String, Ordem As String, q As String, s As String
+    Dim i As Long, skip As Long, found As Long, n As Long, Total As Long
+    Dim rows As String, blocks() As String, conteudo As String, titulo As String, cat As String
+    Dim recebido As String, dataEv As String, Hora As String, fim As String, Login As String, nome As String, Lida As String, dataMini As String
+    Dim path As String, queryDate As Date, dateIni As Date, dateFim As Date, pageActual As Long
+    Dim er As String, dataFimEv As String, idEvt As Long, ciencia As Boolean
+    Dim corEvento As String
+    Set db = CurrentDb
+    whereSql = " WHERE [Hora] Is Not Null AND [Data] Is Not Null "
+    If Len(mQ) > 0 Then
+        ' Mantem SQL como origem, filtrando antes da contagem e paginacao.
+        ' Classe LIKE cobre variantes com/sem acento sem alterar tabelas.
+        q = AgBuscaLikeAcentos(Left$(mQ, 200))
+        whereSql = whereSql & " AND ([Agenda] Like '*" & q & "*' OR [Login] Like '*" & q & "*' OR [Nome] Like '*" & q & "*')"
+    End If
+    If Len(mCat) = 2 Then whereSql = whereSql & " AND Left(LTrim(Nz([Agenda],'')),2)='" & mCat & "'"
+    If mTipo = "lidos" Then whereSql = whereSql & " AND [Lida]=True"
+    If mTipo = "pendentes" Then whereSql = whereSql & " AND ([Lida]=False OR [Lida] Is Null)"
+    If mPeriodo = "10" Then
+        whereSql = whereSql & " AND [Data]<Date()+10 AND Nz([DataFimEvento],[Data])>=Date()"
+    ElseIf AgParseDate(mPeriodo, queryDate) Then
+        whereSql = whereSql & " AND [Data]<#" & Format$(DateAdd("d", 1, queryDate), "mm\/dd\/yyyy") & "# AND Nz([DataFimEvento],[Data])>=#" & Format$(queryDate, "mm\/dd\/yyyy") & "#"
+    ElseIf Len(mData) > 0 Then
+        If AgParseDate(mData, queryDate) Then
+            whereSql = whereSql & " AND [Data]<#" & Format$(DateAdd("d", 1, queryDate), "mm\/dd\/yyyy") & "# AND Nz([DataFimEvento],[Data])>=#" & Format$(queryDate, "mm\/dd\/yyyy") & "#"
+        Else
+            Err.Raise vbObjectError + 901, , "Data inválida. Digite dd/mm/aaaa."
+        End If
+    ElseIf Len(mQ) = 0 And mCat = "" And mTipo = "todos" Then
+        whereSql = whereSql & " AND [Data]<Date()+22 AND Nz([DataFimEvento],[Data])>=Date()-3"
+    End If
+    Set rs = db.OpenRecordset("SELECT Count(*) AS Total FROM T_Agendamento " & whereSql, dbOpenSnapshot)
+    Total = CLng(Nz(rs!Total, 0))
+    rs.Close: Set rs = Nothing
+    If Total = 0 Then mPage = 1
+    If Total > 0 And mPage > (Total + AG_PAGE_SIZE - 1) \ AG_PAGE_SIZE Then mPage = (Total + AG_PAGE_SIZE - 1) \ AG_PAGE_SIZE
+    skip = (mPage - 1) * AG_PAGE_SIZE
+    sql = "SELECT ID, [Agenda], [Data], [DataFimEvento], [Data da Informação], [Hora], [HoraTermino], [Lida], [Login], [Nome] FROM T_Agendamento " & whereSql & " ORDER BY [Data] ASC, [Hora] ASC, ID ASC"
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+    If Not (rs.BOF And rs.EOF) Then
+        rs.MoveFirst
+        If skip > 0 Then
+            rs.Move skip
+        End If
+    End If
+    ReDim blocks(1 To AG_PAGE_SIZE)
+    Do While Not rs.EOF And n < AG_PAGE_SIZE
+        n = n + 1
+        conteudo = Nz(rs!Agenda, "")
+        cat = Left$(Trim$(conteudo), 2)
+        If Not cat Like "##" Then cat = "--"
+        titulo = AgSafe(AgAssuntoExibicao(conteudo)): recebido = AgDate(rs.Fields("Data da Informação").Value)
+        dataEv = AgDate(rs!Data): dataFimEv = AgDate(rs!DataFimEvento)
+        dataMini = Format$(CDate(rs!Data), "dd") & " " & AgMesCurto(Month(CDate(rs!Data)))
+        idEvt = CLng(rs!ID)
+        ciencia = Agenda18_CienciaRegistrada(idEvt, Environ$("USERNAME"))
+        Hora = AgTime(rs!Hora): fim = AgTime(rs!HoraTermino)
+        Login = Nz(rs!Login, ""): nome = Nz(rs!nome, "")
+        Lida = IIf(Nz(rs!Lida, False), "1", "0")
+        corEvento = AgCorCategoria(cat)
+        blocks(n) = "<article style='border-left-color:" & corEvento & "' class='evt cat" & cat & " " & IIf(Lida = "1", "lido", "pendente") & "'><div class='clock'><span class='clockIcon'><span class='agIcon ag-i-clock' aria-hidden='true'></span></span><b>" & AgSafe(Hora) & "</b><small class='clockDate'>" & AgSafe(dataMini) & "</small><small class='clockEnd'>até " & AgSafe(fim) & "</small></div>" & _
+            "<div class='etitle'><span class='tag tag" & cat & "'>" & AgSafe(cat) & "</span> " & titulo & "</div>" & _
+            "<div class='meta'><span>Recebida: " & AgSafe(recebido) & "</span><span>Evento: " & AgSafe(dataEv) & IIf(Len(dataFimEv) > 0, " a " & AgSafe(dataFimEv), "") & "</span><span>Responsável: " & AgSafe(Login) & "</span><span class='status" & IIf(Lida = "1", "Lido", "Pendente") & "'>Leitura: " & IIf(Lida = "1", "Lido", "Pendente") & "</span></div>" & _
+            "<button class='view' onclick='ver(this)' title='Ver detalhes'>&#8250;</button><i class='hidden' data-catnome='" & AgSafe(AgNomeCategoria(cat)) & "' data-titulo='" & titulo & "' data-hora='" & AgSafe(Hora) & "' data-fim='" & AgSafe(fim) & "' data-recebida='" & AgSafe(recebido) & "' data-evento='" & AgSafe(dataEv) & "' data-login='" & AgSafe(Login) & "' data-nome='" & AgSafe(nome) & "' data-lida='" & Lida & "' data-id='" & CStr(idEvt) & "' data-datafim='" & AgSafe(dataFimEv) & "' data-ciencia='" & IIf(ciencia, "1", "0") & "'></i></article>"
+        rs.MoveNext
+    Loop
+    If n > 0 Then
+        ReDim Preserve blocks(1 To n)
+        rows = Join(blocks, vbCrLf)
+    Else
+        rows = "<p>Nenhum compromisso encontrado para estes filtros.</p>"
+    End If
+    s = AgTemplate()
+    s = Replace(s, "%%ROWS%%", rows)
+    s = Replace(s, "%%CATEGORIAS%%", AgCategoriasBotoes())
+    s = Replace(s, "%%CATEGORIAS_SELECT%%", AgCategoriasOpcoes())
+
+    If Len(Trim$(mAviso)) = 0 Then
+        s = Replace(s, "<div class=""%%AVISO_CLASSE%%"" %%AVISO_DISPLAY%%>%%AVISO%%</div>", "")
+    End If
+    s = Replace(s, "%%AVISO_DISPLAY%%", IIf(Len(mAviso) = 0, "style=""display:none""", ""))
+    s = Replace(s, "%%AVISO%%", AgSafe(mAviso))
+    s = Replace(s, "%%AVISO_CLASSE%%", IIf(mAvisoErro, "notice error", "notice"))
+    mAvisoErro = False
+    mAviso = ""
+    Dim qtdAlerta As Long
+    qtdAlerta = Agenda18_CompromissosPendentes(Environ$("USERNAME"))
+    s = Replace(s, "%%ALERTA%%", "Ciência pendente hoje: " & CStr(qtdAlerta) & " compromisso(s). Sem alerta sonoro.")
+    s = Replace(s, "%%ALARM_DISPLAY%%", IIf(qtdAlerta > 0, "block", "none"))
+    s = Replace(s, "Assunto: <input", "Busca: <input")
+    s = Replace(s, "Leitura: ", "Leitura geral: ")
+    s = Replace(s, "%%STATUS%%", CStr(Total) & " compromisso(s) encontrado(s). Exibindo até " & AG_PAGE_SIZE & " por página.")
+    s = Replace(s, "%%PAGE%%", CStr(mPage))
+    s = Replace(s, "%%PREVDISABLED%%", IIf(mPage = 1, "disabled", ""))
+    s = Replace(s, "%%NEXTDISABLED%%", IIf(mPage * AG_PAGE_SIZE >= Total, "disabled", ""))
+    s = Replace(s, "%%USRLOGADO%%", AgSafe(Environ$("USERNAME")))
+    s = Replace(s, "%%Q%%", AgSafe(mQ)): s = Replace(s, "%%DATA%%", AgSafe(mData))
+    s = Replace(s, "%%QJS%%", AgJS(mQ)): s = Replace(s, "%%DATAJS%%", AgJS(mData))
+    s = Replace(s, "%%CAT%%", AgSafe(mCat)): s = Replace(s, "%%TIPO%%", AgSafe(mTipo)): s = Replace(s, "%%PERIODO%%", AgSafe(mPeriodo))
+    'Mark of the Web: identifica HTML como zona Internet e evita o
+    'alerta de conteudo ativo de arquivo local no controle Shell.Explorer.2.
+    'Nao altera registro, Trusted Sites ou configuracoes globais do Windows.
+    'O marcador deve ser a PRIMEIRA sequencia de bytes do arquivo, sem BOM.
+    s = "<!-- saved from url=(0014)about:internet -->" & vbCrLf & s
+    mArquivoIndice = 1 - mArquivoIndice
+    If Len(mPastaTemporaria) = 0 Then
+        Dim fso As Object
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        mPastaTemporaria = fso.BuildPath(Environ$("TEMP"), fso.GetTempName)
+        fso.CreateFolder mPastaTemporaria
+        Set fso = Nothing
+    End If
+    path = mPastaTemporaria & "\Agenda_" & CStr(mArquivoIndice) & ".html"
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2: st.charset = "utf-8": st.Open
+    st.WriteText s
+    'ADODB.Stream texto UTF-8 inclui BOM EF BB BF: removemos antes de salvar
+    'para assegurar que o comentario MOTW apareca no inicio do arquivo.
+    st.Position = 0
+    st.Type = 1
+    Set saidaHTML = CreateObject("ADODB.Stream")
+    saidaHTML.Type = 1: saidaHTML.Open
+    st.Position = 3
+    saidaHTML.Write st.Read
+    saidaHTML.SaveToFile path, 2
+    saidaHTML.Close: Set saidaHTML = Nothing
+    st.Close
+    AgendaSISDENF_GerarHTML = path
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    If Not st Is Nothing Then st.Close
+    If Not saidaHTML Is Nothing Then saidaHTML.Close
+    Set saidaHTML = Nothing
+    Set rs = Nothing: Set db = Nothing: Set st = Nothing
+    Exit Function
+Falha:
+    er = CStr(Err.Number) & " - " & Err.Description
+    Resume SaidaErro
+SaidaErro:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    If Not st Is Nothing Then st.Close
+    If Not saidaHTML Is Nothing Then saidaHTML.Close
+    On Error GoTo 0
+    Err.Raise vbObjectError + 910, "AgendaSISDENF_GerarHTML", er
+End Function
+
+Private Function AgJS(ByVal s As String) As String
+    Dim t As String
+    t = Replace(s, "\", "\\")
+    t = Replace(t, "'", "\'")
+    t = Replace(t, vbCr, "\r")
+    t = Replace(t, vbLf, "\n")
+    t = Replace(t, "<", "\u003C")
+    t = Replace(t, ChrW$(&H2028), "\u2028")
+    t = Replace(t, ChrW$(&H2029), "\u2029")
+    AgJS = t
+End Function
+
+Private Function AgParseDate(ByVal s As String, ByRef d As Date) As Boolean
+    On Error GoTo Nao
+    Dim p() As String, y As Long, m As Long, diaNum As Long
+    p = Split(s, "/")
+    If UBound(p) <> 2 Then Exit Function
+    If Len(p(2)) <> 4 Then Exit Function
+    If Len(p(0)) < 1 Or Len(p(0)) > 2 Or Len(p(1)) < 1 Or Len(p(1)) > 2 Then Exit Function
+    If Not (p(0) Like String$(Len(p(0)), "#")) Or Not (p(1) Like String$(Len(p(1)), "#")) Or Not (p(2) Like "####") Then Exit Function
+    diaNum = CLng(p(0)): m = CLng(p(1)): y = CLng(p(2))
+    If y < 100 Or y > 9998 Then Exit Function
+    d = DateSerial(y, m, diaNum)
+    AgParseDate = (Year(d) = y And Month(d) = m And VBA.day(d) = diaNum)
+    Exit Function
+Nao:
+    AgParseDate = False
+End Function
+
+
+
+
+Private Function AgIDValido(ByVal texto As String) As Long
+    If Len(texto) < 1 Or Len(texto) > 10 Then Err.Raise vbObjectError + 1932, , "ID invalido."
+    If Not (texto Like String$(Len(texto), "#")) Then Err.Raise vbObjectError + 1932, , "ID deve conter apenas algarismos."
+    If CDbl(texto) > 2147483647# Then Err.Raise vbObjectError + 1932, , "ID fora do limite."
+    AgIDValido = CLng(texto)
+    If AgIDValido < 1 Then Err.Raise vbObjectError + 1932, , "ID deve ser positivo."
+End Function
+
+Private Function AgCorCategoria(ByVal codigo As String) As String
+    On Error GoTo Saida
+    Dim rs As DAO.Recordset, Cor As String, i As Long
+    AgCorCategoria = "#4796E8"
+    If Len(codigo) <> 2 Or Not (codigo Like "##") Then Exit Function
+    Set rs = CurrentDb.OpenRecordset("SELECT CorHex FROM T_AgendaCategorias WHERE Codigo='" & codigo & "'", dbOpenSnapshot)
+    If rs.EOF Then GoTo Saida
+    Cor = UCase$(Nz(rs!corHex, ""))
+    If Len(Cor) <> 7 Or Left$(Cor, 1) <> "#" Then GoTo Saida
+    For i = 2 To 7
+        If InStr(1, "0123456789ABCDEF", Mid$(Cor, i, 1), vbBinaryCompare) = 0 Then GoTo Saida
+    Next i
+    AgCorCategoria = Cor
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+End Function
+
+Public Sub AgendaSISDENF_Encerrar()
+    ' Opcional: chamar no Form_Unload, depois de parar o Timer.
+    On Error Resume Next
+    If Len(mPastaTemporaria) > 0 Then
+        Kill mPastaTemporaria & "\Agenda_0.html"
+        Kill mPastaTemporaria & "\Agenda_1.html"
+        RmDir mPastaTemporaria
+    End If
+    mPastaTemporaria = ""
+End Sub
+
+Private Function AgAssuntoExibicao(ByVal texto As String) As String
+    texto = Trim$(texto)
+    If Len(texto) >= 3 And Left$(texto, 2) Like "##" Then
+        If Mid$(texto, 3, 3) = " - " Then
+            texto = Trim$(Mid$(texto, 6))
+        ElseIf Mid$(texto, 3, 1) = " " Then
+            texto = Trim$(Mid$(texto, 4))
+        End If
+    End If
+    AgAssuntoExibicao = texto
+End Function
+
+
