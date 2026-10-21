@@ -67,3 +67,12 @@ Sem equalizador, playlists personalizadas ou navegação separada por pastas. A 
 ## Instalação 0.3.1
 
 O APK é instalado como **Onda Novo**, com applicationId `br.com.onda.player`. Pode coexistir com o Onda antigo (`br.com.onda`), evitando o conflito de assinatura sem apagar os dados da instalação anterior. Favoritos da versão antiga permanecem nela e não são migrados automaticamente. As funções de músicas locais, letras e streaming estão incluídas. O workflow reutiliza a chave debug via cache do GitHub Actions, enquanto esse cache estiver disponível; não substitui uma configuração de assinatura de produção com chave privada persistente.
+
+
+## Busca aprimorada (0.4.0)
+
+No celular: filtro Tudo, Nome da música, Artista ou Álbum. A busca ignora acentos, maiúsculas e pontuação e aceita palavras em qualquer ordem. Exemplo: `joao coracao` encontra título Coração e artista João no filtro Tudo. A fila local passa a seguir os resultados visíveis ou favoritos ao tocar uma música.
+
+Online: filtros Tudo, Artista e Música no repertório, ordenação por relevância, popularidade ou data do show, páginas de 20 resultados com total, sugestões das últimas oito buscas e filtro de faixas dentro do show. Voltar aos resultados mantém a página sem repetir a consulta. O filtro Música procura nos títulos e descrições dos shows: não é um índice completo de faixas e pode encontrar termos apenas na descrição. A fonte continua sendo Live Music Archive, não o catálogo completo de músicas comerciais.
+
+Verificações: busca local sem acento, palavras em outra ordem, filtros de campo e sem resultados; fila da busca local; filtros online, mais resultados/anterior, retorno de um show, busca de faixa e limpeza do filtro; desconexão e nova tentativa. Os testes SearchTextTest e LrcTest rodam no CI; há teste ao vivo de consulta e streaming do acervo. Assinatura: antes de entregar, comparar o certificado do APK com o Onda Novo 0.3.1.

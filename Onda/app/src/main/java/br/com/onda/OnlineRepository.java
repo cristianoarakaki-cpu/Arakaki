@@ -19,7 +19,7 @@ final class OnlineRepository {
     private static JSONObject get(Uri uri) throws Exception {
         HttpURLConnection c=(HttpURLConnection)new URL(uri.toString()).openConnection();
         c.setConnectTimeout(12000);c.setReadTimeout(20000);
-        c.setRequestProperty("User-Agent","Onda/0.3.0 (Android music player)");
+        c.setRequestProperty("User-Agent","Onda/0.4.0 (Android music player)");
         try {
             if(c.getResponseCode()!=200)throw new IOException("HTTP "+c.getResponseCode());
             try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){
@@ -29,16 +29,21 @@ final class OnlineRepository {
             }
         }finally{c.disconnect();}
     }
-    static List<Show> search(String input) throws Exception {
-        String cleaned=input.replaceAll("[^\\p{L}\\p{N}\\s'-]"," ").trim();
-        if(cleaned.isEmpty())return Collections.emptyList();
-        StringBuilder query=new StringBuilder("collection:etree AND mediatype:audio AND NOT access-restricted-item:true");
-        for(String word:cleaned.split("\\s+"))query.append(" AND (title:\"").append(word).append("\" OR creator:\"").append(word).append("\" OR description:\"").append(word).append("\")");
-        Uri uri=Uri.parse("https://archive.org/advancedsearch.php").buildUpon().appendQueryParameter("q",query.toString()).appendQueryParameter("output","json").appendQueryParameter("rows","25").appendQueryParameter("fl[]","identifier,title,creator").build();
-        JSONArray docs=get(uri).getJSONObject("response").getJSONArray("docs");
-        ArrayList<Show> result=new ArrayList<>();
+    static final class Page {
+        final List<Show> shows; final int total;
+        Page(List<Show> shows,int total){this.shows=shows;this.total=total;}
+    }
+    static Page search(String input,int mode,int sort,int page) throws Exception {
+        Uri.Builder builder=Uri.parse("https://archive.org/advancedsearch.php").buildUpon()
+            .appendQueryParameter("q",SearchText.archiveQuery(input,mode)).appendQueryParameter("output","json")
+            .appendQueryParameter("rows","20").appendQueryParameter("page",Integer.toString(Math.max(1,page)))
+            .appendQueryParameter("fl[]","identifier,title,creator");
+        if(sort==1)builder.appendQueryParameter("sort[]","downloads desc");
+        else if(sort==2)builder.appendQueryParameter("sort[]","date desc");
+        JSONObject response=get(builder.build()).getJSONObject("response");
+        JSONArray docs=response.getJSONArray("docs");ArrayList<Show> result=new ArrayList<>();
         for(int i=0;i<docs.length();i++){JSONObject d=docs.getJSONObject(i);String id=d.optString("identifier");if(id.isEmpty())continue;Object creator=d.opt("creator");String artist=creator instanceof JSONArray?((JSONArray)creator).optString(0,"Artista desconhecido"):d.optString("creator","Artista desconhecido");result.add(new Show(id,d.optString("title",id),artist));}
-        return result;
+        return new Page(result,response.optInt("numFound",result.size()));
     }
     static List<Track> tracks(Show show) throws Exception {
         JSONObject data=get(Uri.parse("https://archive.org").buildUpon().appendPath("metadata").appendPath(show.id).build());

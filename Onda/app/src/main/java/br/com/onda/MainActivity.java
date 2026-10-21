@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private Button play, shuffle, repeat, favorite;
     private SeekBar seek;
     private String query = "";
+    private int searchScope = 0;
     private boolean onlyFavorites = false, seeking = false;
     private Set<String> favorites;
     private SharedPreferences prefs;
@@ -52,7 +53,12 @@ public class MainActivity extends Activity {
         TextView brand = label("≋  onda", 34, green); brand.setTypeface(null,Typeface.BOLD); root.addView(brand);
         root.addView(label("Sua música. No seu ritmo.",14,muted));
         EditText search = new EditText(this); search.setSingleLine(true); search.setTextColor(Color.WHITE); search.setHintTextColor(muted); search.setTextSize(16); search.setHint("Buscar música, artista ou álbum"); search.setContentDescription("Buscar na biblioteca"); root.addView(search);
-        search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s,int st,int c,int a){} public void onTextChanged(CharSequence s,int st,int before,int count){ query=s.toString().toLowerCase(Locale.ROOT); render(); } public void afterTextChanged(Editable e){} });
+        search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s,int st,int c,int a){} public void onTextChanged(CharSequence s,int st,int before,int count){ query=s.toString(); render(); } public void afterTextChanged(Editable e){} });
+        Spinner scope = new Spinner(this);
+        scope.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"No celular: tudo", "Nome da música", "Artista", "Álbum"}));
+        scope.setContentDescription("Filtrar busca no celular");
+        scope.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> a,View v,int position,long id){searchScope=position;render();}public void onNothingSelected(AdapterView<?> a){}});
+        root.addView(scope);
         LinearLayout tabs = new LinearLayout(this);
         tabs.addView(button("Todas",v->{onlyFavorites=false;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
         tabs.addView(button("Favoritas ♡",v->{onlyFavorites=true;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
@@ -86,9 +92,23 @@ public class MainActivity extends Activity {
             if(c!=null)while(c.moveToNext()){if(c.getLong(4)<=0)continue;String id=c.getString(0);String name=c.getString(1), author=c.getString(2), album=c.getString(3);found.add(new MediaItem.Builder().setMediaId(id).setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,c.getLong(0))).setMediaMetadata(new MediaMetadata.Builder().setTitle(name==null?"Sem título":name).setArtist(author==null||author.equals("<unknown>")?"Artista desconhecido":author).setAlbumTitle(album).build()).build());}
         }catch(Exception e){error="Não foi possível ler a biblioteca. Verifique a permissão e tente atualizar.";}
         String message=error;runOnUiThread(()->{if(isDestroyed())return;songs.clear();songs.addAll(found);render();if(message!=null)status.setText(message);});});}
-    private void render(){if(rows==null)return;rows.removeAllViews();int count=0;for(MediaItem item:songs){MediaMetadata m=item.mediaMetadata;String text=m.title+" "+m.artist+" "+m.albumTitle;if(!text.toLowerCase(Locale.ROOT).contains(query)||(onlyFavorites&&!favorites.contains(item.mediaId)))continue;count++;
-        LinearLayout row=column();row.setPadding(dp(8),dp(12),dp(8),dp(12));TextView name=label((favorites.contains(item.mediaId)?"♥  ":"♫  ")+m.title,16,Color.WHITE);row.addView(name);row.addView(label(m.artist+" · "+m.albumTitle,12,muted));row.setContentDescription("Tocar "+m.title+", "+m.artist);row.setFocusable(true);row.setClickable(true);row.setOnClickListener(v->{if(player==null){Toast.makeText(this,"Tocador iniciando…",Toast.LENGTH_SHORT).show();return;}player.setMediaItems(new ArrayList<>(songs),songs.indexOf(item),0);player.prepare();player.play();});rows.addView(row);
-    }status.setText(count+" música"+(count==1?"":"s")+(onlyFavorites?" favorita"+(count==1?"":"s"):" na biblioteca"));if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada com este filtro.",16,muted));}
+    private void render(){
+        if(rows==null)return;rows.removeAllViews();
+        ArrayList<MediaItem> visible=new ArrayList<>();
+        for(MediaItem item:songs){
+            MediaMetadata m=item.mediaMetadata;
+            CharSequence text=searchScope==1?m.title:searchScope==2?m.artist:searchScope==3?m.albumTitle:m.title+" "+m.artist+" "+m.albumTitle;
+            if(SearchText.matches(text,query)&&(!onlyFavorites||favorites.contains(item.mediaId)))visible.add(item);
+        }
+        for(MediaItem item:visible){MediaMetadata m=item.mediaMetadata;
+            LinearLayout row=column();row.setPadding(dp(8),dp(12),dp(8),dp(12));
+            row.addView(label((favorites.contains(item.mediaId)?"♥  ":"♫  ")+m.title,16,Color.WHITE));
+            row.addView(label(m.artist+" · "+m.albumTitle,12,muted));row.setContentDescription("Tocar "+m.title+", "+m.artist);row.setFocusable(true);row.setClickable(true);
+            row.setOnClickListener(v->{if(player==null){Toast.makeText(this,"Tocador iniciando…",Toast.LENGTH_SHORT).show();return;}player.setMediaItems(new ArrayList<>(visible),visible.indexOf(item),0);player.prepare();player.play();});rows.addView(row);
+        }
+        int count=visible.size();status.setText(count+" de "+songs.size()+" músicas no celular"+(onlyFavorites?" • favoritas":""));
+        if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou selecione Tudo.",16,muted));
+    }
     private void refresh(){if(player==null)return;MediaItem item=player.getCurrentMediaItem();if(item!=null){title.setText(item.mediaMetadata.title);artist.setText(item.mediaMetadata.artist);favorite.setText(favorites.contains(item.mediaId)?"♥ Favorita":"♡ Favoritar");}play.setText(player.isPlaying()?"❚❚":"▶");play.setContentDescription(player.isPlaying()?"Pausar":"Reproduzir");shuffle.setTextColor(player.getShuffleModeEnabled()?green:muted);repeat.setText(player.getRepeatMode()==Player.REPEAT_MODE_ONE?"↻ 1":"↻");repeat.setTextColor(player.getRepeatMode()!=Player.REPEAT_MODE_OFF?green:muted);long duration=player.getDuration();seek.setMax(duration>0?(int)Math.min(Integer.MAX_VALUE,duration):0);total.setText(time(duration));}
     private void toggleFavorite(){if(player==null||player.getCurrentMediaItem()==null)return;String id=player.getCurrentMediaItem().mediaId;if(!favorites.remove(id))favorites.add(id);prefs.edit().putStringSet("favorites",new HashSet<>(favorites)).apply();refresh();render();}
     private void sleep(){String[] options={"Desativar","15 minutos","30 minutos","60 minutos","120 minutos"};int[] mins={0,15,30,60,120};new AlertDialog.Builder(this).setTitle("Parar reprodução após…").setItems(options,(dialog,which)->{if(player==null)return;Bundle args=new Bundle();args.putInt("minutes",mins[which]);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),args);Toast.makeText(this,which==0?"Temporizador desativado":"A música vai pausar em "+mins[which]+" minutos",Toast.LENGTH_SHORT).show();}).show();}

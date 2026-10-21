@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.*;
 import android.graphics.Color;
 import android.os.*;
+import android.text.*;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
@@ -11,6 +12,7 @@ import androidx.media3.common.*;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.json.JSONArray;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -21,43 +23,76 @@ public class OnlineActivity extends Activity {
     private Future<?> request;
     private ListenableFuture<MediaController> connection;
     private MediaController player;
-    private EditText query;
+    private AutoCompleteTextView query;
+    private EditText trackFilter;
+    private Spinner mode, ordering;
     private TextView status, playing;
     private LinearLayout results;
     private Button pause;
-    private int generation=0;
+    private int generation=0, page=1, activeMode=0, activeSort=0;
+    private String activeQuery="";
+    private OnlineRepository.Page savedPage;
+    private OnlineRepository.Show currentShow;
+    private List<OnlineRepository.Track> showTracks=Collections.emptyList();
     private final int green=Color.rgb(184,243,107), muted=Color.rgb(159,174,156);
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
         LinearLayout root=column();root.setBackgroundColor(Color.rgb(16,20,16));
         root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(dp(20),dp(12)+i.getSystemWindowInsetTop(),dp(20),dp(12)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
-        root.addView(button("‹ Biblioteca",v->finish()));root.addView(text("Ouvir online",28,Color.WHITE));
-        root.addView(text("Shows ao vivo • Internet Archive\nBusque por artista ou música e escolha um show.",14,muted));
-        query=new EditText(this);query.setSingleLine(true);query.setTextColor(Color.WHITE);query.setHintTextColor(muted);query.setHint("Artista ou música");query.setContentDescription("Buscar shows e músicas online");query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);query.setOnEditorActionListener((v,id,event)->{if(id==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});root.addView(query);
+        root.addView(button("‹ Biblioteca do celular",v->finish()));root.addView(text("Buscar online",27,Color.WHITE));
+        root.addView(text("Shows ao vivo • Internet Archive",13,muted));
+        query=new AutoCompleteTextView(this);query.setThreshold(1);query.setSingleLine(true);query.setTextColor(Color.WHITE);query.setHintTextColor(muted);query.setHint("Nome da música ou artista");query.setContentDescription("Buscar no acervo online");query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);query.setOnEditorActionListener((v,id,event)->{if(id==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});root.addView(query);updateSuggestions();
+        LinearLayout filters=new LinearLayout(this);
+        mode=spinner(new String[]{"Tudo", "Artista", "Música no repertório"},"Tipo de busca online");
+        ordering=spinner(new String[]{"Relevância", "Mais populares", "Shows recentes"},"Ordenar resultados");
+        filters.addView(mode,new LinearLayout.LayoutParams(0,dp(48),1));filters.addView(ordering,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(filters);
         root.addView(button("Buscar online",v->search()));
-        status=text("Exemplos: Grateful Dead, Billy Strings, Goose.\nA busca cobre este acervo de shows, não todos os lançamentos comerciais.",13,muted);root.addView(status);
+        status=text("Busque um artista ou uma música. A busca de músicas encontra shows que citam o nome no repertório; abra o show para conferir as faixas.",13,muted);root.addView(status);
+        trackFilter=new EditText(this);trackFilter.setSingleLine(true);trackFilter.setTextColor(Color.WHITE);trackFilter.setHintTextColor(muted);trackFilter.setHint("Buscar faixa neste show");trackFilter.setContentDescription("Filtrar faixas do show pelo nome");trackFilter.setVisibility(View.GONE);root.addView(trackFilter);
+        trackFilter.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void afterTextChanged(Editable e){}public void onTextChanged(CharSequence s,int st,int before,int count){if(currentShow!=null)renderTracks();}});
         ScrollView scroll=new ScrollView(this);results=column();scroll.addView(results);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         playing=text("Escolha uma faixa para ouvir no Onda.",14,green);root.addView(playing);
         LinearLayout controls=new LinearLayout(this);pause=button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else{player.prepare();player.play();}}});controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Próxima",v->{if(player!=null)player.seekToNext();}),new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Letra",v->{if(player!=null&&player.getCurrentMediaItem()!=null)startActivity(new Intent(this,LyricsActivity.class));}),new LinearLayout.LayoutParams(0,dp(48),1));root.addView(controls);
-        root.addView(text("Streaming usa sua conexão de internet.\nFonte: archive.org • disponibilidade sujeita ao acervo.",11,muted));
+        root.addView(text("Este catálogo não contém todos os lançamentos comerciais.\nStreaming usa internet • Fonte: archive.org",11,muted));
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){refresh();}@Override public void onPlayerError(PlaybackException e){status.setText("Falha ao reproduzir. Verifique a internet ou escolha outra faixa.");}});refresh();}catch(Exception e){status.setText("Não foi possível conectar ao tocador. Volte e tente novamente.");}},handler::post);
     }
+    private Spinner spinner(String[] labels,String description){Spinner s=new Spinner(this);s.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,labels));s.setContentDescription(description);return s;}
     private int startRequest(){if(request!=null)request.cancel(true);results.removeAllViews();return ++generation;}
     private void search(){
-        String input=query.getText().toString().trim();if(input.length()<2){status.setText("Digite pelo menos duas letras para buscar.");return;}
-        ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(query.getWindowToken(),0);
-        int id=startRequest();status.setText("Buscando shows no Internet Archive…");
-        request=worker.submit(()->{try{List<OnlineRepository.Show> shows=OnlineRepository.search(input);handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText(shows.isEmpty()?"Nenhum show encontrado. Tente o nome de outro artista.":shows.size()+" shows encontrados • toque para ver as músicas");for(OnlineRepository.Show show:shows)results.addView(button(show.title+"\n"+show.artist,v->open(show)));});}catch(Exception e){failed(id);}});
+        String input=query.getText().toString().trim();if(SearchText.normalize(input).length()<2){status.setText("Digite pelo menos duas letras para buscar.");return;}
+        ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(query.getWindowToken(),0);query.dismissDropDown();
+        activeQuery=input;activeMode=mode.getSelectedItemPosition();activeSort=ordering.getSelectedItemPosition();savedPage=null;saveRecent(input);loadPage(1);
+    }
+    private void loadPage(int number){
+        int id=startRequest();currentShow=null;trackFilter.setVisibility(View.GONE);status.setText("Buscando no acervo • página "+number+"…");
+        final String term=activeQuery;final int searchMode=activeMode, sort=activeSort;
+        request=worker.submit(()->{try{OnlineRepository.Page found=OnlineRepository.search(term,searchMode,sort,number);handler.post(()->{if(isDestroyed()||id!=generation)return;page=number;savedPage=found;renderPage();});}catch(Exception e){handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText("Falha na busca. Verifique a internet e tente novamente.");results.addView(button("Tentar novamente",v->loadPage(number)));});}});
+    }
+    private void renderPage(){
+        currentShow=null;trackFilter.setVisibility(View.GONE);results.removeAllViews();if(savedPage==null)return;
+        status.setText(savedPage.shows.isEmpty()?"Nenhum show encontrado. Tente outro nome ou o filtro Tudo.":savedPage.total+" resultados • página "+page+" • "+activeQuery);
+        for(OnlineRepository.Show show:savedPage.shows)results.addView(button(show.artist+"\n"+show.title,v->open(show)));
+        if(page>1)results.addView(button("‹ Página anterior",v->loadPage(page-1)));
+        if(page*20<savedPage.total&&!savedPage.shows.isEmpty())results.addView(button("Mais resultados ›",v->loadPage(page+1)));
     }
     private void open(OnlineRepository.Show show){
-        int id=startRequest();status.setText("Carregando faixas: "+show.title);
-        request=worker.submit(()->{try{List<OnlineRepository.Track> tracks=OnlineRepository.tracks(show);handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText(tracks.isEmpty()?"Este show não tem faixas MP3 disponíveis. Tente outro.":show.title+"\n"+tracks.size()+" faixas • toque para ouvir");results.addView(button("‹ Voltar aos resultados",v->search()));
-            ArrayList<MediaItem> queue=new ArrayList<>();for(OnlineRepository.Track t:tracks)queue.add(new MediaItem.Builder().setMediaId("archive:"+t.url).setUri(t.url).setMediaMetadata(new MediaMetadata.Builder().setTitle(t.title).setArtist(show.artist).setAlbumTitle(show.title).build()).build());
-            for(int index=0;index<tracks.size();index++){final int position=index;results.addView(button((index+1)+". "+tracks.get(index).title,v->{if(player==null){status.setText("Tocador iniciando. Tente novamente em instantes.");return;}player.setMediaItems(queue,position,0);player.prepare();player.play();refresh();}));}
-        });}catch(Exception e){failed(id);}});
+        int id=startRequest();currentShow=null;trackFilter.setVisibility(View.GONE);status.setText("Carregando faixas: "+show.title);
+        request=worker.submit(()->{try{List<OnlineRepository.Track> tracks=OnlineRepository.tracks(show);handler.post(()->{if(isDestroyed()||id!=generation)return;showTracks=tracks;currentShow=show;trackFilter.setVisibility(View.VISIBLE);trackFilter.setText(activeMode==2?activeQuery:"");renderTracks();});}catch(Exception e){handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText("Falha ao abrir o show. Verifique a internet.");results.addView(button("Tentar novamente",v->open(show)));results.addView(button("‹ Voltar aos resultados",v->renderPage()));});}});
     }
-    private void failed(int id){handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText("Não foi possível consultar o acervo. Verifique a internet e tente Buscar online novamente.");});}
+    private void renderTracks(){
+        if(currentShow==null)return;results.removeAllViews();results.addView(button("‹ Voltar aos resultados",v->renderPage()));
+        final OnlineRepository.Show show=currentShow;
+        final ArrayList<MediaItem> queue=new ArrayList<>();
+        for(OnlineRepository.Track t:showTracks)queue.add(new MediaItem.Builder().setMediaId("archive:"+t.url).setUri(t.url).setMediaMetadata(new MediaMetadata.Builder().setTitle(t.title).setArtist(show.artist).setAlbumTitle(show.title).build()).build());
+        int found=0;for(int index=0;index<showTracks.size();index++){if(!SearchText.matches(showTracks.get(index).title,trackFilter.getText().toString()))continue;found++;final int position=index;results.addView(button((index+1)+". "+showTracks.get(index).title,v->{if(player==null){status.setText("Tocador iniciando. Tente novamente em instantes.");return;}player.setMediaItems(queue,position,0);player.prepare();player.play();refresh();}));}
+        status.setText(show.artist+" • "+found+" de "+showTracks.size()+" faixas\n"+show.title);
+        if(showTracks.isEmpty())results.addView(text("Este show não tem faixas MP3 disponíveis. Tente outro resultado.",15,muted));
+        else if(found==0){results.addView(text("Nenhuma faixa com esse nome. O termo pode estar apenas na descrição do show.",15,muted));results.addView(button("Mostrar todas as faixas",v->trackFilter.setText("")));}
+    }
+    private List<String> recent(){ArrayList<String> values=new ArrayList<>();try{JSONArray array=new JSONArray(getSharedPreferences("online-search",MODE_PRIVATE).getString("recent","[]"));for(int i=0;i<array.length();i++)values.add(array.getString(i));}catch(Exception ignored){}return values;}
+    private void updateSuggestions(){query.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_dropdown_item_1line,recent()));}
+    private void saveRecent(String input){List<String> values=recent();values.removeIf(v->SearchText.normalize(v).equals(SearchText.normalize(input)));values.add(0,input);while(values.size()>8)values.remove(values.size()-1);getSharedPreferences("online-search",MODE_PRIVATE).edit().putString("recent",new JSONArray(values).toString()).apply();updateSuggestions();}
     private void refresh(){if(player==null)return;MediaItem item=player.getCurrentMediaItem();playing.setText(item==null?"Escolha uma faixa para ouvir.":item.mediaMetadata.title+" • "+item.mediaMetadata.artist);pause.setText(player.isPlaying()?"Pausar":"Reproduzir");}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setPadding(0,dp(6),0,dp(6));return t;}
