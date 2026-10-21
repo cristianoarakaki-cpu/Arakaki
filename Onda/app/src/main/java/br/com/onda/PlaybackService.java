@@ -27,7 +27,7 @@ public class PlaybackService extends MediaSessionService {
         player = new ExoPlayer.Builder(this).build();
         player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true);
         player.setHandleAudioBecomingNoisy(true);
-        player.setWakeMode(C.WAKE_MODE_LOCAL);
+        player.setWakeMode(C.WAKE_MODE_NETWORK);
         session = new MediaSession.Builder(this, player)
             .setSessionActivity(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
             .setCallback(new MediaSession.Callback() {

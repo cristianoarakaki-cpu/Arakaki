@@ -1,4 +1,4 @@
-# Onda — tocador Android 0.2.0
+# Onda — tocador Android 0.3.0
 
 Primeira implementação nativa em Java, interface em português, Android 8.0 ou superior.
 
@@ -15,11 +15,17 @@ Primeira implementação nativa em Java, interface em português, Android 8.0 ou
 
 MP3, FLAC, WAV, AAC/M4A e OGG são suportados conforme o contêiner, o codec e os decodificadores do aparelho. Arquivos protegidos por DRM não são contemplados.
 
-## Letras online (0.2.0)
+## Letras online (0.3.0)
 
 Toque em **Ver letra da música** no painel de reprodução. A busca usa LRCLIB (https://lrclib.net), sem chave ou login. Quando há LRC, o verso atual ganha destaque e a tela rola automaticamente. Tocar em um verso busca sua posição no áudio. Ao rolar manualmente, o acompanhamento pausa por cinco segundos. Letras sem tempos são exibidas como texto rolável. É possível corrigir título e artista e repetir a busca. A tela acompanha as trocas de faixa.
 
 Até 100 respostas ficam no cache privado para reabrir sem internet; o Android pode limpar esse cache. Não há garantia de letra para toda música ou de que os tempos correspondam a uma versão ao vivo/remix. Há mensagens para faixa instrumental, letra ausente e falha de rede.
+
+## Ouvir online (0.3.0)
+
+Botão **Buscar e ouvir online** na biblioteca. A fonte é a Live Music Archive (`collection:etree`) do Internet Archive: busque artista ou música, abra um show e toque em uma faixa MP3. A fila passa a ser o show escolhido. O streaming usa o mesmo serviço Media3 do áudio local, incluindo controles e reprodução com tela desligada. Não é o catálogo comercial completo e não exige conta. As buscas enviam os termos ao archive.org. Sem download permanente: há somente o buffering normal do player. Letras continuam disponíveis conforme o LRCLIB.
+
+Verificar no aparelho: busca vazia, artista conhecido, nenhum resultado, show sem MP3, falha de rede, troca de faixa, tela desligada e retorno à biblioteca.
 
 ## Gerar e instalar
 
@@ -55,4 +61,4 @@ A versão 0.1 passou por compilação e lint no GitHub Actions, e o usuário con
 
 ## Limites da primeira versão
 
-Sem streaming, equalizador, playlists personalizadas ou navegação separada por pastas. A fila segue a biblioteca completa, inclusive ao iniciar a reprodução pela busca ou pelos favoritos. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila e a posição não são restauradas após encerramento do processo. O APK de debug é destinado a teste, não a publicação na Google Play.
+Sem equalizador, playlists personalizadas ou navegação separada por pastas. A fila segue a biblioteca completa, inclusive ao iniciar a reprodução pela busca ou pelos favoritos. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila e a posição não são restauradas após encerramento do processo. O APK de debug é destinado a teste, não a publicação na Google Play.

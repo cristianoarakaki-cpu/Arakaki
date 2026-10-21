@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
         tabs.addView(button("Todas",v->{onlyFavorites=false;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
         tabs.addView(button("Favoritas ♡",v->{onlyFavorites=true;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
         tabs.addView(button("Atualizar",v->permission()), new LinearLayout.LayoutParams(0,dp(48),1)); root.addView(tabs);
+        root.addView(button("⌕ Buscar e ouvir online",v->startActivity(new Intent(this,OnlineActivity.class))));
         status=label("Preparando biblioteca…",13,muted); root.addView(status);
         ScrollView scroll = new ScrollView(this); rows=column(); scroll.addView(rows); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout now=column(); now.setPadding(dp(16),dp(12),dp(16),dp(8)); GradientDrawable shape=new GradientDrawable(); shape.setColor(panel); shape.setCornerRadius(dp(20)); now.setBackground(shape); root.addView(now);

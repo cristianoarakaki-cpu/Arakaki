@@ -25,6 +25,9 @@ jobs:
         run: |
           javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/Lrc.java Onda/tests/LrcTest.java
           java -cp /tmp/onda-tests br.com.onda.LrcTest
+      - name: Verificar streaming do Internet Archive
+        continue-on-error: true
+        run: python Onda/tests/check_archive.py
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug
       - uses: actions/upload-artifact@v4
         with:
