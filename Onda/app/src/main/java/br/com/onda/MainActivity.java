@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.*;
 import java.util.concurrent.*;
 
+@androidx.media3.common.util.UnstableApi
 public class MainActivity extends Activity {
     private final int bg = Color.rgb(16,20,16), panel = Color.rgb(29,35,29), green = Color.rgb(184,243,107), muted = Color.rgb(159,174,156);
     private final ArrayList<MediaItem> songs = new ArrayList<>();
@@ -72,7 +73,7 @@ public class MainActivity extends Activity {
         for(Button b:new Button[]{shuffle,previous,play,next,repeat})controls.addView(b,new LinearLayout.LayoutParams(0,dp(56),1));now.addView(controls);
         LinearLayout extras=new LinearLayout(this);favorite=button("♡ Favoritar",v->toggleFavorite());extras.addView(favorite,new LinearLayout.LayoutParams(0,dp(48),1));extras.addView(button("◷ Timer",v->sleep()),new LinearLayout.LayoutParams(0,dp(48),1));now.addView(extras);
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
-        connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){refresh();}@Override public void onPlayerError(PlaybackException e){new AlertDialog.Builder(MainActivity.this).setTitle("Não foi possível tocar").setMessage("O arquivo pode estar indisponível ou usar um codec incompatível com este aparelho. Tente outra música.").setPositiveButton("OK",null).show();}});refresh();}catch(Exception e){status.setText("Falha ao conectar o tocador. Feche e abra o app.");}},getMainExecutor());
+        connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){refresh();}@Override public void onPlayerError(PlaybackException e){new AlertDialog.Builder(MainActivity.this).setTitle("Não foi possível tocar").setMessage("O arquivo pode estar indisponível ou usar um codec incompatível com este aparelho. Tente outra música.").setPositiveButton("OK",null).show();}});refresh();}catch(Exception e){status.setText("Falha ao conectar o tocador. Feche e abra o app.");}},handler::post);
         handler.post(progress);permission();
     }
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}
