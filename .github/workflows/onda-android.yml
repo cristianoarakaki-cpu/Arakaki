@@ -28,7 +28,16 @@ jobs:
       - name: Verificar streaming do Internet Archive
         continue-on-error: true
         run: python Onda/tests/check_archive.py
+      - name: Reutilizar assinatura de teste
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: onda-player-debug-signing-v1
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug
+      - name: Conferir pacote independente
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
+          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert re.search(r"package: name=.br[.]com[.]onda[.]player.",s); print("Pacote independente confirmado")'
       - uses: actions/upload-artifact@v4
         with:
           name: Onda-Android-APK
