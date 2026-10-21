@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R2 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R3 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R2 HIST-R2 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R3 HIST-R3 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -3185,6 +3185,9 @@ function New-MapaIdentidadeSistema {
 
 function Resolve-IdentidadeRelatorio($r,$mapa){
     $mat=([string]$r.matricula).Trim()
+    $nomesCadastro=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat -and $mat} | ForEach-Object {([string]$_.nome).Trim()} | Where-Object {$_} | Sort-Object -Unique)
+    $r | Add-Member NoteProperty nome_cadastro ($nomesCadastro -join ' / ') -Force
+    $r | Add-Member NoteProperty matricula_encontrada $(if($mat -and $mapa.ByMat.ContainsKey($mat)){$mat}else{''}) -Force
     if(-not $mat){ return [pscustomobject]@{status="NÃO LOCALIZADO";matricula="";metodo="matrícula ausente"} }
     if(-not $mapa.ByMat.ContainsKey($mat)){
         return [pscustomobject]@{status="NÃO LOCALIZADO";matricula="";metodo="matrícula não cadastrada; nenhum vínculo por nome será feito"}
@@ -3192,7 +3195,7 @@ function Resolve-IdentidadeRelatorio($r,$mapa){
     $nomeNorm=Convert-ToUpperSemAcento ([string]$r.nome)
     $nomes=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {Convert-ToUpperSemAcento ([string]$_.nome)} | Where-Object {$_} | Sort-Object -Unique)
     if($nomeNorm -and $nomes.Count -gt 0 -and $nomes -notcontains $nomeNorm){
-        return [pscustomobject]@{status="CONFLITO";matricula="";metodo="matrícula encontrada mas nome divergente; conferência obrigatória"}
+        return [pscustomobject]@{status="CONFLITO";matricula="";metodo="matrícula encontrada mas nome divergente. Planilha (linha $($r.linha)): '$([string]$r.nome)'; cadastro: '$($r.nome_cadastro)'. Confira o cadastro em Lançamentos e a linha da planilha; nenhuma troca de nome ou vínculo será feita automaticamente"}
     }
     return [pscustomobject]@{status="OK";matricula=$mat;metodo="MATRÍCULA exata"}
 }
@@ -3204,6 +3207,7 @@ function Get-PreviewFixas2027($rows){
 
     foreach($r in @($rows)){
         $status=""; $det=""; $matSistema=""
+        $ident=Resolve-IdentidadeRelatorio $r $mapa
         if(-not [bool]$r.valido){
             $status="ERRO"; $det=[string]$r.erro
         } elseif((Convert-ToUpperSemAcento ([string]$r.cargo)) -ne "ENFERMEIRO"){
@@ -3216,9 +3220,8 @@ function Get-PreviewFixas2027($rows){
                 $status="DUPLICADO"; $det="Registro repetido na planilha"
             } else {
                 $seen[$key]=$true
-                $ident=Resolve-IdentidadeRelatorio $r $mapa
                 if($ident.status -ne "OK"){
-                    $status=if($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"CONFERIR"}
+                    $status=if($ident.status -eq "CONFLITO"){"NOME DIVERGENTE"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"CONFERIR"}
                     $det="Matrícula do relatório: $([string]$r.matricula). Servidor não pôde ser vinculado automaticamente: $($ident.metodo). Não será importado até haver vínculo seguro."
                 } else {
                     $matSistema=[string]$ident.matricula
@@ -3276,6 +3279,7 @@ function Get-PreviewHistorico($rows){
     $mapa=New-MapaIdentidadeSistema
 
     foreach($r in @($rows)){
+        $ident=Resolve-IdentidadeRelatorio $r $mapa
         if(-not [bool]$r.valido){
             $r|Add-Member NoteProperty matricula_sistema '' -Force
             $r|Add-Member NoteProperty preview_status 'ERRO DE LEITURA' -Force
@@ -3287,14 +3291,13 @@ function Get-PreviewHistorico($rows){
         if([int]$r.ano_referencia -lt 1900 -or [int]$r.ano_referencia -gt 9998){ continue }
         if([int]$r.mes_referencia -lt 1 -or [int]$r.mes_referencia -gt 12){ continue }
 
-        $ident=Resolve-IdentidadeRelatorio $r $mapa
         $matSistema=if($ident.status -eq "OK"){[string]$ident.matricula}else{""}
         $keyBase=if($matSistema){$matSistema}else{"MATRICULA:$([string]$r.matricula)|NOME:$(Convert-ToUpperSemAcento ([string]$r.nome))"}
         $key="$keyBase|$([int]$r.ano_referencia)|$([int]$r.mes_referencia)|$([string]$r.ferias_inicio)|$([string]$r.ferias_fim)|$([string]$r.aquisitivo_inicio)|$([string]$r.aquisitivo_fim)"
         if($seen.ContainsKey($key)){ continue }
         $seen[$key]=$true
 
-        $status=if($ident.status -eq "OK"){"IMPORTAR"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"SEM VÍNCULO"}
+        $status=if($ident.status -eq "OK"){"IMPORTAR"}elseif($ident.status -eq "CONFLITO"){"NOME DIVERGENTE"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"SEM VÍNCULO"}
         $det=if($ident.status -eq "OK"){
             "Histórico confirmado pela célula amarela | vínculo por $($ident.metodo) | Matrícula sistema: $matSistema"
         } else {
@@ -3360,11 +3363,33 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
         @("st","Status"),@("mat","Matrícula planilha"),@("cp","CP planilha"),@("mats","Matrícula sistema"),@("nome","Nome"),@("setor","Setor"),@("per","Período"),
         @("aq","Período aquisitivo"),@("ref","Mês referência"),@("ferias","Férias destacadas"),@("det","Observação")
     )){ [void]$g.Columns.Add($c[0],$c[1]) }
-    $g.Columns["st"].FillWeight=11; $g.Columns["mat"].FillWeight=12; $g.Columns["cp"].FillWeight=10; $g.Columns["mats"].FillWeight=12; $g.Columns["nome"].FillWeight=24
-    $g.Columns["setor"].FillWeight=18; $g.Columns["per"].FillWeight=11; $g.Columns["aq"].FillWeight=18
-    $g.Columns["ref"].FillWeight=11; $g.Columns["ferias"].FillWeight=18; $g.Columns["det"].FillWeight=28
+    [void]$g.Columns.Add('nomecad','Nome no cadastro')
+    [void]$g.Columns.Add('linha','Linha da planilha')
+    $g.Columns['mats'].Visible=$false
+    $g.Columns['nome'].HeaderText='Nome na planilha'
+    $g.Columns['mat'].HeaderText='Matrícula'
+    $g.AutoSizeColumnsMode='None'
+    foreach($c in $g.Columns){$c.Width=150; $c.SortMode='Automatic'}
+    $g.Columns['st'].Width=165; $g.Columns['mat'].Width=110
+    $g.Columns['nome'].Width=270; $g.Columns['nomecad'].Width=270
+    $g.Columns['linha'].Width=95; $g.Columns['det'].Width=500
+    $order=@('st','mat','nome','nomecad','linha','cp','setor','per','aq','ref','ferias','det','mats')
+    for($j=0;$j -lt $order.Count;$j++){$g.Columns[$order[$j]].DisplayIndex=$j}
+    $g.MultiSelect=$false; $g.ShowCellToolTips=$true
+    $details=New-Object Windows.Forms.TextBox
+    $details.Dock='Bottom'; $details.Height=125; $details.Multiline=$true
+    $details.ReadOnly=$true; $details.ScrollBars='Vertical'; $details.BackColor=[Drawing.Color]::White
+    $details.Text='Selecione um registro para ver os nomes completos, a origem e o motivo.'
+    $dlg.Controls.Add($details)
+    $onlyConflicts=New-Object Windows.Forms.CheckBox
+    $onlyConflicts.Text='Mostrar somente nomes divergentes'; $onlyConflicts.AutoSize=$true
+    $onlyConflicts.Location=New-Object Drawing.Point(14,106); $top.Controls.Add($onlyConflicts)
+    $top.Height=136
     foreach($r in @($rows)){
         $i=$g.Rows.Add(); $rr=$g.Rows[$i]
+        $rr.Tag=$r
+        $rr.Cells['nomecad'].Value=[string]$r.nome_cadastro
+        $rr.Cells['linha'].Value=[string]$r.linha
         $rr.Cells["st"].Value=[string]$r.preview_status
         $rr.Cells["mat"].Value=[string]$r.matricula
         $rr.Cells["cp"].Value=[string]$r.cp
@@ -3377,6 +3402,8 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
         $rr.Cells["ferias"].Value=[string]$r.periodo_texto
         $rr.Cells["det"].Value=[string]$r.preview_detalhe
         switch([string]$r.preview_status){
+            "NOME DIVERGENTE" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
+            "ERRO DE LEITURA" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "ERRO" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "AMBÍGUO" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "CONFERIR" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::FromArgb(255,244,204) }
@@ -3388,6 +3415,22 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
             default { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::FromArgb(239,249,239) }
         }
     }
+    $g.add_SelectionChanged({
+        if($null -eq $g.CurrentRow){$details.Text='Nenhum registro selecionado.';return}
+        $selected=$g.CurrentRow.Tag
+        if($null -eq $selected){return}
+        $cad=if([string]$selected.nome_cadastro){[string]$selected.nome_cadastro}else{'(nenhum nome cadastrado para esta matrícula)'}
+        $details.Text="Status: $($selected.preview_status) | Matrícula na planilha: $($selected.matricula) | Matrícula encontrada: $($selected.matricula_encontrada) | Linha da planilha: $($selected.linha)`r`nNome na planilha: $($selected.nome)`r`nNome no cadastro: $cad`r`nMotivo: $($selected.preview_detalhe)"
+    })
+    $onlyConflicts.add_CheckedChanged({
+        $g.CurrentCell=$null
+        foreach($gridRow in $g.Rows){$gridRow.Visible=(-not $onlyConflicts.Checked -or [string]$gridRow.Tag.preview_status -eq 'NOME DIVERGENTE')}
+        $first=@($g.Rows | Where-Object {$_.Visible} | Select-Object -First 1)
+        if($first.Count){$g.CurrentCell=$first[0].Cells['st']}else{$details.Text='Nenhuma divergência de nome encontrada.'}
+    })
+    $btnOK.Anchor='Top,Right'; $btnCancel.Anchor='Top,Right'
+    $lr.Anchor='Top,Left,Right'
+    $nota.Width=700
     $dlg.Controls.Add($g); $g.BringToFront()
     $btnOK.add_Click({ $dlg.DialogResult=[Windows.Forms.DialogResult]::OK; $dlg.Close() })
     $btnCancel.add_Click({ $dlg.DialogResult=[Windows.Forms.DialogResult]::Cancel; $dlg.Close() })
@@ -3486,6 +3529,8 @@ function Exportar-RejeitadosImportacao([string]$origem,$rows,[string[]]$statusIm
             CP_Planilha=[string]$_.cp
             Matricula_Sistema=[string]$_.matricula_sistema
             Nome=[string]$_.nome
+            Nome_Cadastro=[string]$_.nome_cadastro
+            Matricula_Encontrada=[string]$_.matricula_encontrada
             Cargo=[string]$_.cargo
             Setor=[string]$_.setor
             Periodo_Aquisitivo_Inicio=[string]$_.aquisitivo_inicio
@@ -3738,7 +3783,7 @@ function Importar-HistoricoFerias {
         Write-DiagLog "Histórico: etapa 2/6 — vinculando matrícula exata e conferindo nome e montando prévia."
         $rows=Get-PreviewHistorico $raw
         $importaveis=@($rows | Where-Object { [string]$_.preview_status -eq "IMPORTAR" })
-        $semVinculo=@($rows | Where-Object { [string]$_.preview_status -in @("SEM VÍNCULO","AMBÍGUO") }).Count
+        $semVinculo=@($rows | Where-Object { [string]$_.preview_status -in @("SEM VÍNCULO","AMBÍGUO","NOME DIVERGENTE") }).Count
         $duplicadosDescartados=[math]::Max(0,($candidatos.Count-@($rows | Where-Object {[bool]$_.valido}).Count))
         $porAno=(@($importaveis | Group-Object ano_referencia | Sort-Object Name | ForEach-Object {"$($_.Name)=$($_.Count)"}) -join ', ')
         $serv=@($importaveis | Select-Object -ExpandProperty matricula_sistema -Unique).Count
@@ -7316,7 +7361,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R2 | HIST-R2"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R3 | HIST-R3"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
