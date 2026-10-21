@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R5 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R6 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R5 HIST-R5 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R6 HIST-R6 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1139,6 +1139,121 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 
 
 # V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
+function Get-ExportacaoAceitasAccess {
+    $headers=@('Codigo do Servidor','Observação','Periodo Aquisitivo_1','Periodo Aquisitivo_2','Agendar Após','Ferias_30_Inicio','Ferias_30_Final','Ferias_Par_1QIn','Ferias_Par_1QFin','Ferias_Par_2QIn','Ferias_Par_2QFin','Programacao_Ano','Processo_20Dias')
+    $cpPorMat=@{}
+    foreach($item in (@($script:Records)+@($script:HistoricoFerias))){
+        $mat=([string]$item.matricula).Trim();$cp=([string]$item.cp_relatorio).Trim()
+        if(-not $mat -or -not $cp){continue}
+        if(-not $cpPorMat.ContainsKey($mat)){$cpPorMat[$mat]=@()}
+        $cpPorMat[$mat]=@(@($cpPorMat[$mat])+$cp | Sort-Object -Unique)
+    }
+    $candidatos=New-Object 'System.Collections.Generic.List[object]'
+    $pendencias=New-Object 'System.Collections.Generic.List[object]'
+    foreach($r in @($script:Records)){
+        $nc=Get-NumeroComumConfirmada $r;$nf=Get-NumeroFRConfirmada $r
+        if($nc -eq 0 -and $nf -eq 0){continue}
+        $mat=([string]$r.matricula).Trim();$ai=Parse-Date ([string]$r.aquisitivo_inicio);$af=Parse-Date ([string]$r.aquisitivo_fim)
+        foreach($modalidade in @('Comum','FR 20 dias')){
+            if(($modalidade -eq 'Comum' -and $nc -eq 0) -or ($modalidade -ne 'Comum' -and $nf -eq 0)){continue}
+            $motivo='';$cp=0;$cps=@($cpPorMat[$mat] | Where-Object {$_})
+            if($cps.Count -ne 1){$motivo=if($cps.Count -gt 1){'CPs divergentes para a mesma matrícula'}else{'CP não disponível; informe o CP antes de colar no Access'}}
+            elseif(-not [int]::TryParse([string]$cps[0],[ref]$cp) -or $cp -le 0){$motivo='CP inválido para Inteiro Longo do Access'}
+            if($null -eq $ai -or $null -eq $af -or $af -lt $ai -or $af -gt [datetime]'9999-12-29'){$motivo='Período aquisitivo inválido'}
+            $obs=([string]$r.observacoes).Trim()
+            if($obs.Length -gt 255){$motivo='Observação ultrapassa 255 caracteres do campo Texto Curto'}
+            $blocks=if($modalidade -eq 'Comum'){@(Get-BlocosComunsOpcao $r $nc)}else{@(Get-BlocoFROpcao $r $nf)}
+            $i30=$null;$f30=$null;$i1=$null;$f1=$null;$i2=$null;$f2=$null
+            if($modalidade -eq 'FR 20 dias'){
+                if($blocks.Count -ne 1){$motivo='FR aceita sem intervalo válido de 20 dias'}else{$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
+            }else{
+                $op=$r.("opcao$nc");$tipo=([string]$op.tipo -replace ' \+ FR 20 DIAS$','')
+                if($tipo -eq '30 DIAS' -and $blocks.Count -eq 1 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 29){$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
+                elseif($tipo -eq '15+15 DIAS' -and $blocks.Count -eq 2 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 14 -and ($blocks[1].fim-$blocks[1].inicio).Days -eq 14 -and -not (Test-Overlap $blocks[0].inicio $blocks[0].fim $blocks[1].inicio $blocks[1].fim)){
+                    $i1=$blocks[0].inicio;$f1=$blocks[0].fim;$i2=$blocks[1].inicio;$f2=$blocks[1].fim
+                }else{$motivo='Opção aceita sem datas válidas de 30 dias ou 15+15 dias; conferir cadastro'}
+            }
+            $audit=[pscustomobject][ordered]@{Matricula=$mat;Nome=[string]$r.nome;CP=($cps -join ' / ');Modalidade=$modalidade;Motivo=$motivo}
+            if($motivo){[void]$pendencias.Add($audit);continue}
+            $row=[ordered]@{};$values=@($cp,$obs,$ai,$af,$af.AddDays(2),$i30,$f30,$i1,$f1,$i2,$f2,0,$(if($modalidade -eq 'FR 20 dias'){-1}else{0}))
+            for($j=0;$j -lt $headers.Count;$j++){$row[$headers[$j]]=$values[$j]}
+            [void]$candidatos.Add([pscustomobject]@{Linha=[pscustomobject]$row;Audit=$audit;Chave="$cp|$($ai.ToString('yyyy-MM-dd'))|$($af.ToString('yyyy-MM-dd'))|$modalidade"})
+        }
+    }
+    $linhas=New-Object 'System.Collections.Generic.List[object]'
+    foreach($group in @($candidatos | Group-Object Chave)){
+        $unique=@($group.Group | ForEach-Object {$_.Linha | ConvertTo-Json -Compress} | Sort-Object -Unique)
+        if($unique.Count -gt 1){foreach($item in $group.Group){$item.Audit.Motivo='Mais de um registro aceito divergente para CP/aquisitivo/modalidade';[void]$pendencias.Add($item.Audit)}}
+        else{[void]$linhas.Add($group.Group[0].Linha)}
+    }
+    return [pscustomobject]@{Cabecalhos=$headers;Linhas=@($linhas.ToArray());Pendencias=@($pendencias.ToArray())}
+}
+
+function Write-ExcelAceitasAccess([string]$Path,$Dados){
+    # XLSX nativo, sem automação do Excel, macros, fórmulas ou acesso ao banco Access.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    function XmlAccess($value){return [Security.SecurityElement]::Escape(([string]$value -replace '[\x00-\x08\x0B\x0C\x0E-\x1F]',''))}
+    function SheetAccess($headers,$items,[bool]$principal){
+        $sb=New-Object Text.StringBuilder
+        [void]$sb.Append('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>')
+        for($j=0;$j -lt $headers.Count;$j++){$width=if($headers[$j] -match 'Nome|Motivo|Observação|Instrução'){55}else{23};[void]$sb.Append('<col min="'+($j+1)+'" max="'+($j+1)+'" width="'+$width+'" customWidth="1"/>')}
+        [void]$sb.Append('</cols><sheetData>')
+        $rn=1
+        foreach($item in @($null)+@($items)){
+            [void]$sb.Append('<row r="'+$rn+'">')
+            for($j=0;$j -lt $headers.Count;$j++){
+                $col=[string][char](65+$j);$ref=$col+$rn
+                $val=if($rn -eq 1){$headers[$j]}else{$item.($headers[$j])}
+                if($null -eq $val){continue}
+                if($rn -eq 1){[void]$sb.Append('<c r="'+$ref+'" s="1" t="inlineStr"><is><t>'+ (XmlAccess $val)+'</t></is></c>')}
+                elseif($val -is [datetime]){[void]$sb.Append('<c r="'+$ref+'" s="2"><v>'+$val.ToOADate().ToString('0.########',[Globalization.CultureInfo]::InvariantCulture)+'</v></c>')}
+                elseif($val -is [int]){$style=if($principal -and $headers[$j] -eq 'Programacao_Ano'){3}else{0};[void]$sb.Append('<c r="'+$ref+'" s="'+$style+'"><v>'+$val+'</v></c>')}
+                else{[void]$sb.Append('<c r="'+$ref+'" t="inlineStr"><is><t xml:space="preserve">'+(XmlAccess $val)+'</t></is></c>')}
+            }
+            [void]$sb.Append('</row>');$rn++
+        }
+        [void]$sb.Append('</sheetData></worksheet>');return $sb.ToString()
+    }
+    $instrucoes=@(
+        'Copie somente os dados da aba Colar_Access, sem o cabeçalho. No Access, cole a partir de Codigo do Servidor em novas linhas. Não selecione ID_Ferias: ele é automático.',
+        'A ordem dos 13 campos corresponde à estrutura apresentada. Revise a seleção antes de colar. Uma nova colagem pode duplicar registros já existentes no Access.',
+        'Programacao_Ano contém o número 0 com formato 0000; preencha o ano correto antes da colagem.',
+        'Processo_20Dias: -1 marca Sim; 0 marca Não no Access. FR aceita é uma linha independente, com suas datas em Ferias_30_Inicio/Final e Processo_20Dias = -1.',
+        'Agendar Após = fim do período aquisitivo + 2 dias. Datas são células de data do Excel, exibidas em dd/mm/yyyy.',
+        'Somente opções explicitamente aceitas são exportadas. Pendentes e férias apenas fixas/bloqueadas sem aceite não são incluídas. A exportação considera toda a base, sem os filtros da lista.',
+        'Pendências não estão na aba de colagem. Confira a aba Pendencias. CPs são obtidos por matrícula exata nos registros e histórico; nenhum CP é adivinhado.'
+    ) | ForEach-Object {[pscustomobject]@{'Instrução'=$_}}
+    $files=[ordered]@{}
+    $files['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'
+    $files['_rels/.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+    $files['xl/workbook.xml']='<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Colar_Access" sheetId="1" r:id="rId1"/><sheet name="Pendencias" sheetId="2" r:id="rId2"/><sheet name="Instrucoes" sheetId="3" r:id="rId3"/></sheets></workbook>'
+    $files['xl/_rels/workbook.xml.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
+    $files['xl/styles.xml']='<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="0000"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'
+    $files['xl/worksheets/sheet1.xml']=SheetAccess $Dados.Cabecalhos $Dados.Linhas $true
+    $files['xl/worksheets/sheet2.xml']=SheetAccess @('Matricula','Nome','CP','Modalidade','Motivo') $Dados.Pendencias $false
+    $files['xl/worksheets/sheet3.xml']=SheetAccess @('Instrução') $instrucoes $false
+    $temp=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp';$zip=$null
+    try{
+        $zip=[IO.Compression.ZipFile]::Open($temp,[IO.Compression.ZipArchiveMode]::Create)
+        foreach($key in $files.Keys){$entry=$zip.CreateEntry($key);$writer=New-Object IO.StreamWriter($entry.Open(),[Text.UTF8Encoding]::new($false));try{$writer.Write($files[$key])}finally{$writer.Dispose()}}
+        $zip.Dispose();$zip=$null
+        Move-Item -LiteralPath $temp -Destination $Path -Force -ErrorAction Stop
+    }finally{if($null -ne $zip){$zip.Dispose()};if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force}}
+}
+
+function Exportar-AceitasAccess {
+    $save=New-Object Windows.Forms.SaveFileDialog
+    try{
+        $dados=Get-ExportacaoAceitasAccess
+        if($dados.Linhas.Count -eq 0 -and $dados.Pendencias.Count -eq 0){[Windows.Forms.MessageBox]::Show('Não existem opções explicitamente aceitas para exportar.','Exportar para Access')|Out-Null;return}
+        $save.Filter='Excel (*.xlsx)|*.xlsx';$save.FileName='FERIAS_ACEITAS_ACCESS_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.xlsx';$save.OverwritePrompt=$true
+        if($save.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return}
+        Write-ExcelAceitasAccess $save.FileName $dados
+        [Windows.Forms.MessageBox]::Show("Excel gerado: $($dados.Linhas.Count) linha(s) para colagem e $($dados.Pendencias.Count) pendência(s).`n`nPreencha Programacao_Ano (0000). Copie somente os dados de Colar_Access, sem cabeçalho, e cole no Access a partir de Codigo do Servidor, sem ID_Ferias.`n`nProcesso_20Dias: -1 = Sim; 0 = Não. Confira também as abas Pendencias e Instrucoes.",'Exportar para Access')|Out-Null
+    }catch{[Windows.Forms.MessageBox]::Show(('Não foi possível gerar o Excel: '+$_.Exception.Message),'Exportar para Access')|Out-Null}finally{$save.Dispose()}
+}
+
 function Get-NumeroFRConfirmada($r){
     if($null -eq $r){return 0}
     $n=0; try{$n=[int]$r.fr_opcao_aprovada}catch{$n=0}
@@ -7361,7 +7476,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R5 | HIST-R5"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R6 | HIST-R6"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -7918,6 +8033,9 @@ $btnRelConferencia.Text='Conferência das opções'
 $btnRelAceites=New-Object Windows.Forms.ToolStripMenuItem
 $btnRelAceites.Text='Relatório de aceites'
 [void]$menuRelLanc.DropDownItems.Add($btnRelAceites)
+$btnExportarAccess=New-Object Windows.Forms.ToolStripMenuItem
+$btnExportarAccess.Text='Exportar aceitas para Access (Excel)'
+[void]$menuRelLanc.DropDownItems.Add($btnExportarAccess)
 
 $menuExclusaoLanc=New-Object Windows.Forms.ToolStripDropDownButton
 $menuExclusaoLanc.Text='Exclusão'
@@ -15148,6 +15266,7 @@ $btnSalvarCadastro.add_Click({Save-ServidorCadastro})
 $btnAutorizacao.add_Click({Gerar-AutorizacaoFeriasServidor})
 $btnRelConferencia.add_Click({Show-RelatorioConferenciaOpcoes})
 $btnRelAceites.add_Click({Show-RelatorioAceitesEnfermagem})
+$btnExportarAccess.add_Click({Exportar-AceitasAccess})
 $btnSalvar.add_Click({Save-Editor})
 $btnCorrigirPeriodo.add_Click({ Corrigir-PeriodoSelecionado })
 $btnNovaFixa.add_Click({ Cadastrar-FeriasFixaManual })
