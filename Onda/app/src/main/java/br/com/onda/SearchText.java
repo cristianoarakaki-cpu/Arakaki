@@ -18,7 +18,7 @@ public final class SearchText {
     }
     public static String archiveQuery(String input, int mode) {
         String clean = normalize(input);
-        StringBuilder q = new StringBuilder("collection:etree AND mediatype:audio AND NOT access-restricted-item:true");
+        StringBuilder q = new StringBuilder("collection:etree AND NOT access-restricted-item:true");
         if (clean.isEmpty()) return q + " AND identifier:__onda_no_results__";
         for (String word : clean.split(" ")) {
             if (mode == 1) q.append(" AND creator:\"").append(word).append("\"");

@@ -11,6 +11,7 @@ public final class SearchTextTest {
         check(!SearchText.matches(null, "artista"));
         check(SearchText.normalize("  ÁGUA...  VIVA!! ").equals("agua viva"));
         String artist=SearchText.archiveQuery("Grateful Dead",1);
+        check(!artist.contains("mediatype:audio"));
         check(artist.contains("creator:\"grateful\"")&&!artist.contains("description:"));
         String song=SearchText.archiveQuery("Coração",2);
         check(song.contains("description:\"coracao\"")&&!song.contains("creator:"));

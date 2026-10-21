@@ -8,10 +8,14 @@ def get(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=20) as response:
         return json.load(response)
 
-query = 'collection:etree AND mediatype:audio AND NOT access-restricted-item:true AND (title:"Grateful" OR creator:"Grateful" OR description:"Grateful") AND (title:"Dead" OR creator:"Dead" OR description:"Dead")'
+query = 'collection:etree AND NOT access-restricted-item:true AND (title:"Grateful" OR creator:"Grateful" OR description:"Grateful") AND (title:"Dead" OR creator:"Dead" OR description:"Dead")'
 params = urllib.parse.urlencode({'q': query, 'output': 'json', 'rows': '5', 'fl[]': 'identifier,title,creator'})
 docs = get('https://archive.org/advancedsearch.php?' + params)['response']['docs']
 assert docs, 'Search returned no live recordings'
+artist_params = {'q': 'collection:etree AND NOT access-restricted-item:true AND creator:"grateful" AND creator:"dead"', 'output': 'json', 'rows': '2', 'page': '2', 'fl[]': 'identifier,title,creator', 'sort[]': 'downloads desc'}
+artist_page = get('https://archive.org/advancedsearch.php?' + urllib.parse.urlencode(artist_params))['response']
+assert artist_page['numFound'] > 2 and artist_page['start'] == 2 and artist_page['docs'], 'Artist filter or pagination failed'
+print('Internet Archive: artist filter, popularity order and second page passed.')
 for doc in docs:
     item = get('https://archive.org/metadata/' + urllib.parse.quote(doc['identifier'], safe=''))
     collections = item.get('metadata', {}).get('collection', [])
