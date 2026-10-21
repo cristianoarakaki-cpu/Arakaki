@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R1 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R2 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R1 HIST-R1 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R2 HIST-R2 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -7316,7 +7316,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R1 | HIST-R1"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R2 | HIST-R2"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -10443,8 +10443,8 @@ function Get-CompetenciasOpcao($opcao){
     return @($resultado | Sort-Object)
 }
 
-function Get-AvaliacaoOpcaoRegistro($registro,[int]$numeroOpcao){
-    $opcao=$registro."opcao$numeroOpcao"
+function Get-AvaliacaoOpcaoRegistro($registro,[int]$numeroOpcao,$OpcaoSimulada=$null){
+    $opcao=if($null -ne $OpcaoSimulada){$OpcaoSimulada}else{$registro."opcao$numeroOpcao"}
     $rotulo="${numeroOpcao}ª opção"
 
     if($null -eq $opcao -or [string]::IsNullOrWhiteSpace([string]$opcao.tipo)){
@@ -12973,9 +12973,8 @@ function Abrir-CentralAprovacaoServidor {
             return $false
         }
 
-        $cloneComum=($r | ConvertTo-Json -Depth 10 | ConvertFrom-Json)
-        foreach($k in 1..3){$oc=$cloneComum.("opcao$k");$oc.fr_inicio='';$oc.fr_fim=''}
-        $aval=Get-AvaliacaoOpcaoRegistro $cloneComum $n
+        # Avaliar a candidata comum preservando o registro que contém a decisão FR.
+        $aval=Get-AvaliacaoOpcaoRegistro $r $n -OpcaoSimulada $op
         $just=([string]$txtJust.Text).Trim()
         if([string]$aval.nivel -eq "CRÍTICA" -and [string]::IsNullOrWhiteSpace($just)){
             [Windows.Forms.MessageBox]::Show("Esta opção possui CONFLITO CRÍTICO pelas regras atuais.`n`nPara confirmar excepcionalmente, informe uma justificativa no campo abaixo das opções.","Justificativa obrigatória",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Warning)|Out-Null
@@ -13054,11 +13053,10 @@ function Abrir-CentralAprovacaoServidor {
         if($choqueAquisitivo){[Windows.Forms.MessageBox]::Show($choqueAquisitivo,'Sobreposição entre aquisitivos')|Out-Null;return}
         $texto='Aprovar apenas a FR radiológica '+$n+'ª opção para '+[string]$r.nome+'?'+"`r`n"+$a.ToString('dd/MM/yyyy')+' a '+$b.ToString('dd/MM/yyyy')+"`r`nA decisão comum não será alterada."
         if([Windows.Forms.MessageBox]::Show($texto,'Confirmar FR',[Windows.Forms.MessageBoxButtons]::YesNo,[Windows.Forms.MessageBoxIcon]::Question) -ne [Windows.Forms.DialogResult]::Yes){return}
-        $cloneFR=($r | ConvertTo-Json -Depth 10 | ConvertFrom-Json)
         $somenteFR=New-EmptyOptionObject
         $somenteFR.tipo='FR 20 DIAS';$somenteFR.fr_inicio=[string]$op.fr_inicio;$somenteFR.fr_fim=[string]$op.fr_fim
-        $cloneFR.("opcao$n")=$somenteFR
-        $avaliacaoFR=Get-AvaliacaoOpcaoRegistro $cloneFR $n
+        # A mesma opção pode conter a escolha comum já aprovada; não apagá-la na cópia.
+        $avaliacaoFR=Get-AvaliacaoOpcaoRegistro $r $n -OpcaoSimulada $somenteFR
         $justFR=([string]$txtJust.Text).Trim()
         if(-not $avaliacaoFR.valida){[Windows.Forms.MessageBox]::Show([string]$avaliacaoFR.motivo,'FR invalida')|Out-Null;return}
         if([string]$avaliacaoFR.nivel -eq 'CRÍTICA' -and [string]::IsNullOrWhiteSpace($justFR)){

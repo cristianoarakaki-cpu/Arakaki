@@ -1,0 +1,4 @@
+PARSE FeriasDCE.ps1: errors=0 functions=324
+STATIC functions=324 direct_command_names=338
+Commands unavailable on Linux (review platform-specific uses): Get-Acl
+Structural syntax checks completed.
