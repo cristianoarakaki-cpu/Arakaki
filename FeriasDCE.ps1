@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R4 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R5 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R4 HIST-R4 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R5 HIST-R5 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -7032,7 +7032,7 @@ function Load-Editor([int]$id){
 
 function Save-ServidorCadastro {
     $mat=$script:txtMatricula.Text.Trim()
-    $nome=$script:txtNome.Text.Trim()
+    $nome=$script:txtNome.Text.Trim().ToUpperInvariant()
     $setor=$script:cmbSetor.Text.Trim()
     $per=[string]$script:cmbPeriodo.Text
     if(-not $mat -or -not $nome){ [Windows.Forms.MessageBox]::Show("Selecione um servidor.","Cadastro do servidor") | Out-Null; return }
@@ -7077,7 +7077,7 @@ function Save-Editor {
         return
     }
 
-    $mat=$script:txtMatricula.Text.Trim(); $nome=$script:txtNome.Text.Trim()
+    $mat=$script:txtMatricula.Text.Trim(); $nome=$script:txtNome.Text.Trim().ToUpperInvariant()
     $setor=$script:cmbSetor.Text.Trim(); $per=[string]$script:cmbPeriodo.Text
     if(-not $setor -or -not $per){ [Windows.Forms.MessageBox]::Show("Cadastre primeiro o Setor e o Período do servidor.","Validação") | Out-Null; return }
 
@@ -7361,7 +7361,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R4 | HIST-R4"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R5 | HIST-R5"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8661,6 +8661,7 @@ $editor.Controls.Add($script:txtMatricula)
 
 $editor.Controls.Add((New-Label "Nome" 150 52 80))
 $script:txtNome=New-TextBox 150 72 530
+$script:txtNome.CharacterCasing=[Windows.Forms.CharacterCasing]::Upper
 $editor.Controls.Add($script:txtNome)
 
 $editor.Controls.Add((New-Label "Setor do servidor" 15 108 120))
