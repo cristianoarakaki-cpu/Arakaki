@@ -21,6 +21,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Verificar parser de letras
+        run: |
+          javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/Lrc.java Onda/tests/LrcTest.java
+          java -cp /tmp/onda-tests br.com.onda.LrcTest
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug
       - uses: actions/upload-artifact@v4
         with:

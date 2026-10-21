@@ -1,4 +1,4 @@
-# Onda — tocador Android 0.1.0
+# Onda — tocador Android 0.2.0
 
 Primeira implementação nativa em Java, interface em português, Android 8.0 ou superior.
 
@@ -11,9 +11,15 @@ Primeira implementação nativa em Java, interface em português, Android 8.0 ou
 - Favoritos persistentes no aparelho.
 - Temporizador de pausa: 15, 30, 60 ou 120 minutos; funciona enquanto o serviço permanece ativo.
 - Gerenciamento de foco de áudio e pausa ao desconectar fones.
-- Acesso somente aos arquivos de áudio; sem conta, servidor, anúncios ou permissão de internet.
+- Acesso somente aos arquivos de áudio; sem conta ou anúncios. A busca de letras usa internet e envia somente título, artista e duração ao LRCLIB; o áudio permanece no aparelho.
 
 MP3, FLAC, WAV, AAC/M4A e OGG são suportados conforme o contêiner, o codec e os decodificadores do aparelho. Arquivos protegidos por DRM não são contemplados.
+
+## Letras online (0.2.0)
+
+Toque em **Ver letra da música** no painel de reprodução. A busca usa LRCLIB (https://lrclib.net), sem chave ou login. Quando há LRC, o verso atual ganha destaque e a tela rola automaticamente. Tocar em um verso busca sua posição no áudio. Ao rolar manualmente, o acompanhamento pausa por cinco segundos. Letras sem tempos são exibidas como texto rolável. É possível corrigir título e artista e repetir a busca. A tela acompanha as trocas de faixa.
+
+Até 100 respostas ficam no cache privado para reabrir sem internet; o Android pode limpar esse cache. Não há garantia de letra para toda música ou de que os tempos correspondam a uma versão ao vivo/remix. Há mensagens para faixa instrumental, letra ausente e falha de rede.
 
 ## Gerar e instalar
 
@@ -34,7 +40,7 @@ Alternativa no GitHub: neste repositório, abra Actions > Onda - Gerar APK Andro
 
 ## Estado da validação
 
-Compilação `assembleDebug` e verificação `lintDebug` concluídas com sucesso no GitHub Actions em 21/10/2026. APK de teste disponível em [Onda-Android-APK](https://github.com/cristianoarakaki-cpu/Arakaki/actions/runs/39526171391/artifacts/12312671968). Extraia o ZIP e instale `app-debug.apk`. Os testes em aparelho ainda NÃO foram executados.
+A versão 0.1 passou por compilação e lint no GitHub Actions, e o usuário confirmou reprodução no celular com a tela desligada. Para a versão 0.2, consulte a execução do GitHub Actions correspondente ao commit. O parser LRC tem teste executável em `tests/LrcTest.java`. Busca online, rolagem e sincronização precisam de validação final no aparelho. APKs debug de execuções diferentes podem usar certificados diferentes: se o Android recusar a atualização, desinstalar a versão anterior remove também os favoritos.
 
 ## Verificação no aparelho
 
@@ -44,6 +50,8 @@ Compilação `assembleDebug` e verificação `lintDebug` concluídas com sucesso
 - Tela bloqueada, app em segundo plano, notificação, fones removidos e interrupção de áudio por outro app.
 - Avançar, retroceder, buscar posição, repetir uma/todas e modo aleatório.
 - Temporizador com tela apagada; confirmar pausa e cancelamento.
+- Letras: faixa com sincronização, sem sincronização, instrumental, ausente e dados incompletos.
+- Desconectar internet: mensagem de erro e reabertura de letra no cache; trocar de faixa durante busca; avançar/retroceder; retornar à biblioteca sem interromper áudio.
 
 ## Limites da primeira versão
 
