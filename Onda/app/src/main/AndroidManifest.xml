@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:label="Onda Novo" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
+    <application android:label="Onda Música" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>

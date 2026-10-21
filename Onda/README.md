@@ -78,3 +78,8 @@ Online: filtros Tudo, Artista e Música no repertório, ordenação por relevân
 Verificações: busca local sem acento, palavras em outra ordem, filtros de campo e sem resultados; fila da busca local; filtros online, mais resultados/anterior, retorno de um show, busca de faixa e limpeza do filtro; desconexão e nova tentativa. Os testes SearchTextTest e LrcTest rodam no CI; há teste ao vivo de consulta e streaming do acervo. Assinatura: antes de entregar, comparar o certificado do APK com o Onda Novo 0.3.1.
 
 A consulta não exige `mediatype:audio`: esse filtro excluía registros da coleção etree. O teste de integração cobre também artista, ordenação e segunda página.
+
+
+### Assinatura da versão 0.4
+
+A comparação do APK 0.4 com 0.3.1 encontrou certificados diferentes: o cache antigo apontava para um arquivo inexistente, então a chave antiga não foi preservada. Esta distribuição usa **Onda Música** (`br.com.onda.musica`) e instala ao lado do Onda Novo, preservando os dados dele, sem migrar favoritos. A chave debug passa a ter caminho explícito `.signing/debug.keystore`, cache próprio e conferência do certificado esperado. Nunca publique o arquivo da chave no repositório. Se o cache desaparecer, recupere a chave original antes de emitir novas atualizações; o workflow deve interromper em caso de assinatura diferente.

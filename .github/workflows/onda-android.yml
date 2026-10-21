@@ -33,13 +33,21 @@ jobs:
       - name: Reutilizar assinatura de teste
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: onda-player-debug-signing-v1
+          path: Onda/.signing/debug.keystore
+          key: onda-musica-debug-signing-v1
+      - name: Preparar assinatura persistente de teste
+        run: |
+          mkdir -p Onda/.signing
+          if [ ! -f Onda/.signing/debug.keystore ]; then
+            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
+          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
-          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert re.search(r"package: name=.br[.]com[.]onda[.]player.",s); print("Pacote independente confirmado")'
+          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert re.search(r"package: name=.br[.]com[.]onda[.]musica.",s); print("Pacote independente confirmado")'
       - uses: actions/upload-artifact@v4
         with:
           name: Onda-Android-APK
