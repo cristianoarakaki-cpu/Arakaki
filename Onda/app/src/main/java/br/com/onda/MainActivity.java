@@ -52,13 +52,14 @@ public class MainActivity extends Activity {
         setContentView(root);
         TextView brand = label("≋  onda", 34, green); brand.setTypeface(null,Typeface.BOLD); root.addView(brand);
         root.addView(label("Sua música. No seu ritmo.",14,muted));
-        EditText search = new EditText(this); search.setSingleLine(true); search.setTextColor(Color.WHITE); search.setHintTextColor(muted); search.setTextSize(16); search.setHint("Buscar música, artista ou álbum"); search.setContentDescription("Buscar na biblioteca"); root.addView(search);
+        LinearLayout searchRow = new LinearLayout(this); root.addView(searchRow);
+        EditText search = new EditText(this); search.setSingleLine(true); search.setTextColor(Color.WHITE); search.setHintTextColor(muted); search.setTextSize(16); search.setHint("Buscar música, artista ou álbum"); search.setContentDescription("Buscar na biblioteca"); searchRow.addView(search,new LinearLayout.LayoutParams(0,dp(52),1));
         search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence s,int st,int c,int a){} public void onTextChanged(CharSequence s,int st,int before,int count){ query=s.toString(); render(); } public void afterTextChanged(Editable e){} });
         Spinner scope = new Spinner(this);
-        scope.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"No celular: tudo", "Nome da música", "Artista", "Álbum"}));
+        scope.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"Tudo", "Música", "Artista", "Álbum"}));
         scope.setContentDescription("Filtrar busca no celular");
         scope.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> a,View v,int position,long id){searchScope=position;render();}public void onNothingSelected(AdapterView<?> a){}});
-        root.addView(scope);
+        searchRow.addView(scope,new LinearLayout.LayoutParams(dp(112),dp(52)));
         LinearLayout tabs = new LinearLayout(this);
         tabs.addView(button("Todas",v->{onlyFavorites=false;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
         tabs.addView(button("Favoritas ♡",v->{onlyFavorites=true;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
