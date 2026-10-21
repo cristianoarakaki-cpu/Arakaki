@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R3 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R4 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R3 HIST-R3 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R4 HIST-R4 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -7361,7 +7361,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R3 | HIST-R3"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R4 | HIST-R4"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -7822,7 +7822,7 @@ $mainSplit.BringToFront()
 $mainSplit.add_SizeChanged({
     try {
         if($mainSplit.Width -gt 900){
-            $alvo=[int]([math]::Round($mainSplit.Width*0.50))
+            $alvo=[int]([math]::Round($mainSplit.Width*0.45))
             if($alvo -lt 520){$alvo=520}
             if($alvo -gt ($mainSplit.Width-520)){$alvo=$mainSplit.Width-520}
             if($alvo -gt 0 -and $alvo -lt $mainSplit.Width){$mainSplit.SplitterDistance=$alvo}
@@ -7832,7 +7832,7 @@ $mainSplit.add_SizeChanged({
 
 $filter=New-Object Windows.Forms.Panel
 $filter.Dock="Top"
-$filter.Height=285
+$filter.Height=178
 $filter.BackColor=[Drawing.Color]::FromArgb(247,249,252)
 $mainSplit.Panel1.Controls.Add($filter)
 
@@ -7845,77 +7845,99 @@ $script:txtFiltroSetoresResumo=New-TextBox 210 28 180
 $script:txtFiltroSetoresResumo.ReadOnly=$true
 $script:txtFiltroSetoresResumo.Text="TODOS OS SETORES"
 $filter.Controls.Add($script:txtFiltroSetoresResumo)
-$script:btnFiltroSetores=New-Button "Selecionar..." 395 26 105 30
+$script:btnFiltroSetores=New-Button "Selecionar..." 395 27 105 25
 $filter.Controls.Add($script:btnFiltroSetores)
 
-$filter.Controls.Add((New-Label "Período" 10 62 80 20))
-$script:cmbFiltroPeriodo=New-Combo 10 82 125
+$filter.Controls.Add((New-Label "Período" 10 52 80 20))
+$script:cmbFiltroPeriodo=New-Combo 10 72 125
 $filter.Controls.Add($script:cmbFiltroPeriodo)
-$filter.Controls.Add((New-Label "Situação" 145 62 80 20))
-$script:cmbFiltroSituacao=New-Combo 145 82 175
+$filter.Controls.Add((New-Label "Situação" 145 52 80 20))
+$script:cmbFiltroSituacao=New-Combo 145 72 175
 @("TODAS","PENDENTES","ACEITAS","FIXAS - TODAS","FIXAS IMPORTADAS","FIXAS AJUSTADAS","FIXAS MANUAIS","SEM DECISÃO") | ForEach-Object {[void]$script:cmbFiltroSituacao.Items.Add($_)}
 $script:cmbFiltroSituacao.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroSituacao)
-$filter.Controls.Add((New-Label "Com solicitação" 330 62 115 20))
-$script:cmbFiltroSolicitacao=New-Combo 330 82 170
+$filter.Controls.Add((New-Label "Com solicitação" 330 52 115 20))
+$script:cmbFiltroSolicitacao=New-Combo 330 72 170
 @("TODOS","COM SOLICITAÇÃO","SEM SOLICITAÇÃO") | ForEach-Object {[void]$script:cmbFiltroSolicitacao.Items.Add($_)}
 $script:cmbFiltroSolicitacao.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroSolicitacao)
 
-$filter.Controls.Add((New-Label "Grupo de análise" 10 116 120 20))
-$script:cmbFiltroGrupoAnalise=New-Combo 10 136 180
+$filter.Controls.Add((New-Label "Grupo de análise" 10 96 120 20))
+$script:cmbFiltroGrupoAnalise=New-Combo 10 116 155
 $filter.Controls.Add($script:cmbFiltroGrupoAnalise)
-$filter.Controls.Add((New-Label "Grupo de Chefia" 200 116 120 20))
-$script:cmbFiltroChefia=New-Combo 200 136 185
+$filter.Controls.Add((New-Label "Grupo de Chefia" 175 96 120 20))
+$script:cmbFiltroChefia=New-Combo 175 116 155
 $filter.Controls.Add($script:cmbFiltroChefia)
-$filter.Controls.Add((New-Label "Justificativa" 395 116 100 20))
-$script:cmbFiltroJustificativa=New-Combo 395 136 175
+$filter.Controls.Add((New-Label "Justificativa" 340 96 100 20))
+$script:cmbFiltroJustificativa=New-Combo 340 116 160
 @("TODOS","COM JUSTIFICATIVA","SEM JUSTIFICATIVA") | ForEach-Object {[void]$script:cmbFiltroJustificativa.Items.Add($_)}
 $script:cmbFiltroJustificativa.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroJustificativa)
 
-$script:btnPendencias=New-Button "Pendências cadastro" 10 174 145 30
-$filter.Controls.Add($script:btnPendencias)
-$btnLimparFiltros=New-Button "Limpar filtros" 165 174 115 30
-$filter.Controls.Add($btnLimparFiltros)
-$btnNovoServidor=New-Button "Novo servidor" 290 174 120 30
-$btnNovoServidor.BackColor=[Drawing.Color]::FromArgb(220,237,255)
-$filter.Controls.Add($btnNovoServidor)
-$script:btnServidoresExcluidos=New-Button "Excluídos (0)" 420 174 135 30
-$script:btnServidoresExcluidos.BackColor=[Drawing.Color]::FromArgb(245,245,245)
-$filter.Controls.Add($script:btnServidoresExcluidos)
+# Ações compactas: menus preservam os mesmos eventos e confirmações existentes.
+$acoesLanc=New-Object Windows.Forms.ToolStrip
+$acoesLanc.Location=New-Object Drawing.Point(8,145)
+$acoesLanc.Size=New-Object Drawing.Size(494,28)
+$acoesLanc.Dock='None'; $acoesLanc.AutoSize=$false; $acoesLanc.GripStyle='Hidden'
+$acoesLanc.CanOverflow=$true; $acoesLanc.BackColor=$filter.BackColor
+$acoesLanc.RenderMode='System'
+$acoesLanc.AccessibleName='Ações dos lançamentos'
+$filter.Controls.Add($acoesLanc)
 
-$btnMarcarVisiveis=New-Button "Marcar visíveis" 10 210 135 30
-$filter.Controls.Add($btnMarcarVisiveis)
-$btnAutorizacao=New-Button "Gerar autorização" 465 210 178 30
-$btnAutorizacao.BackColor=[Drawing.Color]::FromArgb(216,238,224)
-$filter.Controls.Add($btnAutorizacao)
-$btnLimparMarcacao=New-Button "Limpar marcação" 155 210 135 30
-$filter.Controls.Add($btnLimparMarcacao)
-$script:btnExcluirServidoresMarcados=New-Button "Excluir marcados" 300 210 155 30
-$script:btnExcluirServidoresMarcados.BackColor=[Drawing.Color]::FromArgb(255,225,225)
+$script:btnPendencias=New-Object Windows.Forms.ToolStripButton
+$script:btnPendencias.Text='Pendências cadastro'
+$script:btnPendencias.ToolTipText='Mostrar pendências do cadastro'
+[void]$acoesLanc.Items.Add($script:btnPendencias)
+$btnLimparFiltros=New-Object Windows.Forms.ToolStripButton
+$btnLimparFiltros.Text='Limpar filtros'
+[void]$acoesLanc.Items.Add($btnLimparFiltros)
+$btnNovoServidor=New-Object Windows.Forms.ToolStripButton
+$btnNovoServidor.Text='Novo servidor'
+[void]$acoesLanc.Items.Add($btnNovoServidor)
+
+$menuFormLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuFormLanc.Text='Formulários'
+[void]$acoesLanc.Items.Add($menuFormLanc)
+$btnAutorizacao=New-Object Windows.Forms.ToolStripMenuItem
+$btnAutorizacao.Text='Gerar autorização de férias'
+[void]$menuFormLanc.DropDownItems.Add($btnAutorizacao)
+[void]$menuFormLanc.DropDownItems.Add((New-Object Windows.Forms.ToolStripSeparator))
+$btnMarcarFormVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnMarcarFormVisiveis.Text='Marcar formulários dos servidores visíveis'
+[void]$menuFormLanc.DropDownItems.Add($btnMarcarFormVisiveis)
+$btnLimparFormVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnLimparFormVisiveis.Text='Desmarcar formulários dos servidores visíveis'
+[void]$menuFormLanc.DropDownItems.Add($btnLimparFormVisiveis)
+
+$menuRelLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuRelLanc.Text='Relatórios'
+[void]$acoesLanc.Items.Add($menuRelLanc)
+$btnRelConferencia=New-Object Windows.Forms.ToolStripMenuItem
+$btnRelConferencia.Text='Conferência das opções'
+[void]$menuRelLanc.DropDownItems.Add($btnRelConferencia)
+$btnRelAceites=New-Object Windows.Forms.ToolStripMenuItem
+$btnRelAceites.Text='Relatório de aceites'
+[void]$menuRelLanc.DropDownItems.Add($btnRelAceites)
+
+$menuExclusaoLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuExclusaoLanc.Text='Exclusão'
+[void]$acoesLanc.Items.Add($menuExclusaoLanc)
+$btnMarcarVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnMarcarVisiveis.Text='Marcar servidores visíveis para exclusão'
+[void]$menuExclusaoLanc.DropDownItems.Add($btnMarcarVisiveis)
+$btnLimparMarcacao=New-Object Windows.Forms.ToolStripMenuItem
+$btnLimparMarcacao.Text='Limpar marcação de exclusão'
+[void]$menuExclusaoLanc.DropDownItems.Add($btnLimparMarcacao)
+[void]$menuExclusaoLanc.DropDownItems.Add((New-Object Windows.Forms.ToolStripSeparator))
+$script:btnExcluirServidoresMarcados=New-Object Windows.Forms.ToolStripMenuItem
+$script:btnExcluirServidoresMarcados.Text='Excluir marcados'
 $script:btnExcluirServidoresMarcados.ForeColor=[Drawing.Color]::DarkRed
-$filter.Controls.Add($script:btnExcluirServidoresMarcados)
-$lblFiltroAjuda=New-Object Windows.Forms.Label
-$lblFiltroAjuda.Text=""
-$lblFiltroAjuda.Location=New-Object Drawing.Point(465,245)
-$lblFiltroAjuda.Size=New-Object Drawing.Size(175,22)
-$lblFiltroAjuda.ForeColor=[Drawing.Color]::DimGray
-$filter.Controls.Add($lblFiltroAjuda)
-# V151: marcacao de formularios independente da exclusao, limitada as linhas filtradas.
-$btnMarcarFormVisiveis=New-Button "Marcar Form. visiveis" 10 245 166 29
-$btnMarcarFormVisiveis.BackColor=[Drawing.Color]::FromArgb(216,238,224)
-$filter.Controls.Add($btnMarcarFormVisiveis)
-$btnLimparFormVisiveis=New-Button "Limpar Form. visiveis" 183 245 169 29
-$filter.Controls.Add($btnLimparFormVisiveis)
-$btnRelConferencia=New-Button "Relatorio de conferencia" 465 245 178 29
-$btnRelConferencia.BackColor=[Drawing.Color]::FromArgb(227,238,250)
-$filter.Controls.Add($btnRelConferencia)
-$btnRelAceites=New-Button "Relatorio de aceites" 650 245 178 29
-$btnRelAceites.BackColor=[Drawing.Color]::FromArgb(233,245,233)
-$filter.Controls.Add($btnRelAceites)
-$lblFiltroAjuda.Visible=$false
-
+[void]$menuExclusaoLanc.DropDownItems.Add($script:btnExcluirServidoresMarcados)
+$script:btnServidoresExcluidos=New-Object Windows.Forms.ToolStripMenuItem
+$script:btnServidoresExcluidos.Text='Excluídos (0)'
+[void]$menuExclusaoLanc.DropDownItems.Add($script:btnServidoresExcluidos)
+# O overflow nativo mantém os comandos acessíveis em janelas estreitas e fontes ampliadas.
+$filter.add_SizeChanged({$acoesLanc.Width=[math]::Max(100,$filter.ClientSize.Width-16)})
 
 # === FORMULARIOS OFICIAIS - V1.0.90 ===
 function Convert-HtmlSeguro([object]$v) { return [System.Net.WebUtility]::HtmlEncode([string]$v) }
