@@ -83,3 +83,12 @@ A consulta não exige `mediatype:audio`: esse filtro excluía registros da cole�
 ### Assinatura da versão 0.4
 
 A comparação do APK 0.4 com 0.3.1 encontrou certificados diferentes: o cache antigo apontava para um arquivo inexistente, então a chave antiga não foi preservada. Esta distribuição usa **Onda Música** (`br.com.onda.musica`) e instala ao lado do Onda Novo, preservando os dados dele, sem migrar favoritos. A chave debug passa a ter caminho explícito `.signing/debug.keystore`, cache próprio e conferência do certificado esperado. Nunca publique o arquivo da chave no repositório. Se o cache desaparecer, recupere a chave original antes de emitir novas atualizações; o workflow deve interromper em caso de assinatura diferente.
+
+
+## Atualizações dentro do app (0.5.0)
+
+No cabeçalho, toque em **Atualizações → Verificar atualizações**. O app consulta as releases públicas `onda-v*` do GitHub, lê o manifesto `onda-update.json` e oferece download quando o versionCode é maior. Depois confere SHA-256, applicationId, versionCode e assinatura do APK contra a instalação atual. O instalador nativo exige confirmação do usuário; a primeira instalação por essa origem pode pedir autorização nas configurações do Android. Não há desinstalação automática.
+
+A versão 0.5.0 precisa ser instalada uma vez sobre Onda Música 0.4. Onda e Onda Novo são pacotes diferentes e não recebem esta atualização. A mesma chave da versão 0.4 é obrigatória. O workflow publica release e APK apenas depois de compilação, testes e validação do certificado esperado; requer permissão `contents: write` no job.
+
+Validação no aparelho: nenhuma atualização, sem internet, download, permissão negada/concedida, cancelamento da instalação e atualização preservando favoritos. Testes de manifesto rejeitam outro pacote, origem inválida, versão inválida e hash malformado. O fluxo final de instalação precisa ser testado no Android. Para publicação na Google Play, rever a distribuição por APK e o uso de REQUEST_INSTALL_PACKAGES conforme as regras aplicáveis.

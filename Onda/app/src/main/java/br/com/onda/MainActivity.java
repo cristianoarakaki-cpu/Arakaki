@@ -50,7 +50,9 @@ public class MainActivity extends Activity {
         LinearLayout root = column(); root.setBackgroundColor(bg); root.setPadding(dp(20),dp(12),dp(20),dp(12));
         root.setOnApplyWindowInsetsListener((v, insets) -> { root.setPadding(dp(20),dp(12)+insets.getSystemWindowInsetTop(),dp(20),dp(12)+insets.getSystemWindowInsetBottom()); return insets; });
         setContentView(root);
-        TextView brand = label("≋  onda", 34, green); brand.setTypeface(null,Typeface.BOLD); root.addView(brand);
+        LinearLayout topBar = new LinearLayout(this);
+        TextView brand = label("≋  onda", 34, green); brand.setTypeface(null,Typeface.BOLD); topBar.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
+        topBar.addView(button("Atualizações",v->startActivity(new Intent(this,UpdateActivity.class))),new LinearLayout.LayoutParams(dp(112),dp(52)));root.addView(topBar);
         root.addView(label("Sua música. No seu ritmo.",14,muted));
         LinearLayout searchRow = new LinearLayout(this); root.addView(searchRow);
         EditText search = new EditText(this); search.setSingleLine(true); search.setTextColor(Color.WHITE); search.setHintTextColor(muted); search.setTextSize(16); search.setHint("Buscar música, artista ou álbum"); search.setContentDescription("Buscar na biblioteca"); searchRow.addView(search,new LinearLayout.LayoutParams(0,dp(52),1));
@@ -63,7 +65,7 @@ public class MainActivity extends Activity {
         LinearLayout tabs = new LinearLayout(this);
         tabs.addView(button("Todas",v->{onlyFavorites=false;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
         tabs.addView(button("Favoritas ♡",v->{onlyFavorites=true;render();}), new LinearLayout.LayoutParams(0,dp(48),1));
-        tabs.addView(button("Atualizar",v->permission()), new LinearLayout.LayoutParams(0,dp(48),1)); root.addView(tabs);
+        tabs.addView(button("Reler arquivos",v->permission()), new LinearLayout.LayoutParams(0,dp(48),1)); root.addView(tabs);
         root.addView(button("⌕ Buscar e ouvir online",v->startActivity(new Intent(this,OnlineActivity.class))));
         status=label("Preparando biblioteca…",13,muted); root.addView(status);
         ScrollView scroll = new ScrollView(this); rows=column(); scroll.addView(rows); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));

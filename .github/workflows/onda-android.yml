@@ -5,7 +5,7 @@ on:
     branches: [main, master]
     paths: ['Onda/**', '.github/workflows/onda-android.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
           fi
           keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
           python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
-      - run: gradle --no-daemon -p Onda assembleDebug lintDebug
+      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
@@ -52,3 +52,18 @@ jobs:
         with:
           name: Onda-Android-APK
           path: Onda/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Preparar publicação da atualização
+        id: update_release
+        run: python Onda/tools/prepare_release.py
+      - name: Publicar APK para atualização pelo app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ONDA_TAG: ${{ steps.update_release.outputs.tag }}
+          ONDA_VERSION: ${{ steps.update_release.outputs.version }}
+        run: |
+          if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+            echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
+          else
+            gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json --target "$GITHUB_SHA" --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md
+          fi
