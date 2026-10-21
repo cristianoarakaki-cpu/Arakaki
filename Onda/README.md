@@ -34,7 +34,7 @@ Alternativa no GitHub: neste repositório, abra Actions > Onda - Gerar APK Andro
 
 ## Estado da validação
 
-O projeto foi inspecionado estaticamente e os arquivos XML foram verificados. A compilação, o lint Android e os testes em aparelho NÃO foram executados: o ambiente de criação não possui Android SDK/Gradle e o proxy de download estava indisponível. Nenhum APK é incluído nesta entrega. Antes de distribuir, compile e faça a verificação abaixo.
+Compilação `assembleDebug` e verificação `lintDebug` concluídas com sucesso no GitHub Actions em 21/10/2026. APK de teste disponível em [Onda-Android-APK](https://github.com/cristianoarakaki-cpu/Arakaki/actions/runs/39526171391/artifacts/12312671968). Extraia o ZIP e instale `app-debug.apk`. Os testes em aparelho ainda NÃO foram executados.
 
 ## Verificação no aparelho
 
