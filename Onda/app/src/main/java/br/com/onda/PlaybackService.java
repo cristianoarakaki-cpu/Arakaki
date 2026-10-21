@@ -12,6 +12,7 @@ import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
 import androidx.media3.session.SessionCommand;
 import androidx.media3.session.SessionResult;
+import androidx.media3.session.SessionError;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -35,7 +36,7 @@ public class PlaybackService extends MediaSessionService {
                     .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(new SessionCommand("sleep", Bundle.EMPTY)).build()).build();
             }
             @Override public ListenableFuture<SessionResult> onCustomCommand(MediaSession s, MediaSession.ControllerInfo c, SessionCommand command, Bundle args) {
-                if (!command.customAction.equals("sleep")) return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED));
+                if (!command.customAction.equals("sleep")) return Futures.immediateFuture(new SessionResult(SessionError.ERROR_NOT_SUPPORTED));
                 timer.removeCallbacks(stop);
                 int minutes = Math.max(0, Math.min(120, args.getInt("minutes", 0)));
                 if (minutes > 0) timer.postDelayed(stop, minutes * 60000L);
