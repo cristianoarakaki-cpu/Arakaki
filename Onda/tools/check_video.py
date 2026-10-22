@@ -1,6 +1,7 @@
 """Real Android decoding checks with generated, redistributable video fixtures."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,math,struct,wave,xml.etree.ElementTree as ET
+from urllib.parse import quote
 PACKAGE='br.com.onda.musica'
 OUTPUT=Path('Onda/ui-preview');OUTPUT.mkdir(exist_ok=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
@@ -50,10 +51,9 @@ try:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):
         # These files may be absent from the video collection. Exercise Android's Open with flow.
-        content=shell('content','query','--uri','content://media/external/file','--projection','_id','--where',"_data='/sdcard/Movies/OndaDemo/"+filename+"'").decode()
-        match=re.search(r'_id=(\d+)',content);assert match,content
+        uri='content://com.android.externalstorage.documents/document/'+quote('primary:Movies/OndaDemo/'+filename,safe='')
         adb('logcat','-c')
-        shell('am','start','-W','-a','android.intent.action.VIEW','-d','content://media/external/file/'+match.group(1),'-t',mime,'--grant-read-uri-permission','-n',PACKAGE+'/br.com.onda.VideoActivity')
+        shell('am','start','-W','-a','android.intent.action.VIEW','-d',uri,'-t',mime,'--grant-read-uri-permission','-n',PACKAGE+'/br.com.onda.VideoActivity')
     else:
         tap('Buscar vídeos por nome');shell('input','keyevent','123')
         field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
