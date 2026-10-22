@@ -1,0 +1,11 @@
+# Atualização local dos nomes e CPs
+
+Feche o sistema de férias em todos os computadores. Extraia Atualizar_Nomes_CP.ps1 e execute com o Windows PowerShell. Selecione primeiro o XLSX com as colunas CP, Matricula e Nome (primeira linha da primeira aba) e depois o arquivo Dados/ferias_2027.json do sistema. Os nomes da planilha são a fonte autorizada para substituição, associados pela matrícula exata. CP é salvo como texto numérico positivo. Zeros iniciais da matrícula são preservados quando presentes como texto na fonte.
+
+O programa atualiza todos os períodos aquisitivos correspondentes. Exige correspondência para todos os registros da base selecionada e rejeita matrículas duplicadas, CP repetido entre matrículas diferentes, nomes vazios, CP inválido e fórmulas no Excel. Não avalia conteúdo de células como código. Não precisa de Excel ou Access instalados.
+
+Antes de gravar, cria backup obrigatório e relatório CSV na pasta Backups, usa o mesmo arquivo de bloqueio da aplicação, verifica que somente nome/cp_relatorio foram alterados e valida o JSON temporário. Incrementa a revisão dos dados e atualiza a data de gravação. Para compartilhamentos SMB, há alternativa de renomeação com restauração da versão anterior se a instalação do temporário falhar. Executar outra vez com os mesmos valores não provoca nova gravação.
+
+O atualizador usa os arquivos locais selecionados e não contém nomes ou dados pessoais. Se a base recebeu decisões após o envio de uma cópia para análise, este caminho preserva as decisões da base atual, evitando a substituição por uma cópia antiga.
+
+Validação: 20 rodadas automatizadas, com 20 verificações por rodada, em cinco culturas, totalizando 400 verificações aprovadas. Os cenários são repetidos por cultura; isso não representa 20 auditorias manuais independentes. A correção foi também realizada independentemente em Python sobre uma cópia dos arquivos enviados; os 237 registros gerados pelo PowerShell coincidiram com o resultado independente. Foram conferidos os outros campos, backup exato, idempotência, datas, opções, decisões, histórico, configuração, dados inválidos, duplicidades e bloqueio concorrente. PowerShell 7.4.6 no Linux; interface WinForms, Windows PowerShell 5.1 e compartilhamento SMB real precisam de validação no Windows.
