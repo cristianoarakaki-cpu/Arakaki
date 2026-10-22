@@ -36,11 +36,13 @@ public class MainActivity extends Activity {
     private String query = "";
     private int searchScope = 0;
     private boolean onlyFavorites = false, seeking = false;
+    private boolean screenStarted = false;
     private Set<String> favorites;
     private SharedPreferences prefs;
     private final Runnable progress = new Runnable() { public void run() {
+        if (!screenStarted) return;
         if (player != null && !seeking) { seek.setProgress((int)player.getCurrentPosition()); elapsed.setText(time(player.getCurrentPosition())); }
-        handler.postDelayed(this, 500);
+        if (player != null && player.isPlaying()) handler.postDelayed(this, 1000);
     }};
 
     @Override public void onCreate(Bundle state) {
@@ -86,7 +88,7 @@ public class MainActivity extends Activity {
         now.addView(button("♫ Ver letra da música",v->{if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}));
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){refresh();}@Override public void onPlayerError(PlaybackException e){new AlertDialog.Builder(MainActivity.this).setTitle("Não foi possível tocar").setMessage("O arquivo pode estar indisponível ou usar um codec incompatível com este aparelho. Tente outra música.").setPositiveButton("OK",null).show();}});refresh();}catch(Exception e){status.setText("Falha ao conectar o tocador. Feche e abra o app.");}},handler::post);
-        handler.post(progress);permission();
+        permission();
     }
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}
     @Override public void onRequestPermissionsResult(int code,String[] p,int[] results){super.onRequestPermissionsResult(code,p,results);if(code==10&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();else{status.setText("Permita acesso às músicas para abrir sua biblioteca.");rows.removeAllViews();Button settings=button("Abrir configurações",v->startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))));rows.addView(settings);}}
@@ -112,7 +114,7 @@ public class MainActivity extends Activity {
         int count=visible.size();status.setText(count+" de "+songs.size()+" músicas no celular"+(onlyFavorites?" • favoritas":""));
         if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou selecione Tudo.",16,muted));
     }
-    private void refresh(){if(player==null)return;MediaItem item=player.getCurrentMediaItem();if(item!=null){title.setText(item.mediaMetadata.title);artist.setText(item.mediaMetadata.artist);favorite.setText(favorites.contains(item.mediaId)?"♥ Favorita":"♡ Favoritar");}play.setText(player.isPlaying()?"❚❚":"▶");play.setContentDescription(player.isPlaying()?"Pausar":"Reproduzir");shuffle.setTextColor(player.getShuffleModeEnabled()?green:muted);repeat.setText(player.getRepeatMode()==Player.REPEAT_MODE_ONE?"↻ 1":"↻");repeat.setTextColor(player.getRepeatMode()!=Player.REPEAT_MODE_OFF?green:muted);long duration=player.getDuration();seek.setMax(duration>0?(int)Math.min(Integer.MAX_VALUE,duration):0);total.setText(time(duration));}
+    private void refresh(){if(!screenStarted||player==null)return;MediaItem item=player.getCurrentMediaItem();if(item!=null){title.setText(item.mediaMetadata.title);artist.setText(item.mediaMetadata.artist);favorite.setText(favorites.contains(item.mediaId)?"♥ Favorita":"♡ Favoritar");}play.setText(player.isPlaying()?"❚❚":"▶");play.setContentDescription(player.isPlaying()?"Pausar":"Reproduzir");shuffle.setTextColor(player.getShuffleModeEnabled()?green:muted);repeat.setText(player.getRepeatMode()==Player.REPEAT_MODE_ONE?"↻ 1":"↻");repeat.setTextColor(player.getRepeatMode()!=Player.REPEAT_MODE_OFF?green:muted);long duration=player.getDuration();seek.setMax(duration>0?(int)Math.min(Integer.MAX_VALUE,duration):0);total.setText(time(duration));restartProgress();}
     private void toggleFavorite(){if(player==null||player.getCurrentMediaItem()==null)return;String id=player.getCurrentMediaItem().mediaId;if(!favorites.remove(id))favorites.add(id);prefs.edit().putStringSet("favorites",new HashSet<>(favorites)).apply();refresh();render();}
     private void sleep(){String[] options={"Desativar","15 minutos","30 minutos","60 minutos","120 minutos"};int[] mins={0,15,30,60,120};new AlertDialog.Builder(this).setTitle("Parar reprodução após…").setItems(options,(dialog,which)->{if(player==null)return;Bundle args=new Bundle();args.putInt("minutes",mins[which]);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),args);Toast.makeText(this,which==0?"Temporizador desativado":"A música vai pausar em "+mins[which]+" minutos",Toast.LENGTH_SHORT).show();}).show();}
     private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.VERTICAL);return v;}
@@ -120,5 +122,8 @@ public class MainActivity extends Activity {
     private Button button(String text,View.OnClickListener listener){Button b=new Button(this);b.setText(text);b.setTextColor(muted);b.setTextSize(13);b.setAllCaps(false);b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(0,0,0,0);b.setBackgroundColor(Color.TRANSPARENT);b.setOnClickListener(listener);return b;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
+    private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted)handler.post(progress);}
+    @Override protected void onStart(){super.onStart();screenStarted=true;refresh();restartProgress();}
+    @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
     @Override public void onDestroy(){handler.removeCallbacksAndMessages(null);scanner.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

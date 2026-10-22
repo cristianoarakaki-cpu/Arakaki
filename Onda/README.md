@@ -92,3 +92,10 @@ No cabeçalho, toque em **Atualizações → Verificar atualizações**. O app c
 A versão 0.5.0 precisa ser instalada uma vez sobre Onda Música 0.4. Onda e Onda Novo são pacotes diferentes e não recebem esta atualização. A mesma chave da versão 0.4 é obrigatória. O workflow publica release e APK apenas depois de compilação, testes e validação do certificado esperado; requer permissão `contents: write` no job.
 
 Validação no aparelho: nenhuma atualização, sem internet, download, permissão negada/concedida, cancelamento da instalação e atualização preservando favoritos. Testes de manifesto rejeitam outro pacote, origem inválida, versão inválida e hash malformado. O fluxo final de instalação precisa ser testado no Android. Para publicação na Google Play, rever a distribuição por APK e o uso de REQUEST_INSTALL_PACKAGES conforme as regras aplicáveis.
+
+
+## Consumo de bateria (0.5.1)
+
+A barra de progresso da biblioteca para completamente quando a tela da atividade deixa de estar visível e quando a música está pausada; enquanto toca com a interface visível, atualiza uma vez por segundo. A letra acompanha a posição a cada 500 ms apenas em reprodução e visível; em pausa, muda somente por eventos. A rolagem só se repete ao mudar de verso ou após uma rolagem manual. O Wi-Fi lock fica restrito a faixas HTTP/HTTPS; músicas locais mantêm apenas o CPU lock necessário para reprodução com a tela apagada. O ExoPlayer gerencia a liberação dos locks quando a reprodução pausa. Nenhuma verificação periódica de atualizações ou letras foi adicionada.
+
+Validar no celular: continuar tocando após apagar a tela, música local sem lock de Wi-Fi, troca local/online, pausa e retomada, retorno à biblioteca, seek com letra pausada e rolagem manual. Compilação não substitui medição: não há estimativa de percentual de economia sem ensaio no aparelho.

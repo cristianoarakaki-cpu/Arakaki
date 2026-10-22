@@ -33,7 +33,10 @@ public class LyricsActivity extends Activity {
     private int generation = 0, highlighted = -1;
     private long manualUntil = 0;
     private boolean durationKnown = false;
+    private boolean screenStarted = false;
+    private int lastScrolled = -1;
     private final Runnable tick = new Runnable() { public void run() {
+        if (!screenStarted) return;
         if (player != null) {
             followSong();
             play.setText(player.isPlaying() ? "Pausar" : "Reproduzir");
@@ -43,12 +46,13 @@ public class LyricsActivity extends Activity {
                 highlighted = index;
                 if (index >= 0 && index < labels.size()) style(labels.get(index), true);
             }
-            if (index >= 0 && index < labels.size() && SystemClock.uptimeMillis() >= manualUntil) {
+            if (index >= 0 && index < labels.size() && index != lastScrolled && SystemClock.uptimeMillis() >= manualUntil) {
+                lastScrolled = index;
                 int target = Math.max(0, labels.get(index).getTop() - scroll.getHeight() / 3);
                 if (Math.abs(scroll.getScrollY() - target) > dp(8)) scroll.smoothScrollTo(0, target);
             }
         }
-        handler.postDelayed(this, 300);
+        if (player != null && player.isPlaying()) handler.postDelayed(this, 500);
     }};
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -62,14 +66,15 @@ public class LyricsActivity extends Activity {
         artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(muted);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");root.addView(artist);
         root.addView(button("Buscar letra",v->load()));
         scroll = new ScrollView(this);linesView = column();scroll.addView(linesView);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;return false;});
+        scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;return false;});
         play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});root.addView(play);
         root.addView(text("Letras: LRCLIB • título e artista são enviados para buscar.\nA disponibilidade e a sincronização variam por música.",11,muted));
         connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
-        connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();followSong();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
+        connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){restartTick();}});if(screenStarted)followSong();restartTick();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
     }
-    @Override protected void onStart(){super.onStart();handler.post(tick);}
-    @Override protected void onStop(){handler.removeCallbacks(tick);super.onStop();}
+    private void restartTick(){handler.removeCallbacks(tick);if(screenStarted)handler.post(tick);}
+    @Override protected void onStart(){super.onStart();screenStarted=true;restartTick();}
+    @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(tick);super.onStop();}
     private void followSong(){
         MediaItem item=player.getCurrentMediaItem();
         String key=item==null?"":item.mediaId+"\n"+item.mediaMetadata.title+"\n"+item.mediaMetadata.artist;
@@ -81,7 +86,7 @@ public class LyricsActivity extends Activity {
             load();
         }else if(!durationKnown&&player.getDuration()>0){durationKnown=true;load();}
     }
-    private void clear(){lines=Collections.emptyList();labels.clear();linesView.removeAllViews();highlighted=-1;manualUntil=0;scroll.scrollTo(0,0);}
+    private void clear(){lines=Collections.emptyList();labels.clear();linesView.removeAllViews();highlighted=-1;lastScrolled=-1;manualUntil=0;scroll.scrollTo(0,0);}
     private void load(){
         int id=++generation;if(request!=null)request.cancel(true);clear();
         String title=track.getText().toString().trim(), author=artist.getText().toString().trim();
@@ -96,6 +101,7 @@ public class LyricsActivity extends Activity {
         });
     }
     private void show(LyricsRepository.Result result){
+        restartTick();
         if(result==null){status.setText("Letra não encontrada. Confira título e artista e tente novamente.");return;}
         if(result.instrumental){status.setText("Esta faixa está marcada como instrumental, sem letra.");return;}
         lines=Lrc.parse(result.synced);

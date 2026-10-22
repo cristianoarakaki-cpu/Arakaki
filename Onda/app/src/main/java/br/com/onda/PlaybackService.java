@@ -7,6 +7,8 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
@@ -27,7 +29,14 @@ public class PlaybackService extends MediaSessionService {
         player = new ExoPlayer.Builder(this).build();
         player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true);
         player.setHandleAudioBecomingNoisy(true);
-        player.setWakeMode(C.WAKE_MODE_NETWORK);
+        player.setWakeMode(C.WAKE_MODE_LOCAL);
+        player.addListener(new Player.Listener(){
+            @Override public void onMediaItemTransition(MediaItem item,int reason){
+                String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;
+                boolean online="https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme);
+                player.setWakeMode(online?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
+            }
+        });
         session = new MediaSession.Builder(this, player)
             .setSessionActivity(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
             .setCallback(new MediaSession.Callback() {
