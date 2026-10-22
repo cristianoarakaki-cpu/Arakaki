@@ -30,6 +30,8 @@ jobs:
       - name: Verificar streaming do Internet Archive
         continue-on-error: true
         run: python Onda/tests/check_archive.py
+      - name: Conferir busca de catálogo com Chitãozinho e Xororó
+        run: python Onda/tests/check_catalog.py
       - name: Reutilizar assinatura de teste
         uses: actions/cache@v4
         with:

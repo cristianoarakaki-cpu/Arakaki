@@ -40,6 +40,10 @@ final class Ui {
         LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,-2);rowParams.bottomMargin=dp(c,8);row.setLayoutParams(rowParams);row.setOnClickListener(action);row.setFocusable(true);return row;
     }
     static Button transport(Context c,String kind,View.OnClickListener listener){TransportButton b=new TransportButton(c,kind);b.setText("play".equals(kind)?"▶":"");b.setTextColor("play".equals(kind)?BG:MUTED);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setPadding(0,0,0,0);b.setBackground("play".equals(kind)?ripple(c,gradient(c,CYAN,0xFF9BBBFF,28),28):ripple(c,shape(c,Color.TRANSPARENT,0,24),24));b.setOnClickListener(listener);return b;}
+    static Button voiceButton(Context c,String description,View.OnClickListener listener){
+        Button b=new Button(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
+        b.setText("");b.setContentDescription(description);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setBackground(ripple(c,shape(c,RAISED,BORDER,16),16));b.setOnClickListener(listener);return b;
+    }
     private static final class SignalArt extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int seed;
         SignalArt(Context c,int seed){super(c);this.seed=seed;}

@@ -11,13 +11,28 @@ public final class SearchText {
             .toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim().replaceAll("\\s+", " ");
     }
     public static boolean matches(CharSequence value, String query) {
-        String haystack = normalize(value), needle = normalize(query);
+        String haystack = normalize(value), needle = catalogTerm(query);
         if (needle.isEmpty()) return true;
         for (String word : needle.split(" ")) if (!haystack.contains(word)) return false;
         return true;
     }
+    public static String spokenQuery(String input){
+        if(input==null)return "";
+        return input.trim().replaceFirst("(?iu)^(?:busque|buscar|pesquise|pesquisar|procure|procurar)(?:\\s+por)?\\s+(?:(?:a\\s+)?m[úu]sica\\s+|(?:o\\s+)?artista\\s+)?", "").trim();
+    }
+    public static String catalogTerm(String input){
+        return normalize(input).replaceAll("\\b(?:e|and)\\b", " ").trim().replaceAll("\\s+", " ");
+    }
+    public static int relevance(String input,String title,String artist){
+        String needle=catalogTerm(input),name=catalogTerm(title),singer=catalogTerm(artist);
+        if(needle.isEmpty())return 0;
+        int score=singer.equals(needle)?2000:name.equals(needle)?800:0;
+        boolean allArtist=true,allTitle=true;
+        for(String word:needle.split(" ")){allArtist&=singer.contains(word);allTitle&=name.contains(word);}
+        return score+(allArtist?1200:0)+(allTitle?200:0);
+    }
     public static String archiveQuery(String input, int mode) {
-        String clean = normalize(input);
+        String clean = catalogTerm(input);
         StringBuilder q = new StringBuilder("collection:etree AND NOT access-restricted-item:true");
         if (clean.isEmpty()) return q + " AND identifier:__onda_no_results__";
         for (String word : clean.split(" ")) {

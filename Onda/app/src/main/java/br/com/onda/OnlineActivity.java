@@ -25,11 +25,13 @@ public class OnlineActivity extends Activity {
     private MediaController player;
     private AutoCompleteTextView query;
     private EditText trackFilter;
-    private Spinner mode, ordering;
+    private Spinner mode, ordering, source;
+    private TextView sourceLabel, sourceFooter;
+    private Button storeButton;
     private TextView status, playing;
     private LinearLayout results;
     private Button pause;
-    private int generation=0, page=1, activeMode=0, activeSort=0;
+    private int generation=0, page=1, activeMode=0, activeSort=0, activeSource=OnlineRepository.CATALOG;
     private String activeQuery="";
     private OnlineRepository.Page savedPage;
     private OnlineRepository.Show currentShow;
@@ -40,39 +42,42 @@ public class OnlineActivity extends Activity {
         LinearLayout root=column();Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(dp(20),dp(12)+i.getSystemWindowInsetTop(),dp(20),dp(12)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
         Button back=button("‹ Biblioteca",v->finish());Ui.ghost(back);root.addView(back);root.addView(text("Buscar online",27,Color.WHITE));
-        root.addView(text("Shows ao vivo • Internet Archive",13,muted));
-        query=new AutoCompleteTextView(this);query.setThreshold(1);query.setSingleLine(true);query.setTextColor(Color.WHITE);query.setHintTextColor(muted);query.setHint("Nome da música ou artista");query.setContentDescription("Buscar no acervo online");query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);query.setOnEditorActionListener((v,id,event)->{if(id==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});Ui.input(query);LinearLayout.LayoutParams queryParams=new LinearLayout.LayoutParams(-1,dp(52));queryParams.setMargins(0,dp(8),0,dp(8));root.addView(query,queryParams);updateSuggestions();
+        sourceLabel=text("Músicas e artistas • prévias do catálogo",13,muted);root.addView(sourceLabel);
+        query=new AutoCompleteTextView(this);query.setThreshold(1);query.setSingleLine(true);query.setTextColor(Color.WHITE);query.setHintTextColor(muted);query.setHint("Nome da música ou artista");query.setContentDescription("Buscar no acervo online");query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);query.setOnEditorActionListener((v,id,event)->{if(id==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});Ui.input(query);LinearLayout.LayoutParams queryParams=new LinearLayout.LayoutParams(-1,dp(52));queryParams.setMargins(0,dp(8),0,dp(8));LinearLayout queryRow=new LinearLayout(this);queryRow.addView(query,new LinearLayout.LayoutParams(0,-1,1));Button voice=Ui.voiceButton(this,"Busca por voz na internet",v->VoiceSearch.start(this,false));LinearLayout.LayoutParams voiceParams=new LinearLayout.LayoutParams(dp(48),-1);voiceParams.leftMargin=dp(8);queryRow.addView(voice,voiceParams);root.addView(queryRow,queryParams);updateSuggestions();
         LinearLayout filters=new LinearLayout(this);
-        mode=spinner(new String[]{"Tudo", "Artista", "Música no repertório"},"Tipo de busca online");
+        mode=spinner(new String[]{"Tudo", "Artista", "Música"},"Tipo de busca online");
+        source=spinner(new String[]{"Catálogo • prévias", "Shows completos"},"Fonte da busca online");
         ordering=spinner(new String[]{"Relevância", "Mais populares", "Shows recentes"},"Ordenar resultados");
-        LinearLayout.LayoutParams modeParams=new LinearLayout.LayoutParams(0,dp(48),1);modeParams.rightMargin=dp(8);filters.addView(mode,modeParams);filters.addView(ordering,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(filters);
+        LinearLayout.LayoutParams modeParams=new LinearLayout.LayoutParams(0,dp(48),1);modeParams.rightMargin=dp(8);filters.addView(source,modeParams);filters.addView(mode,new LinearLayout.LayoutParams(0,dp(48),1));root.addView(filters);ordering.setVisibility(View.GONE);root.addView(ordering,new LinearLayout.LayoutParams(-1,dp(48)));
+        source.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> p,View v,int position,long id){ordering.setVisibility(position==OnlineRepository.LIVE?View.VISIBLE:View.GONE);sourceLabel.setText(position==OnlineRepository.LIVE?"Shows ao vivo • Internet Archive":"Músicas e artistas • prévias do catálogo");}public void onNothingSelected(AdapterView<?> p){}});
         Button submit=button("Buscar online  ↗",v->search());Ui.primary(submit);submit.setGravity(Gravity.CENTER);LinearLayout.LayoutParams submitParams=new LinearLayout.LayoutParams(-1,dp(48));submitParams.setMargins(0,dp(10),0,dp(4));root.addView(submit,submitParams);
-        status=text("Artistas, shows e músicas citadas nos repertórios.",13,muted);root.addView(status);
+        status=text("Encontre músicas e artistas. As prévias são trechos; shows completos ficam na outra fonte.",13,muted);root.addView(status);
         trackFilter=new EditText(this);trackFilter.setSingleLine(true);trackFilter.setTextColor(Color.WHITE);trackFilter.setHintTextColor(muted);trackFilter.setHint("Buscar faixa neste show");trackFilter.setContentDescription("Filtrar faixas do show pelo nome");Ui.input(trackFilter);trackFilter.setVisibility(View.GONE);root.addView(trackFilter);
         trackFilter.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void afterTextChanged(Editable e){}public void onTextChanged(CharSequence s,int st,int before,int count){if(currentShow!=null)renderTracks();}});
-        ScrollView scroll=new ScrollView(this);results=column();scroll.addView(results);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));LinearLayout emptyState=column();emptyState.setGravity(Gravity.CENTER);emptyState.setPadding(0,dp(24),0,dp(16));emptyState.addView(Ui.art(this,76,0));TextView emptyTitle=text("Novas frequências",20,Ui.TEXT);Ui.bold(emptyTitle);emptyTitle.setGravity(Gravity.CENTER);emptyState.addView(emptyTitle);TextView emptyDetail=text("Explore os sons de uma nova sessão ao vivo.",13,muted);emptyDetail.setGravity(Gravity.CENTER);emptyState.addView(emptyDetail);results.addView(emptyState,new LinearLayout.LayoutParams(-1,-2));
+        ScrollView scroll=new ScrollView(this);results=column();scroll.addView(results);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));LinearLayout emptyState=column();emptyState.setGravity(Gravity.CENTER);emptyState.setPadding(0,dp(24),0,dp(16));emptyState.addView(Ui.art(this,76,0));TextView emptyTitle=text("Encontre sua música",20,Ui.TEXT);Ui.bold(emptyTitle);emptyTitle.setGravity(Gravity.CENTER);emptyState.addView(emptyTitle);TextView emptyDetail=text("Busque pelo nome ou toque no microfone.",13,muted);emptyDetail.setGravity(Gravity.CENTER);emptyState.addView(emptyDetail);results.addView(emptyState,new LinearLayout.LayoutParams(-1,-2));
         playing=text("Escolha uma faixa para ouvir no Onda.",14,green);LinearLayout miniPlayer=column();miniPlayer.setPadding(dp(14),dp(10),dp(14),dp(8));Ui.playerCard(miniPlayer);miniPlayer.addView(Ui.eyebrow(this,"TOCANDO AGORA"));miniPlayer.addView(playing);root.addView(miniPlayer);
-        LinearLayout controls=new LinearLayout(this);pause=button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else{player.prepare();player.play();}}});controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Próxima",v->{if(player!=null)player.seekToNext();}),new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Letra",v->{if(player!=null&&player.getCurrentMediaItem()!=null)startActivity(new Intent(this,LyricsActivity.class));}),new LinearLayout.LayoutParams(0,dp(48),1));Ui.primary(pause);pause.setGravity(Gravity.CENTER);miniPlayer.addView(controls);
-        root.addView(text("Este catálogo não contém todos os lançamentos comerciais.\nStreaming usa internet • Fonte: archive.org",11,muted));
+        LinearLayout controls=new LinearLayout(this);pause=button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else{player.prepare();player.play();}}});controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Próxima",v->{if(player!=null)player.seekToNext();}),new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(button("Letra",v->{if(player!=null&&player.getCurrentMediaItem()!=null){if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}}),new LinearLayout.LayoutParams(0,dp(48),1));Ui.primary(pause);pause.setGravity(Gravity.CENTER);miniPlayer.addView(controls);
+        storeButton=button("Abrir música completa no Apple Music  ↗",v->openStore());storeButton.setVisibility(View.GONE);root.addView(storeButton);
+        sourceFooter=text("Prévias: Apple Music / iTunes • sem download offline.\nA disponibilidade varia por música e região.",11,muted);root.addView(sourceFooter);
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){refresh();}@Override public void onPlayerError(PlaybackException e){status.setText("Falha ao reproduzir. Verifique a internet ou escolha outra faixa.");}});refresh();}catch(Exception e){status.setText("Não foi possível conectar ao tocador. Volte e tente novamente.");}},handler::post);
     }
     private Spinner spinner(String[] labels,String description){Spinner s=new Spinner(this);s.setAdapter(new ArrayAdapter<>(this,R.layout.spinner_item,labels));s.setContentDescription(description);Ui.spinner(s);return s;}
     private int startRequest(){if(request!=null)request.cancel(true);results.removeAllViews();return ++generation;}
     private void search(){
-        String input=query.getText().toString().trim();if(SearchText.normalize(input).length()<2){status.setText("Digite pelo menos duas letras para buscar.");return;}
+        String input=query.getText().toString().trim();if(SearchText.catalogTerm(input).length()<2){status.setText("Digite pelo menos duas letras para buscar.");return;}
         ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(query.getWindowToken(),0);query.dismissDropDown();
-        activeQuery=input;activeMode=mode.getSelectedItemPosition();activeSort=ordering.getSelectedItemPosition();savedPage=null;saveRecent(input);loadPage(1);
+        activeQuery=input;activeMode=mode.getSelectedItemPosition();activeSort=ordering.getSelectedItemPosition();activeSource=source.getSelectedItemPosition();savedPage=null;saveRecent(input);loadPage(1);
     }
     private void loadPage(int number){
-        int id=startRequest();currentShow=null;trackFilter.setVisibility(View.GONE);status.setText("Buscando no acervo • página "+number+"…");
-        final String term=activeQuery;final int searchMode=activeMode, sort=activeSort;
-        request=worker.submit(()->{try{OnlineRepository.Page found=OnlineRepository.search(term,searchMode,sort,number);handler.post(()->{if(isDestroyed()||id!=generation)return;page=number;savedPage=found;renderPage();});}catch(Exception e){handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText("Falha na busca. Verifique a internet e tente novamente.");results.addView(button("Tentar novamente",v->loadPage(number)));});}});
+        int id=startRequest();currentShow=null;trackFilter.setVisibility(View.GONE);status.setText((activeSource==OnlineRepository.CATALOG?"Buscando músicas":"Buscando shows")+" • página "+number+"…");
+        final String term=activeQuery;final int searchMode=activeMode, sort=activeSort, searchSource=activeSource;
+        request=worker.submit(()->{try{OnlineRepository.Page found=OnlineRepository.search(term,searchMode,sort,number,searchSource);handler.post(()->{if(isDestroyed()||id!=generation)return;page=number;savedPage=found;renderPage();});}catch(Exception e){handler.post(()->{if(isDestroyed()||id!=generation)return;status.setText("Não foi possível consultar o serviço. "+e.getMessage()+" Verifique a internet e tente novamente.");results.addView(button("Tentar novamente",v->loadPage(number)));});}});
     }
     private void renderPage(){
         currentShow=null;trackFilter.setVisibility(View.GONE);results.removeAllViews();if(savedPage==null)return;
-        status.setText(savedPage.shows.isEmpty()?"Nenhum show encontrado. Tente outro nome ou o filtro Tudo.":savedPage.total+" resultados • página "+page+" • "+activeQuery);
-        for(OnlineRepository.Show show:savedPage.shows)results.addView(Ui.result(this,show.artist,show.title,show.id.hashCode(),v->open(show)));
+        status.setText(savedPage.shows.isEmpty()?(savedPage.catalog?"Nenhuma prévia encontrada neste catálogo. Tente outro nome de música ou artista.":"Nenhum show disponível para essa busca. Tente a fonte Catálogo • prévias."):savedPage.total+(savedPage.catalog?" prévias encontradas":" shows encontrados")+" • página "+page+(savedPage.broadened?" • busca ampliada":""));
+        for(OnlineRepository.Show show:savedPage.shows)results.addView(Ui.result(this,show.isPreview()?show.title:show.artist,show.isPreview()?show.artist+" • PRÉVIA":show.title,show.id.hashCode(),v->{if(show.isPreview())preview(show);else open(show);}));
         if(page>1)results.addView(button("‹ Página anterior",v->loadPage(page-1)));
         if(page*20<savedPage.total&&!savedPage.shows.isEmpty())results.addView(button("Mais resultados ›",v->loadPage(page+1)));
     }
@@ -93,7 +98,15 @@ public class OnlineActivity extends Activity {
     private List<String> recent(){ArrayList<String> values=new ArrayList<>();try{JSONArray array=new JSONArray(getSharedPreferences("online-search",MODE_PRIVATE).getString("recent","[]"));for(int i=0;i<array.length();i++)values.add(array.getString(i));}catch(Exception ignored){}return values;}
     private void updateSuggestions(){query.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_dropdown_item_1line,recent()));}
     private void saveRecent(String input){List<String> values=recent();values.removeIf(v->SearchText.normalize(v).equals(SearchText.normalize(input)));values.add(0,input);while(values.size()>8)values.remove(values.size()-1);getSharedPreferences("online-search",MODE_PRIVATE).edit().putString("recent",new JSONArray(values).toString()).apply();updateSuggestions();}
-    private void refresh(){if(player==null)return;MediaItem item=player.getCurrentMediaItem();playing.setText(item==null?"Escolha uma faixa para ouvir.":item.mediaMetadata.title+" • "+item.mediaMetadata.artist);pause.setText(player.isPlaying()?"Pausar":"Reproduzir");}
+    private void preview(OnlineRepository.Show track){
+        if(player==null){status.setText("Tocador iniciando. Tente novamente.");return;}
+        Bundle info=new Bundle();info.putBoolean("preview",true);info.putString("storeUrl",track.storeUrl);
+        MediaItem item=new MediaItem.Builder().setMediaId("catalog:"+track.id).setUri(track.previewUrl).setMediaMetadata(new MediaMetadata.Builder().setTitle(track.title+" (prévia)").setArtist(track.artist).setAlbumTitle(track.album).setExtras(info).build()).build();
+        player.setMediaItem(item);player.prepare();player.play();status.setText("Prévia de "+track.title+" • para a faixa completa, use o link do Apple Music.");refresh();
+    }
+    private void openStore(){if(player==null||player.getCurrentMediaItem()==null)return;Bundle extras=player.getCurrentMediaItem().mediaMetadata.extras;String url=extras==null?"":extras.getString("storeUrl","");if(!OnlineRepository.allowedStore(url))return;try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(ActivityNotFoundException e){Toast.makeText(this,"Não foi possível abrir o link neste celular.",Toast.LENGTH_SHORT).show();}}
+    private void refresh(){if(player==null)return;MediaItem item=player.getCurrentMediaItem();playing.setText(item==null?"Escolha uma faixa para ouvir.":item.mediaMetadata.title+" • "+item.mediaMetadata.artist);pause.setText(player.isPlaying()?"Pausar":"Reproduzir");boolean preview=item!=null&&item.mediaId.startsWith("catalog:");storeButton.setVisibility(preview?View.VISIBLE:View.GONE);sourceFooter.setText(preview?"Prévia promocional • Apple Music / iTunes.\nA faixa completa está no link acima.":"Catálogo: prévias do Apple Music / iTunes.\nShows completos: Internet Archive • usa internet.");}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==VoiceSearch.REQUEST){String phrase=VoiceSearch.result(result,data);if(!phrase.isEmpty()){query.setText(phrase);query.setSelection(phrase.length());search();}}}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private TextView text(String s,int size,int color){TextView t=Ui.text(this,s,size,color);t.setPadding(0,dp(6),0,dp(6));if(size>=24)Ui.bold(t);return t;}
     private Button button(String s,View.OnClickListener l){Button b=Ui.button(this,s,l);b.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);return b;}

@@ -106,3 +106,14 @@ Validar no celular: continuar tocando após apagar a tela, música local sem loc
 Tema escuro com acentos ciano e violeta, cartões de músicas com ícones vetoriais, filtros com estado selecionado, controles de reprodução desenhados em Canvas e player compacto com ação de favoritos. As telas de biblioteca, letras, busca online e atualizações compartilham a mesma identidade. Ícone do app atualizado. Os elementos gráficos são estáticos; não há loop de animação nem downloads de capas. As otimizações de bateria da versão 0.5.1 permanecem.
 
 `tools/capture_ui.py` usa áudio de demonstração temporário no emulador e captura as telas reais; esses arquivos de áudio não são incluídos no APK. As capturas ficam no artefato Onda-Visual-Preview do CI. Verificar layout, textos, tamanho dos controles, reprodução e navegação em aparelho físico.
+
+
+## Voz e busca de músicas (0.7.0)
+
+Microfone nas buscas local e online. Usa RecognizerIntent do Android em português; não adiciona serviço de escuta nem permissão de gravação ao Onda. No celular há preferência por reconhecimento offline quando suportado pelo serviço do aparelho; na internet, o texto reconhecido dispara a busca. Cancelar mantém a consulta anterior. Sem reconhecedor instalado, o app explica e permite digitar normalmente. A captura real de voz precisa ser testada em um aparelho com serviço compatível.
+
+A fonte padrão online agora é **Catálogo • prévias**, usando a API pública iTunes Search no Brasil. Reúne buscas por artista e por termo, prioriza o artista correspondente, trata acentos e os conectores e/& e remove duplicatas de música/artista. Exemplo real testado: Chitaozinho e xororo. Cada resultado e a tela de bloqueio identificam **prévia**; tocar reproduz apenas o trecho promocional, com link explícito da faixa completa no Apple Music. Não há download offline nem cache de áudio das prévias. Letras sincronizadas são desativadas para esses trechos, que podem começar no meio da música. A disponibilidade varia por região/faixa; não é streaming gratuito de faixas comerciais completas.
+
+**Shows completos** mantém o Internet Archive e amplia automaticamente o filtro caso uma busca específica não encontre shows. Há distinção entre serviço indisponível/resposta inválida e consulta válida sem resultados. As consultas de catálogo ficam em memória por cinco minutos, no máximo oito termos, evitando repetir downloads de metadados ao mudar de página.
+
+Os testes cobrem o nome da dupla, prioridade de artista, números de ID, URLs e resposta inválida; `tests/check_catalog.py` confere o artista e baixa bytes reais de uma prévia. O emulador verifica presença dos dois microfones; não simula reconhecimento de fala.

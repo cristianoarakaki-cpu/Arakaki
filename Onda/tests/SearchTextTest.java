@@ -18,6 +18,13 @@ public final class SearchTextTest {
         check(SearchText.archiveQuery("x\" OR collection:other",0).startsWith("collection:etree AND"));
         check(!SearchText.archiveQuery("x\" OR collection:other",0).contains("collection:other"));
         check(SearchText.archiveQuery("?!",0).contains("__onda_no_results__"));
+        check(SearchText.catalogTerm("Chitãozinho e Xororó").equals("chitaozinho xororo"));
+        check(SearchText.matches("Chitãozinho & Xororó", "Chitaozinho e xororo"));
+        check(SearchText.spokenQuery("Buscar por Chitãozinho e Xororó").equals("Chitãozinho e Xororó"));
+        check(SearchText.spokenQuery("pesquise a música Evidências").equals("Evidências"));
+        check(SearchText.spokenQuery("Buscar").equals("Buscar"));
+        check(SearchText.spokenQuery(null).isEmpty());
+        check(SearchText.relevance("Chitaozinho e xororo","Evidências","Chitãozinho & Xororó") > SearchText.relevance("Chitaozinho e xororo","Chitãozinho e Xororó","Tonico & Tinoco"));
         System.out.println("Search: accents, word order, partial names, multiple terms, null metadata, field modes and query escaping passed.");
     }
 }

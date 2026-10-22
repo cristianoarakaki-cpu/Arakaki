@@ -69,6 +69,7 @@ for title in ['Noite Neon','Horizonte Azul','Entre Orbitas']:
         pass
 assert click(description='Reler arquivos do celular'),'Rescan button unavailable'
 time.sleep(1)
+assert any(n.attrib.get('content-desc')=='Busca por voz no celular' for n in nodes()),'Local voice search button missing'
 capture('01-biblioteca')
 assert click(prefix='Tocar '),'Demo audio not visible in library'
 time.sleep(1)
@@ -88,6 +89,7 @@ assert click(description='Ver letra da música'),'Lyrics button unavailable'
 capture('03-letras')
 shell('input','keyevent','4');time.sleep(.5)
 assert click(description='Buscar e ouvir online'),'Online button unavailable'
+assert any(n.attrib.get('content-desc')=='Busca por voz na internet' for n in nodes()),'Online voice search button missing'
 capture('04-online')
 shell('input','keyevent','4');time.sleep(.5)
 assert click(description='Atualizações'),'Updates button unavailable'
