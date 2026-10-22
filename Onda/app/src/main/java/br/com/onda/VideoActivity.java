@@ -31,7 +31,7 @@ public class VideoActivity extends Activity {
     private final ExecutorService scanner=Executors.newSingleThreadExecutor();
     private final List<VideoStore.Item> videos=new ArrayList<>(),visible=new ArrayList<>();
     private List<VideoStore.Item> queue=Collections.emptyList();private int queueIndex=-1,scanGeneration;
-    private VideoStore.Item current;private VideoStore.Item pending;
+    private VideoStore.Item current;private VideoStore.Item pending;private long pendingSeek;
     private LibVLC engine;private MediaPlayer video;private ParcelFileDescriptor descriptor;
     private MediaController music;private ListenableFuture<MediaController> connection;
     private AudioManager audio;private AudioFocusRequest focus;private boolean hasFocus,started,fullscreen,seeking,software,receiverRegistered,keyboardVisible;
@@ -46,7 +46,7 @@ public class VideoActivity extends Activity {
             ArrayList<String> options=new ArrayList<>();options.add("--no-video-title-show");options.add("--no-stats");
             engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,false,false);
             video.setEventListener(event->{if(isDestroyed())return;switch(event.type){
-                case MediaPlayer.Event.Playing:status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
+                case MediaPlayer.Event.Playing:if(pendingSeek>0){video.setTime(pendingSeek);pendingSeek=0;}status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
                 case MediaPlayer.Event.ESSelected:if(video.getAudioTracksCount()>0&&video.getAudioTrack()>=0)android.util.Log.d("OndaVideo","audio "+(current==null?"":current.file));break;
                 case MediaPlayer.Event.Vout:if(event.getVoutCount()>0)android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));break;
                 case MediaPlayer.Event.Paused:case MediaPlayer.Event.Stopped:handler.removeCallbacks(tick);update();break;
@@ -100,9 +100,14 @@ public class VideoActivity extends Activity {
     private void receiveView(Intent intent){Uri uri=intent.getData();if(Intent.ACTION_VIEW.equals(intent.getAction())&&uri!=null&&"content".equalsIgnoreCase(uri.getScheme()))selectedFile(uri);}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);receiveView(intent);}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==OPEN&&result==RESULT_OK&&data!=null&&data.getData()!=null)selectedFile(data.getData());}
-    private void open(VideoStore.Item item,boolean useSoftware){
+    private void open(VideoStore.Item item,boolean useSoftware){open(item,useSoftware,0);}
+    private void open(VideoStore.Item item,boolean useSoftware,long startPosition){
         if(video==null||!started)return;if(music==null){pending=item;status.setText("Preparando áudio…");return;}
-        music.pause();if(!requestFocus())return;video.stop();closeDescriptor();current=item;software=useSoftware;now.setText(item.title);adapter.notifyDataSetChanged();
+        music.pause();if(!requestFocus())return;video.stop();
+        // A document picker destroys the old Surface. Bind a fresh window after stopping,
+        // so software decoders wait for the new Surface instead of producing audio only.
+        video.detachViews();video.attachViews(surface,null,false,false);pendingSeek=Math.max(0,startPosition);
+        closeDescriptor();current=item;software=useSoftware;now.setText(item.title);adapter.notifyDataSetChanged();
         try{
             descriptor=getContentResolver().openFileDescriptor(item.uri,"r");if(descriptor==null)throw new java.io.IOException("Arquivo indisponível");
             Media media=new Media(engine,descriptor.getFileDescriptor());try{media.setHWDecoderEnabled(!useSoftware,false);video.setMedia(media);}finally{media.release();}
@@ -111,7 +116,7 @@ public class VideoActivity extends Activity {
     }
     private boolean requestFocus(){if(audio==null||focus==null)return false;hasFocus=audio.requestAudioFocus(focus)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;if(!hasFocus)Toast.makeText(this,"Áudio ocupado. Tente novamente.",Toast.LENGTH_SHORT).show();return hasFocus;}
     private void abandonFocus(){if(audio!=null&&focus!=null)audio.abandonAudioFocusRequest(focus);hasFocus=false;}
-    private void resumeVideo(){if(video==null||current==null||!started||music==null)return;music.pause();if(!requestFocus())return;if(video.getLength()>0&&video.getTime()>=video.getLength()-500){open(current,software);return;}video.play();}
+    private void resumeVideo(){if(video==null||current==null||!started||music==null)return;long at=Math.max(0,video.getTime()),length=video.getLength();open(current,software,length>0&&at>=length-500?0:at);}
     private void pauseVideo(){if(video!=null){video.pause();android.util.Log.d("OndaVideo","paused");}handler.removeCallbacks(tick);getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);abandonFocus();update();}
     private void update(){if(video==null)return;boolean playing=video.isPlaying();play.setText(playing?"Pausar":"Reproduzir");play.setContentDescription(playing?"Pausar vídeo":"Reproduzir vídeo");long length=Math.max(0,video.getLength()),time=Math.max(0,video.getTime());if(!seeking)seek.setProgress(length>0?(int)Math.min(1000,time*1000/length):0);seek.setEnabled(video.isSeekable());position.setText(VideoText.duration(time)+" / "+VideoText.duration(length));if(started&&playing)getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);}
     private void restartTick(){handler.removeCallbacks(tick);if(started)handler.post(tick);}
