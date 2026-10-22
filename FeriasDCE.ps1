@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R8 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R9 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R8 HIST-R8 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R9 HIST-R9 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1139,6 +1139,45 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 
 
 # V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
+function Get-ConferenciaCP($Records=$script:Records){
+    $grupos=@{};$donos=@{}
+    foreach($r in @($Records)){
+        $mat=([string]$r.matricula).Trim();$cp=([string]$r.cp_relatorio).Trim()
+        if(-not $grupos.ContainsKey($mat)){$grupos[$mat]=[pscustomobject]@{Total=0;SemCP=0;Validos=(New-Object 'System.Collections.Generic.HashSet[string]');Brutos=(New-Object 'System.Collections.Generic.HashSet[string]');Invalidos=(New-Object 'System.Collections.Generic.List[string]')}}
+        $g=$grupos[$mat];$g.Total++
+        if(-not $cp){$g.SemCP++;continue}
+        [void]$g.Brutos.Add($cp);$n=0
+        if($cp -notmatch '^[0-9]+$' -or -not [int]::TryParse($cp,[ref]$n) -or $n -le 0){[void]$g.Invalidos.Add($cp);continue}
+        $normal=$n.ToString([Globalization.CultureInfo]::InvariantCulture);[void]$g.Validos.Add($normal)
+        if(-not $donos.ContainsKey($normal)){$donos[$normal]=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)}
+        [void]$donos[$normal].Add($mat)
+    }
+    $out=@{}
+    foreach($mat in $grupos.Keys){
+        $g=$grupos[$mat];$problemas=New-Object 'System.Collections.Generic.List[string]';$repetidos=New-Object 'System.Collections.Generic.List[string]'
+        if($g.SemCP -eq $g.Total){[void]$problemas.Add('SEM CP')}
+        elseif($g.SemCP -gt 0){[void]$problemas.Add('CP INCOMPLETO')}
+        if($g.Invalidos.Count -gt 0){[void]$problemas.Add('CP INVÁLIDO')}
+        if($g.Validos.Count -gt 1){[void]$problemas.Add('CPs DIVERGENTES')}
+        foreach($valor in $g.Validos){if($donos[$valor].Count -gt 1){[void]$repetidos.Add($valor)}}
+        if($repetidos.Count -gt 0){[void]$problemas.Add('CP REPETIDO')}
+        $cpExibido=if($g.Validos.Count -eq 1 -and $g.Invalidos.Count -eq 0){[string]@($g.Validos)[0]}else{@($g.Brutos | Sort-Object) -join ' / '}
+        $situacao=if($problemas.Count){$problemas -join '; '}else{'CP OK'}
+        $detalhes=@("Matrícula: $mat","Situação: $situacao","CP cadastrado: $(if($cpExibido){$cpExibido}else{'(vazio)'})","Registros: $($g.Total); sem CP: $($g.SemCP).")
+        foreach($valor in $repetidos){$outras=@($donos[$valor] | Where-Object {$_ -ne $mat} | Sort-Object);$detalhes+="CP $valor também aparece na(s) matrícula(s): $($outras -join ', ')."}
+        $out[$mat]=[pscustomobject]@{Matricula=$mat;CP=$cpExibido;Situacao=$situacao;TemProblema=($problemas.Count -gt 0);Problemas=@($problemas.ToArray());Total=$g.Total;SemCP=$g.SemCP;Detalhe=($detalhes -join "`r`n")}
+    }
+    return $out
+}
+
+function Test-FiltroConferenciaCP($Info,[string]$Filtro='TODOS'){
+    if(-not $Filtro -or $Filtro -eq 'TODOS'){return $true}
+    if($null -eq $Info){return $false}
+    if($Filtro -eq 'COM PROBLEMA'){return [bool]$Info.TemProblema}
+    if($Filtro -eq 'CP OK'){return (-not [bool]$Info.TemProblema)}
+    return ($Info.Problemas -contains $Filtro)
+}
+
 function Get-CPsServidor([string]$Matricula){
     $mat=$Matricula.Trim()
     $valores=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {([string]$_.cp_relatorio).Trim()} | Where-Object {$_} | Sort-Object -Unique)
@@ -1182,6 +1221,9 @@ function Show-CPServidorNoEditor([string]$Matricula){
     $script:txtCPServidor.BackColor=if($cps.Count -gt 1){[Drawing.Color]::MistyRose}else{[Drawing.Color]::White}
     $script:lblCPServidor.Text=if($cps.Count -gt 1){'CP (conferir)'}else{'CP obrigatório'}
     $tip=if($cps.Count -gt 1){'CPs divergentes: '+($cps -join ', ')+'. Informe o correto e salve o cadastro para todos os períodos.'}else{'CP obrigatório e complementar. A matrícula permanece como chave principal. Salvar cadastro aplica o CP a todos os períodos desta matrícula.'}
+    $audit=Get-ConferenciaCP
+    $info=$audit[$Matricula.Trim()]
+    if($null -ne $info -and $info.TemProblema){$script:txtCPServidor.BackColor=[Drawing.Color]::MistyRose;$script:lblCPServidor.Text='CP (conferir)';$tip=$info.Detalhe+"`r`nInforme o CP correto e salve o cadastro para todos os períodos."}
     $script:tipCPServidor.SetToolTip($script:txtCPServidor,$tip)
 }
 
@@ -6780,6 +6822,9 @@ function Refresh-Grid {
     $chefia=if($null -ne $script:cmbFiltroChefia -and $script:cmbFiltroChefia.SelectedItem){[string]$script:cmbFiltroChefia.SelectedItem}else{"TODOS"}
     $sol=if($null -ne $script:cmbFiltroSolicitacao -and $script:cmbFiltroSolicitacao.SelectedItem){[string]$script:cmbFiltroSolicitacao.SelectedItem}else{"TODOS"}
     $just=if($null -ne $script:cmbFiltroJustificativa -and $script:cmbFiltroJustificativa.SelectedItem){[string]$script:cmbFiltroJustificativa.SelectedItem}else{"TODOS"}
+    $filtroCP=if($null -ne $script:cmbFiltroCP -and $script:cmbFiltroCP.SelectedItem){[string]$script:cmbFiltroCP.SelectedItem}else{'TODOS'}
+    $script:ConferenciaCPAtual=Get-ConferenciaCP
+    $cpComProblema=@($script:ConferenciaCPAtual.Values | Where-Object {$_.TemProblema}).Count
     # V1.0.135-R2: evita custo de agrupamento e ordenacao a cada tecla.
     # Cache invalidado em gravacao e carregamento; nao altera dados persistidos.
     $script:grid.SuspendLayout()
@@ -6796,6 +6841,8 @@ function Refresh-Grid {
         $cad=$recs | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.setor) -or -not [string]::IsNullOrWhiteSpace([string]$_.periodo) } | Select-Object -First 1
         if($cad){ $rCad=$cad } else { $rCad=$r }
 
+        $cpInfo=$script:ConferenciaCPAtual[([string]$r.matricula).Trim()]
+        if(-not (Test-FiltroConferenciaCP $cpInfo $filtroCP)){continue}
         if($q){
             $hay=("$($r.matricula) $($r.nome) $($rCad.setor) $($rCad.periodo)").ToUpperInvariant()
             if($hay -notlike "*$q*"){ continue }
@@ -6836,6 +6883,9 @@ function Refresh-Grid {
         $row.Cells["excluir"].Value=($script:GridServidoresMarcados.ContainsKey($matRow) -and [bool]$script:GridServidoresMarcados[$matRow])
         $row.Cells["formulario"].Value=($script:FormServidoresMarcados.ContainsKey($matRow) -and [bool]$script:FormServidoresMarcados[$matRow])
         $row.Cells["matricula"].Value=$r.matricula
+        $row.Cells['cp'].Value=$cpInfo.CP
+        $row.Cells['cp'].ToolTipText=$cpInfo.Detalhe
+        if($cpInfo.TemProblema){$row.Cells['cp'].Style.BackColor=[Drawing.Color]::MistyRose;$row.Cells['cp'].Style.ForeColor=[Drawing.Color]::DarkRed}
         $row.Cells["nome"].Value=$r.nome
         $row.Cells["setor"].Value=$rCad.setor
         $row.Cells["periodo"].Value=$rCad.periodo
@@ -6895,7 +6945,8 @@ function Refresh-Grid {
     $totalFixos=$script:GridPesquisaTotais.Fixos
     $totalEscolha=$script:GridPesquisaTotais.Escolha
     $totalVazios=$script:GridPesquisaTotais.Vazios
-    $script:lblTotal.Text="Servidores exibidos: $($script:grid.Rows.Count) | Periodos fixos: $totalFixos | Aquisitivos de escolha: $totalEscolha | Cadastros sem datas: $totalVazios"
+    $script:lblTotal.Text="Servidores: $($script:grid.Rows.Count) | CP com problema (base): $cpComProblema | Periodos fixos: $totalFixos | Aquisitivos de escolha: $totalEscolha | Cadastros sem datas: $totalVazios"
+    if($script:grid.Rows.Count -eq 0 -and $filtroCP -ne 'TODOS'){Clear-Editor}
     Update-PendenciasButton
     Atualizar-ResumoMarcados
     Atualizar-BotaoExcluidos
@@ -7583,7 +7634,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R8 | HIST-R8"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R9 | HIST-R9"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8085,16 +8136,25 @@ $script:cmbFiltroSolicitacao.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroSolicitacao)
 
 $filter.Controls.Add((New-Label "Grupo de análise" 10 96 120 20))
-$script:cmbFiltroGrupoAnalise=New-Combo 10 116 155
+$script:cmbFiltroGrupoAnalise=New-Combo 10 116 112
 $filter.Controls.Add($script:cmbFiltroGrupoAnalise)
-$filter.Controls.Add((New-Label "Grupo de Chefia" 175 96 120 20))
-$script:cmbFiltroChefia=New-Combo 175 116 155
+$filter.Controls.Add((New-Label "Grupo de Chefia" 135 96 120 20))
+$script:cmbFiltroChefia=New-Combo 135 116 112
 $filter.Controls.Add($script:cmbFiltroChefia)
-$filter.Controls.Add((New-Label "Justificativa" 340 96 100 20))
-$script:cmbFiltroJustificativa=New-Combo 340 116 160
+$filter.Controls.Add((New-Label "Justificativa" 260 96 100 20))
+$script:cmbFiltroJustificativa=New-Combo 260 116 112
 @("TODOS","COM JUSTIFICATIVA","SEM JUSTIFICATIVA") | ForEach-Object {[void]$script:cmbFiltroJustificativa.Items.Add($_)}
 $script:cmbFiltroJustificativa.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroJustificativa)
+$script:cmbFiltroGrupoAnalise.DropDownWidth=260
+$script:cmbFiltroChefia.DropDownWidth=260
+$script:cmbFiltroJustificativa.DropDownWidth=220
+$filter.Controls.Add((New-Label "Conferência CP" 385 96 115 20))
+$script:cmbFiltroCP=New-Combo 385 116 115
+$script:cmbFiltroCP.DropDownWidth=230
+@('TODOS','COM PROBLEMA','SEM CP','CP INCOMPLETO','CP INVÁLIDO','CP REPETIDO','CPs DIVERGENTES','CP OK') | ForEach-Object {[void]$script:cmbFiltroCP.Items.Add($_)}
+$script:cmbFiltroCP.SelectedIndex=0
+$filter.Controls.Add($script:cmbFiltroCP)
 
 # Ações compactas: menus preservam os mesmos eventos e confirmações existentes.
 $acoesLanc=New-Object Windows.Forms.ToolStrip
@@ -8851,10 +8911,13 @@ $colFormulario=New-Object Windows.Forms.DataGridViewCheckBoxColumn
 $colFormulario.Name="formulario";$colFormulario.HeaderText="Form."
 $colFormulario.FalseValue=$false;$colFormulario.TrueValue=$true;$colFormulario.ReadOnly=$false
 [void]$script:grid.Columns.Add($colFormulario)
-foreach($c in @(@("matricula","Matrícula"),@("nome","Nome"),@("setor","Setor"),@("periodo","Período"),@("situacao","Situação"),@("qtdperiodos","Qtd."),@("qtdsol","Solic."))){ [void]$script:grid.Columns.Add($c[0],$c[1]); $script:grid.Columns[$c[0]].ReadOnly=$true }
+foreach($c in @(@("matricula","Matrícula"),@("cp","CP"),@("nome","Nome"),@("setor","Setor"),@("periodo","Período"),@("situacao","Situação"),@("qtdperiodos","Qtd."),@("qtdsol","Solic."))){ [void]$script:grid.Columns.Add($c[0],$c[1]); $script:grid.Columns[$c[0]].ReadOnly=$true }
 $script:grid.Columns["excluir"].FillWeight=8
 $script:grid.Columns["formulario"].FillWeight=9
 $script:grid.Columns["matricula"].FillWeight=16
+$script:grid.Columns["cp"].FillWeight=9
+$script:grid.Columns["cp"].MinimumWidth=48
+$script:grid.ShowCellToolTips=$true
 $script:grid.Columns["nome"].FillWeight=34
 $script:grid.Columns["setor"].FillWeight=20
 $script:grid.Columns["periodo"].FillWeight=14
@@ -15253,6 +15316,7 @@ $script:PlanejPeriodosSelecionados=@()
     if($script:cmbFiltroChefia.Items.Count -gt 0){ $script:cmbFiltroChefia.SelectedIndex=0 }
     if($script:cmbFiltroSolicitacao.Items.Count -gt 0){ $script:cmbFiltroSolicitacao.SelectedIndex=0 }
     if($script:cmbFiltroJustificativa.Items.Count -gt 0){ $script:cmbFiltroJustificativa.SelectedIndex=0 }
+    if($null -ne $script:cmbFiltroCP){$script:cmbFiltroCP.SelectedIndex=0}
     Update-SetoresFiltroResumo
     Refresh-Grid
 })
@@ -15263,6 +15327,7 @@ $script:cmbFiltroGrupoAnalise.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroChefia.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroSolicitacao.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroJustificativa.add_SelectedIndexChanged({ Request-GridRefresh })
+$script:cmbFiltroCP.add_SelectedIndexChanged({ Request-GridRefresh })
 
 $script:grid.add_KeyDown({
     param($sender,$e)
