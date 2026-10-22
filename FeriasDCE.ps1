@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R7 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R8 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R7 HIST-R7 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R8 HIST-R8 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1139,6 +1139,52 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 
 
 # V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
+function Get-CPsServidor([string]$Matricula){
+    $mat=$Matricula.Trim()
+    $valores=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {([string]$_.cp_relatorio).Trim()} | Where-Object {$_} | Sort-Object -Unique)
+    # O cadastro atual prevalece; o CP original do histórico é apenas recurso para bases antigas.
+    if($valores.Count -eq 0){$valores=@($script:HistoricoFerias | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {([string]$_.cp_relatorio).Trim()} | Where-Object {$_} | Sort-Object -Unique)}
+    return @($valores)
+}
+
+function Resolve-CPServidorCadastro([string]$Matricula,[string]$Valor){
+    $texto=$Valor.Trim();$numero=0
+    if(-not $texto){throw 'CP obrigatório. Informe o código do servidor antes de salvar.'}
+    if($texto -notmatch '^[0-9]+$' -or -not [int]::TryParse($texto,[ref]$numero) -or $numero -le 0){throw 'CP inválido. Informe um número inteiro positivo de até 2147483647.'}
+    $normal=$numero.ToString([Globalization.CultureInfo]::InvariantCulture)
+    # Uma passagem na base atual evita pesquisar todos os aquisitivos a cada comparação.
+    $matAtual=$Matricula.Trim();$presentes=@{};$comCP=@{}
+    foreach($other in @($script:Records)){
+        $matOutro=([string]$other.matricula).Trim();$presentes[$matOutro]=$true
+        $valorOutro=([string]$other.cp_relatorio).Trim()
+        if(-not $valorOutro){continue}
+        $comCP[$matOutro]=$true;$n=0
+        if($matOutro -ne $matAtual -and [int]::TryParse($valorOutro,[ref]$n) -and $n -eq $numero){throw "O CP $normal já pertence à matrícula $matOutro. A matrícula continua sendo a chave principal."}
+    }
+    foreach($other in @($script:HistoricoFerias)){
+        $matOutro=([string]$other.matricula).Trim();$n=0
+        if($matOutro -ne $matAtual -and $presentes.ContainsKey($matOutro) -and -not $comCP.ContainsKey($matOutro) -and [int]::TryParse(([string]$other.cp_relatorio).Trim(),[ref]$n) -and $n -eq $numero){throw "O CP $normal já consta para a matrícula $matOutro no histórico. Confira o cadastro desse servidor."}
+    }
+    return $normal
+}
+
+function Set-CPServidor([string]$Matricula,[string]$Valor){
+    $cp=Resolve-CPServidorCadastro $Matricula $Valor
+    $recs=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $Matricula.Trim()})
+    if($recs.Count -eq 0){throw 'Matrícula não encontrada para salvar o CP.'}
+    foreach($r in $recs){$r | Add-Member NoteProperty cp_relatorio $cp -Force}
+}
+
+function Show-CPServidorNoEditor([string]$Matricula){
+    if($null -eq $script:txtCPServidor){return}
+    $cps=@(Get-CPsServidor $Matricula)
+    $script:txtCPServidor.Text=if($cps.Count -eq 1){[string]$cps[0]}else{''}
+    $script:txtCPServidor.BackColor=if($cps.Count -gt 1){[Drawing.Color]::MistyRose}else{[Drawing.Color]::White}
+    $script:lblCPServidor.Text=if($cps.Count -gt 1){'CP (conferir)'}else{'CP obrigatório'}
+    $tip=if($cps.Count -gt 1){'CPs divergentes: '+($cps -join ', ')+'. Informe o correto e salve o cadastro para todos os períodos.'}else{'CP obrigatório e complementar. A matrícula permanece como chave principal. Salvar cadastro aplica o CP a todos os períodos desta matrícula.'}
+    $script:tipCPServidor.SetToolTip($script:txtCPServidor,$tip)
+}
+
 function Get-ExportacaoListaServidores {
     $porMat=@{};$pendencias=New-Object 'System.Collections.Generic.List[object]'
     foreach($r in @($script:Records)){
@@ -1179,11 +1225,8 @@ function Exportar-ListaServidoresExcel {
 function Get-ExportacaoAceitasAccess {
     $headers=@('Codigo do Servidor','Observação','Periodo Aquisitivo_1','Periodo Aquisitivo_2','Agendar Após','Ferias_30_Inicio','Ferias_30_Final','Ferias_Par_1QIn','Ferias_Par_1QFin','Ferias_Par_2QIn','Ferias_Par_2QFin','Programacao_Ano','Processo_20Dias')
     $cpPorMat=@{}
-    foreach($item in (@($script:Records)+@($script:HistoricoFerias))){
-        $mat=([string]$item.matricula).Trim();$cp=([string]$item.cp_relatorio).Trim()
-        if(-not $mat -or -not $cp){continue}
-        if(-not $cpPorMat.ContainsKey($mat)){$cpPorMat[$mat]=@()}
-        $cpPorMat[$mat]=@(@($cpPorMat[$mat])+$cp | Sort-Object -Unique)
+    foreach($mat in @($script:Records | ForEach-Object {([string]$_.matricula).Trim()} | Where-Object {$_} | Sort-Object -Unique)){
+        $cpPorMat[$mat]=@(Get-CPsServidor $mat)
     }
     $candidatos=New-Object 'System.Collections.Generic.List[object]'
     $pendencias=New-Object 'System.Collections.Generic.List[object]'
@@ -3941,7 +3984,7 @@ function Importar-HistoricoFerias {
         $duplicadosDescartados=[math]::Max(0,($candidatos.Count-@($rows | Where-Object {[bool]$_.valido}).Count))
         $porAno=(@($importaveis | Group-Object ano_referencia | Sort-Object Name | ForEach-Object {"$($_.Name)=$($_.Count)"}) -join ', ')
         $serv=@($importaveis | Select-Object -ExpandProperty matricula_sistema -Unique).Count
-        $resumo="Lidos: $totalLidos | histórico vinculado e importável: $($importaveis.Count) | servidores vinculados: $serv | sem vínculo automático: $semVinculo | outros cargos ignorados: $ignCargo | duplicidades descartadas: $duplicadosDescartados | erros de leitura: $errosLeitura. Por ano: $porAno. O relatório usa MATRÍCULA como chave exata e confere o nome; CP é informação complementar opcional. A importação é incremental: dados anteriores são preservados. Para desempate, o mês só conta como utilizado quando totaliza pelo menos 15 dias efetivos de férias dentro dele; parcelas no mesmo mês são somadas por dias únicos. Ausência em um ano = 'sem registro'."
+        $resumo="Lidos: $totalLidos | histórico vinculado e importável: $($importaveis.Count) | servidores vinculados: $serv | sem vínculo automático: $semVinculo | outros cargos ignorados: $ignCargo | duplicidades descartadas: $duplicadosDescartados | erros de leitura: $errosLeitura. Por ano: $porAno. O relatório usa MATRÍCULA como chave exata e confere o nome; CP é complementar e não substitui a matrícula; o cadastro manual exige CP. A importação é incremental: dados anteriores são preservados. Para desempate, o mês só conta como utilizado quando totaliza pelo menos 15 dias efetivos de férias dentro dele; parcelas no mesmo mês são somadas por dias únicos. Ausência em um ano = 'sem registro'."
         $arquivoRejeitados=""
         try { $arquivoRejeitados=Exportar-RejeitadosImportacao 'HISTORICO' $rows @('IMPORTAR') }
         catch {
@@ -5865,9 +5908,9 @@ function Get-ServidorRecords([string]$matricula){
 }
 
 
-function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,[string]$periodo){
+function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$cpServidor=''){
     $matricula=$matricula.Trim()
-    $nome=$nome.Trim()
+    $nome=$nome.Trim().ToUpperInvariant()
     $setor=$setor.Trim()
     $periodo=$periodo.Trim().ToUpperInvariant()
 
@@ -5876,10 +5919,12 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
     if([string]::IsNullOrWhiteSpace($setor)){ return [pscustomobject]@{status="ERRO";mensagem="Setor vazio"} }
     if([string]::IsNullOrWhiteSpace($periodo)){ return [pscustomobject]@{status="ERRO";mensagem="Período vazio"} }
 
+    try{$cpServidor=Resolve-CPServidorCadastro $matricula $cpServidor}catch{return [pscustomobject]@{status='ERRO';mensagem=$_.Exception.Message}}
     $recs=@($script:Records | Where-Object {[string]$_.matricula -eq $matricula})
     if($recs.Count -gt 0){
         foreach($r in $recs){
             [void](Initialize-RecordDefaults $r)
+            $r.cp_relatorio=$cpServidor
             $r.nome=$nome
             $r.setor=$setor
             $r.periodo=$periodo
@@ -5897,6 +5942,7 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
     # Cadastro-base sem período aquisitivo: será enriquecido depois pela sincronização.
     $novo=[pscustomobject]@{
         id=Get-NextId
+        cp_relatorio=$cpServidor
         matricula=$matricula
         nome=$nome
         setor=$setor
@@ -5927,7 +5973,9 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
 }
 
 
-function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$aqIni="",[string]$aqFim="",[bool]$cadastroBase=$false){
+function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$aqIni="",[string]$aqFim="",[bool]$cadastroBase=$false,[string]$cpServidor=''){
+    if(-not $PSBoundParameters.ContainsKey('cpServidor')){$cps=@(Get-CPsServidor $matricula);if($cps.Count -eq 1){$cpServidor=[string]$cps[0]}}
+    $cpServidor=Resolve-CPServidorCadastro $matricula $cpServidor
     $novo=[pscustomobject]@{
         id=Get-NextId
         matricula=$matricula.Trim(); nome=$nome.Trim(); setor=$setor.Trim(); periodo=$periodo.Trim().ToUpperInvariant()
@@ -5938,6 +5986,7 @@ function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$seto
         ferias_bloqueadas=$false; origem_planejamento="ATUAL"; bloqueio_motivo=""
     }
     [void](Initialize-RecordDefaults $novo)
+    $novo.cp_relatorio=$cpServidor
     return $novo
 }
 
@@ -6222,8 +6271,9 @@ function Abrir-CadastroManualServidor {
     $dlg=New-Object Windows.Forms.Form; Apply-AppBranding $dlg
     $dlg.Text="Novo servidor — cadastro manual"; $dlg.Size=New-Object Drawing.Size(650,470); $dlg.StartPosition="CenterParent"; $dlg.FormBorderStyle="FixedDialog"; $dlg.MaximizeBox=$false; $dlg.MinimizeBox=$false
     $titulo=New-Object Windows.Forms.Label; $titulo.Text="CADASTRO MANUAL DE SERVIDOR"; $titulo.Location=New-Object Drawing.Point(20,15); $titulo.Size=New-Object Drawing.Size(400,28); $titulo.Font=New-Object Drawing.Font("Segoe UI",11,[Drawing.FontStyle]::Bold); $dlg.Controls.Add($titulo)
-    $dlg.Controls.Add((New-Label "Matrícula" 20 60 100)); $tm=New-TextBox 20 82 180; $dlg.Controls.Add($tm)
-    $dlg.Controls.Add((New-Label "Nome completo" 220 60 120)); $tn=New-TextBox 220 82 390; $dlg.Controls.Add($tn)
+    $dlg.Controls.Add((New-Label "Matrícula" 20 60 100)); $tm=New-TextBox 20 82 150; $dlg.Controls.Add($tm)
+    $dlg.Controls.Add((New-Label "CP obrigatório" 180 60 105));$tc=New-TextBox 180 82 100;$dlg.Controls.Add($tc)
+    $dlg.Controls.Add((New-Label "Nome completo" 290 60 120)); $tn=New-TextBox 290 82 320; $tn.CharacterCasing=[Windows.Forms.CharacterCasing]::Upper; $dlg.Controls.Add($tn)
     $dlg.Controls.Add((New-Label "Setor" 20 126 100)); $cs=New-Combo 20 148 360 $true; foreach($x in @($script:Config.setores|Sort-Object)){[void]$cs.Items.Add($x)}; $dlg.Controls.Add($cs)
     $dlg.Controls.Add((New-Label "Período de trabalho" 400 126 150)); $cp=New-Combo 400 148 210; foreach($x in @($script:Config.periodos|Sort-Object)){[void]$cp.Items.Add($x)}; $dlg.Controls.Add($cp)
     $chk=New-Object Windows.Forms.CheckBox; $chk.Text="Cadastrar também o primeiro período aquisitivo agora"; $chk.Location=New-Object Drawing.Point(20,202); $chk.Size=New-Object Drawing.Size(380,26); $dlg.Controls.Add($chk)
@@ -6234,18 +6284,19 @@ function Abrir-CadastroManualServidor {
     $btnOk=New-Button "CADASTRAR" 325 365 140 38; $btnOk.BackColor=[Drawing.Color]::FromArgb(205,235,205); $btnCancel=New-Button "Cancelar" 475 365 135 38; $dlg.Controls.Add($btnOk);$dlg.Controls.Add($btnCancel)
     $btnCancel.add_Click({$dlg.DialogResult=[Windows.Forms.DialogResult]::Cancel;$dlg.Close()})
     $btnOk.add_Click({
-        $mat=$tm.Text.Trim();$nome=$tn.Text.Trim();$setor=$cs.Text.Trim();$per=$cp.Text.Trim().ToUpperInvariant()
+        $mat=$tm.Text.Trim();$nome=$tn.Text.Trim().ToUpperInvariant();$setor=$cs.Text.Trim();$per=$cp.Text.Trim().ToUpperInvariant()
         if(-not $mat -or -not $nome -or -not $setor -or -not $per){[Windows.Forms.MessageBox]::Show("Preencha Matrícula, Nome, Setor e Período de trabalho.","Validação")|Out-Null;return}
         if(@($script:Records|Where-Object{[string]$_.matricula -eq $mat}).Count -gt 0){[Windows.Forms.MessageBox]::Show("Esta matrícula já existe no sistema. Selecione o servidor na lista para editar o cadastro ou adicionar um novo período aquisitivo.","Servidor já cadastrado")|Out-Null;return}
+        try{$cpServidor=Resolve-CPServidorCadastro $mat $tc.Text}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Validação')|Out-Null;return}
         $ai="";$af="";$base=$true
         if($chk.Checked){if($df.Value.Date -lt $di.Value.Date){[Windows.Forms.MessageBox]::Show("O fim do período aquisitivo não pode ser anterior ao início.","Validação")|Out-Null;return};$ai=Date-ToStore $di.Value.Date;$af=Date-ToStore $df.Value.Date;$base=$false}
-        $dlg.Tag=[pscustomobject]@{mat=$mat;nome=$nome;setor=$setor;per=$per;ai=$ai;af=$af;base=$base};$dlg.DialogResult=[Windows.Forms.DialogResult]::OK;$dlg.Close()
+        $dlg.Tag=[pscustomobject]@{mat=$mat;cpServidor=$cpServidor;nome=$nome;setor=$setor;per=$per;ai=$ai;af=$af;base=$base};$dlg.DialogResult=[Windows.Forms.DialogResult]::OK;$dlg.Close()
     })
     if($dlg.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){$dlg.Dispose();return}
     $d=$dlg.Tag;$dlg.Dispose()
     try{
         [void](Backup-AntesAcao "ANTES_CADASTRO_MANUAL_SERVIDOR")
-        $novo=New-RegistroFeriasManual ([string]$d.mat) ([string]$d.nome) ([string]$d.setor) ([string]$d.per) ([string]$d.ai) ([string]$d.af) ([bool]$d.base);$script:Records += $novo
+        $novo=New-RegistroFeriasManual ([string]$d.mat) ([string]$d.nome) ([string]$d.setor) ([string]$d.per) ([string]$d.ai) ([string]$d.af) ([bool]$d.base) -cpServidor ([string]$d.cpServidor);$script:Records += $novo
         if(Test-ServidorExcluido ([string]$d.mat)){ Remove-ServidorExcluido ([string]$d.mat) }
         if(@($script:Config.setores) -notcontains [string]$d.setor){$script:Config.setores=@(@($script:Config.setores)+[string]$d.setor|Sort-Object -Unique);Set-GrupoAnaliseSetor ([string]$d.setor) "ASSISTENCIAL"}
         if(@($script:Config.periodos) -notcontains [string]$d.per){$script:Config.periodos=@(@($script:Config.periodos)+[string]$d.per|Sort-Object -Unique)}
@@ -6277,6 +6328,7 @@ function Import-LoteFromClipboard {
         $row.Cells["lnome"].Value=$parts[1].Trim()
         $row.Cells["lsetor"].Value=$parts[2].Trim()
         $row.Cells["lperiodo"].Value=$parts[3].Trim()
+        $row.Cells["lcp"].Value=if($parts.Count -ge 5){$parts[4].Trim()}else{""}
     }
 }
 
@@ -6294,6 +6346,15 @@ function Validar-LoteServidores([bool]$silent=$false) {
         if(-not $nome){ $msgs += "Nome vazio" }
         if(-not $setor){ $msgs += "Setor vazio" }
         if(-not $per){ $msgs += "Período vazio" }
+        try{
+            $cpServidor=Resolve-CPServidorCadastro $mat ([string]$row.Cells['lcp'].Value)
+            foreach($otherRow in $script:gridLote.Rows){
+                if($otherRow.IsNewRow -or [object]::ReferenceEquals($otherRow,$row)){continue}
+                $otherMat=([string]$otherRow.Cells['lmat'].Value).Trim();$n=0
+                if($otherMat -eq $mat){$msgs+='Matrícula repetida no lote';break}
+                if([int]::TryParse(([string]$otherRow.Cells['lcp'].Value).Trim(),[ref]$n) -and $n.ToString() -eq $cpServidor){$msgs+='CP repetido no lote';break}
+            }
+        }catch{$msgs+=$_.Exception.Message}
         if($msgs.Count -gt 0){
             $row.Cells["lstatus"].Value="ERRO"
             $row.Cells["lmsg"].Value=($msgs -join "; ")
@@ -6437,7 +6498,7 @@ function Processar-LoteServidores {
         $nome=[string]$row.Cells["lnome"].Value
         $setor=[string]$row.Cells["lsetor"].Value
         $per=[string]$row.Cells["lperiodo"].Value
-        $res=Apply-ServidorCadastro $mat $nome $setor $per
+        $res=Apply-ServidorCadastro $mat $nome $setor $per -cpServidor ([string]$row.Cells["lcp"].Value)
         $row.Cells["lstatus"].Value=$res.status
         $row.Cells["lmsg"].Value=$res.mensagem
         switch($res.status){
@@ -6923,6 +6984,7 @@ function Load-Servidor([string]$matricula){
     $script:CurrentMatricula=[string]$cad.matricula
     $script:txtMatricula.Text=[string]$cad.matricula
     $script:txtNome.Text=[string]$cad.nome
+    Show-CPServidorNoEditor ([string]$cad.matricula)
     $script:cmbSetor.Text=[string]$cad.setor
     $idx=$script:cmbPeriodo.Items.IndexOf([string]$cad.periodo)
     if($idx -lt 0 -and -not [string]::IsNullOrWhiteSpace([string]$cad.periodo)){
@@ -7122,6 +7184,7 @@ function Excluir-PeriodoSelecionado {
 
 function Clear-Editor {
     $script:CurrentId=0; $script:CurrentMatricula=""
+    if($null -ne $script:txtCPServidor){$script:txtCPServidor.Clear();$script:txtCPServidor.BackColor=[Drawing.Color]::White;$script:lblCPServidor.Text="CP obrigatório"}
     $script:txtMatricula.Text=""; $script:txtNome.Text=""; $script:cmbSetor.Text=""; $script:cmbPeriodo.SelectedIndex=-1; if($null -ne $script:txtJustificativaDecisao){$script:txtJustificativaDecisao.Clear()}
     if($script:gridPeriodos){$script:gridPeriodos.Rows.Clear()}
     Clear-PeriodEditor
@@ -7138,6 +7201,7 @@ function Load-Editor([int]$id){
         $script:CurrentId=$id
         $script:CurrentMatricula=[string]$r.matricula
         $script:txtMatricula.Text=[string]$r.matricula; $script:txtNome.Text=[string]$r.nome
+        Show-CPServidorNoEditor ([string]$r.matricula)
         # O periodo de trabalho pertence ao cadastro da matricula, nao ao aquisitivo selecionado.
         # DropDownList nao aceita texto livre: selecionar um item realmente existente.
         $cadAtual=@(Get-ServidorRecords ([string]$r.matricula) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.periodo) } | Select-Object -First 1)
@@ -7193,6 +7257,8 @@ function Save-ServidorCadastro {
     if(-not $setor -or -not $per){ [Windows.Forms.MessageBox]::Show("Informe Setor e Período do servidor.","Cadastro do servidor") | Out-Null; return }
     $recs=Get-ServidorRecords $mat
     if($recs.Count -eq 0){ [Windows.Forms.MessageBox]::Show("Servidor não localizado na base.","Cadastro do servidor") | Out-Null; return }
+    try{$cpServidor=Resolve-CPServidorCadastro $mat ([string]$script:txtCPServidor.Text)}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Cadastro do servidor')|Out-Null;return}
+    Set-CPServidor $mat $cpServidor
     foreach($r in $recs){
         $r.nome=$nome
         $r.setor=$setor
@@ -7232,6 +7298,7 @@ function Save-Editor {
     }
 
     $mat=$script:txtMatricula.Text.Trim(); $nome=$script:txtNome.Text.Trim().ToUpperInvariant()
+    try{$cpServidor=Resolve-CPServidorCadastro $mat ([string]$script:txtCPServidor.Text)}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Cadastro do servidor')|Out-Null;return}
     $setor=$script:cmbSetor.Text.Trim(); $per=[string]$script:cmbPeriodo.Text
     if(-not $setor -or -not $per){ [Windows.Forms.MessageBox]::Show("Cadastre primeiro o Setor e o Período do servidor.","Validação") | Out-Null; return }
 
@@ -7290,6 +7357,7 @@ function Save-Editor {
         catch { return }
     }
 
+    Set-CPServidor $mat $cpServidor
     # Cadastro do servidor é único e se propaga para todos os períodos aquisitivos.
     foreach($sr in (Get-ServidorRecords $mat)){
         $sr.nome=$nome; $sr.setor=$setor; $sr.periodo=$per
@@ -7515,7 +7583,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R7 | HIST-R7"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R8 | HIST-R8"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8819,8 +8887,14 @@ $script:txtMatricula=New-TextBox 15 72 125
 $script:txtMatricula.ReadOnly=$true
 $editor.Controls.Add($script:txtMatricula)
 
-$editor.Controls.Add((New-Label "Nome" 150 52 80))
-$script:txtNome=New-TextBox 150 72 530
+$script:lblCPServidor=New-Label "CP obrigatório" 150 52 105
+$editor.Controls.Add($script:lblCPServidor)
+$script:txtCPServidor=New-TextBox 150 72 100
+$editor.Controls.Add($script:txtCPServidor)
+$script:tipCPServidor=New-Object Windows.Forms.ToolTip
+$script:tipCPServidor.SetToolTip($script:txtCPServidor,'CP obrigatório. A matrícula permanece como chave principal.')
+$editor.Controls.Add((New-Label "Nome" 260 52 80))
+$script:txtNome=New-TextBox 260 72 420
 $script:txtNome.CharacterCasing=[Windows.Forms.CharacterCasing]::Upper
 $editor.Controls.Add($script:txtNome)
 
@@ -13887,7 +13961,7 @@ $panelLoteTop.BackColor=[Drawing.Color]::FromArgb(245,248,252)
 $tabLote.Controls.Add($panelLoteTop)
 
 $lblLote=New-Object Windows.Forms.Label
-$lblLote.Text="Cole do Excel quatro colunas: Matrícula | Nome | Setor | Período"
+$lblLote.Text="Cole do Excel cinco colunas: Matrícula | Nome | Setor | Período | CP"
 $lblLote.Location=New-Object Drawing.Point(20,14)
 $lblLote.Size=New-Object Drawing.Size(760,24)
 $lblLote.Font=New-Object Drawing.Font("Segoe UI",10,[Drawing.FontStyle]::Bold)
@@ -13900,7 +13974,7 @@ $btnDesfazerLote=New-Button "Desfazer último lote" 435 50 165 34; $panelLoteTop
 $btnLimparLote=New-Button "Limpar grade" 610 50 120 34; $panelLoteTop.Controls.Add($btnLimparLote)
 
 $lblLoteInfo=New-Object Windows.Forms.Label
-$lblLoteInfo.Text="Confira matrícula, nome, setor e período antes de processar. O sistema faz backup e permite desfazer o último lote. Setor e período são informativos no limite institucional."
+$lblLoteInfo.Text="Confira matrícula, nome, setor, período e CP obrigatório antes de processar. O sistema faz backup e permite desfazer o último lote. Setor e período são informativos no limite institucional."
 $lblLoteInfo.Location=New-Object Drawing.Point(20,95)
 $lblLoteInfo.Size=New-Object Drawing.Size(900,35)
 $panelLoteTop.Controls.Add($lblLoteInfo)
@@ -13914,6 +13988,7 @@ $script:gridLote.RowHeadersVisible=$false
 $script:gridLote.BackgroundColor=[Drawing.Color]::White
 foreach($c in @(
     @("lmat","Matrícula"),
+    @("lcp","CP obrigatório"),
     @("lnome","Nome"),
     @("lsetor","Setor"),
     @("lperiodo","Período"),
@@ -13924,6 +13999,7 @@ foreach($c in @(
 }
 $script:gridLote.Columns["lstatus"].ReadOnly=$true
 $script:gridLote.Columns["lmsg"].ReadOnly=$true
+$script:gridLote.Columns["lcp"].FillWeight=15
 $script:gridLote.Columns["lnome"].FillWeight=32
 $script:gridLote.Columns["lsetor"].FillWeight=22
 $script:gridLote.Columns["lmsg"].FillWeight=28

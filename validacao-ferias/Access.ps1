@@ -22,7 +22,11 @@ Check 'missing CP not exported' $d.Linhas.Count 0
 Check 'missing CP audited' $d.Pendencias.Count 1
 $script:HistoricoFerias=@([pscustomobject]@{matricula='A';cp_relatorio='1323'})
 Check 'CP from exact history matricula' (Get-ExportacaoAceitasAccess).Linhas.Count 1
-$r.cp_relatorio='999';Check 'conflicting CP blocked' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$r.cp_relatorio='999';$d=Get-ExportacaoAceitasAccess
+Check 'current corrected CP takes precedence over old history CP' $d.Linhas[0].'Codigo do Servidor' 999
+$otherCP=Row 'A' '1323';$script:Records=@($r,$otherCP)
+Check 'divergent current CPs still blocked' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$script:Records=@($r)
 $r.cp_relatorio='1323';$r.opcao1.tipo='15+15 DIAS';$r.opcao1.fim1='2027-01-15';$r.opcao1.inicio2='2028-01-01';$r.opcao1.fim2='2028-01-15'
 $d=Get-ExportacaoAceitasAccess
 Check 'split vacation one row across years' $d.Linhas.Count 1
