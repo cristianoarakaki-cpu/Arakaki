@@ -15,7 +15,7 @@ Mapeamento:
 - Programacao_Ano: número zero formatado como 0000; preencher manualmente antes da colagem.
 - Processo_20Dias: -1 = Sim (caixa marcada no Access); 0 = Não.
 
-A exportação considera toda a base, independente dos filtros da lista, e somente decisões de aceite explícitas. Férias apenas fixas/bloqueadas sem aceite não entram. Opções pendentes não entram. Modalidade comum e FR são independentes: uma pendência da modalidade comum não remove uma FR aceita e válida. Linhas idênticas são deduplicadas; registros aceitos divergentes com mesmo CP/aquisitivo/modalidade vão para Pendencias.
+A exportação considera toda a base, independente dos filtros da lista, e somente decisões de aceite explícitas. A partir de HIST-R10, todas as férias fixas/bloqueadas são excluídas, mesmo com aceite marcado. Outros aquisitivos não fixos do mesmo servidor continuam elegíveis. Opções pendentes não entram. Modalidade comum e FR são independentes: uma pendência da modalidade comum não remove uma FR aceita e válida. Linhas idênticas são deduplicadas; registros aceitos divergentes com mesmo CP/aquisitivo/modalidade vão para Pendencias.
 
 As abas Pendencias e Instrucoes não devem ser coladas na tabela. O arquivo contém datas e números tipados, células vazias para campos sem uso e textos literais, sem fórmulas ou macros. Esta função não grava no Access nem altera Dados/Backups.
 

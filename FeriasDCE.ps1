@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R9 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R10 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R9 HIST-R9 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R10 HIST-R10 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1273,6 +1273,8 @@ function Get-ExportacaoAceitasAccess {
     $candidatos=New-Object 'System.Collections.Generic.List[object]'
     $pendencias=New-Object 'System.Collections.Generic.List[object]'
     foreach($r in @($script:Records)){
+        # Fixas pertencem a programações anteriores, mesmo se restou um aceite no registro.
+        if(Test-RegistroFeriasBloqueadas $r){continue}
         $nc=Get-NumeroComumConfirmada $r;$nf=Get-NumeroFRConfirmada $r
         if($nc -eq 0 -and $nf -eq 0){continue}
         $mat=([string]$r.matricula).Trim();$ai=Parse-Date ([string]$r.aquisitivo_inicio);$af=Parse-Date ([string]$r.aquisitivo_fim)
@@ -1343,7 +1345,7 @@ function Write-ExcelAceitasAccess([string]$Path,$Dados,[string]$NomeAbaPrincipal
         'Programacao_Ano contém o número 0 com formato 0000; preencha o ano correto antes da colagem.',
         'Processo_20Dias: -1 marca Sim; 0 marca Não no Access. FR aceita é uma linha independente, com suas datas em Ferias_30_Inicio/Final e Processo_20Dias = -1.',
         'Agendar Após = fim do período aquisitivo + 2 dias. Datas são células de data do Excel, exibidas em dd/mm/yyyy.',
-        'Somente opções explicitamente aceitas são exportadas. Pendentes e férias apenas fixas/bloqueadas sem aceite não são incluídas. A exportação considera toda a base, sem os filtros da lista.',
+        'Somente opções explicitamente aceitas são exportadas. Pendentes e todas as férias fixas/bloqueadas são excluídas, mesmo com opção marcada como aceita. A exportação considera toda a base, sem os filtros da lista.',
         'Pendências não estão na aba de colagem. Confira a aba Pendencias. CPs são obtidos por matrícula exata nos registros e histórico; nenhum CP é adivinhado.'
     ) | ForEach-Object {[pscustomobject]@{'Instrução'=$_}}
     if($InstrucoesPersonalizadas.Count -gt 0){$instrucoes=@($InstrucoesPersonalizadas | ForEach-Object {[pscustomobject]@{'Instrução'=$_}})}
@@ -7634,7 +7636,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R9 | HIST-R9"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R10 | HIST-R10"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -14776,6 +14778,8 @@ function Show-RelatorioConferenciaOpcoes {
 
     $store=[pscustomobject]@{Rows=@();Records=@();Shown=$null;Monthly=$null;Refreshing=$false}
     $dbPathForReport=[string]$script:DbFile
+    # Preservar o escopo original da leitura dentro dos callbacks GetNewClosure.
+    $readSnapshotForReport=(Get-Command -Name 'Read-DatabaseSnapshotWithRetry' -CommandType Function -ErrorAction Stop).ScriptBlock
     $store.Records=@($script:Records)
 
     $getChosen={
@@ -15060,7 +15064,7 @@ function Show-RelatorioConferenciaOpcoes {
 
     $loadRecords={
         try{
-            $snapshot=Read-DatabaseSnapshotWithRetry $dbPathForReport 3 150
+            $snapshot=& $readSnapshotForReport $dbPathForReport 3 150
             $obj=$snapshot.Db
             $store.Records=@($obj.registros)
             $oldS=[string]$sector.SelectedItem;$oldP=[string]$period.SelectedItem

@@ -40,6 +40,19 @@ Check 'FR true flag' $fr.Processo_20Dias -1
 Check 'FR dates in single period fields' $fr.Ferias_30_Final.ToString('yyyy-MM-dd') '2027-03-20'
 $r.opcao_aprovada=0;Check 'FR accepted alone' (Get-ExportacaoAceitasAccess).Linhas.Count 1
 $r.fr_opcao_aprovada=0;$r.ferias_bloqueadas=$true;Check 'fixed without explicit approval excluded' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$r.opcao_aprovada=1;Check 'fixed with common approval excluded' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$r.fr_opcao_aprovada=1;Check 'fixed with both approvals excluded' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$r.opcao_aprovada=0;Check 'fixed with FR approval excluded' (Get-ExportacaoAceitasAccess).Linhas.Count 0
+$r.opcao_aprovada=1
+$before=$r | ConvertTo-Json -Depth 20 -Compress
+$d=Get-ExportacaoAceitasAccess
+Check 'fixed excluded from pending export too' $d.Pendencias.Count 0
+Check 'fixed export leaves original record unchanged' ($r | ConvertTo-Json -Depth 20 -Compress) $before
+$ordinary=Row 'A' '1323';$ordinary.aquisitivo_inicio='2026-01-01';$ordinary.aquisitivo_fim='2026-12-31'
+$script:Records=@($r,$ordinary);$d=Get-ExportacaoAceitasAccess
+Check 'same employee ordinary accepted period remains' $d.Linhas.Count 1
+Check 'only ordinary acquisition period exported' $d.Linhas[0].'Periodo Aquisitivo_1'.ToString('yyyy-MM-dd') '2026-01-01'
+$script:Records=@($r);$r.ferias_bloqueadas=$false
 $r.opcao_aprovada=1;$r.fr_opcao_aprovada=1
 $r.opcao1.fim2='2028-01-14';$d=Get-ExportacaoAceitasAccess
 Check 'invalid common does not suppress accepted FR' $d.Linhas.Count 1
