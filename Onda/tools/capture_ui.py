@@ -27,6 +27,7 @@ def diagnostics():
         print('Diagnostic collection:', e)
 atexit.register(diagnostics)
 def nodes():
+    shell('rm','-f','/sdcard/onda-window.xml')
     shell('uiautomator','dump','/sdcard/onda-window.xml')
     return list(ET.fromstring(shell('cat','/sdcard/onda-window.xml')).iter('node'))
 def click(description=None,text=None,prefix=None):
@@ -73,12 +74,16 @@ assert click(prefix='Tocar '),'Demo audio not visible in library'
 time.sleep(1)
 playing=False
 for _ in range(5):
-    if any(n.attrib.get('content-desc')=='Pausar' for n in nodes()):
+    session=shell('dumpsys','media_session').decode(errors='replace')
+    if 'PlaybackState {state=3,' in session:
         playing=True
         break
     time.sleep(1)
 capture('02-reproducao')
-assert playing,'Playback did not start' 
+assert playing,'Playback did not start'
+# Stop the changing counter before UIAutomator waits for an idle UI tree.
+shell('input','keyevent','127')
+time.sleep(1)
 assert click(description='Ver letra da música'),'Lyrics button unavailable'
 capture('03-letras')
 shell('input','keyevent','4');time.sleep(.5)
