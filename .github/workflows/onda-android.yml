@@ -71,10 +71,23 @@ jobs:
           python -c 'from pathlib import Path; p=Path("Onda/distribution/Onda-Musica.apk"); assert p.stat().st_size <= 64*1024*1024, "APK excede o limite do atualizador anterior"; print("APK de distribuição:",p.stat().st_size,"bytes")'
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
       - name: Preparar gerador de vídeos de teste
+        timeout-minutes: 3
         run: |
           if ! command -v ffmpeg >/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
+            python -m pip install --disable-pip-version-check --timeout 30 --retries 1 imageio-ffmpeg==0.6.0
+            python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          import imageio_ffmpeg
+          directory = Path(os.environ["RUNNER_TEMP"]) / "onda-bin"
+          directory.mkdir(exist_ok=True)
+          executable = directory / "ffmpeg"
+          shutil.copyfile(imageio_ffmpeg.get_ffmpeg_exe(), executable)
+          executable.chmod(0o755)
+          with open(os.environ["GITHUB_PATH"], "a") as output:
+              output.write(str(directory) + "\n")
+          PY
           fi
       - name: Habilitar aceleração do emulador
         run: sudo chmod 666 /dev/kvm
