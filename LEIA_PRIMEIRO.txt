@@ -1,0 +1,17 @@
+FERIAS DCE HIST-R11 — ATUALIZACAO
+
+1. Feche o sistema.
+2. Extraia este ZIP.
+3. Copie FeriasDCE.ps1 e INICIAR_FERIAS_DCE.exe para a pasta atual do sistema, onde ficam Dados e Backups. Substitua o PS1.
+4. Preserve Dados, Backups e seu JSON atual.
+5. Abra INICIAR_FERIAS_DCE.exe. Crie seu atalho apontando para esse EXE; o BAT/CMD antigo ainda abre console e não deve ser usado na abertura normal.
+
+Conferência: no seletor Opção escolha Férias aceitas. Comuns e FR usam seus aceites independentes. Saldo aprovado = limite menos equivalentes confirmados de toda a base, incluindo fixas. Filtros de setor/nome/modalidade não liberam vagas institucionais. Conflitos no setor mostra nomes, matrículas, turnos e datas coincidentes usando o mesmo motor do relatório, com amarelo para atenção e vermelho para crítico. Os conflitos entram no CSV e em Visualizar/PDF.
+
+As fixas são compromissos da conferência, mas continuam excluídas do Excel específico para colagem no Access.
+
+O EXE abre o PowerShell STA sem console, sem CMD e sem VBS. A janela normal do aplicativo deve aparecer na barra de tarefas. Falhas são informadas por mensagem gráfica e em Logs/INICIALIZADOR_GRAFICO_*.log, com fallback para TEMP/FeriasDCELogs. Não altera a política de execução.
+
+20 rodadas do sistema + 20 do inicializador: 9.937 verificações automatizadas. Interface e abertura visual precisam de validação no Windows.
+
+Código-fonte e relatório: https://github.com/cristianoarakaki-cpu/Arakaki/tree/entrega/ferias-hist-r11
