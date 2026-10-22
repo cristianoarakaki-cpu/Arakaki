@@ -81,9 +81,16 @@ try:
     assert locate('Reproduzir vídeo') is not None,'Video did not pause'
     results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
  tap('Tela cheia do vídeo');time.sleep(1)
+ # Android shows its own immersive-mode tutorial on the first fullscreen entry.
+ prompt=next((n for n in nodes() if n.attrib.get('text','').upper() in ('GOT IT','ENTENDI')),None)
+ if prompt is not None:shell('input','tap',*point(prompt));time.sleep(.5)
  assert locate('Sair da tela cheia') is not None
+ resume=point(locate('Reproduzir vídeo'));adb('logcat','-c');shell('input','tap',*resume)
+ for _ in range(20):
+    if 'frames Onda-Video.ts' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    time.sleep(.5)
+ else:raise AssertionError('Fullscreen resume did not render video')
  capture('13-video-tela-cheia')
- tap('Reproduzir vídeo');time.sleep(1)
  adb('logcat','-c');shell('input','keyevent','3');time.sleep(1)
  assert 'paused' in adb('logcat','-d','-s','OndaVideo:D').decode(),'Video did not pause when app hidden'
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
