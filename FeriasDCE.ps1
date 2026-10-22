@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R6 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R7 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R6 HIST-R6 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R7 HIST-R7 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1139,6 +1139,43 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 
 
 # V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
+function Get-ExportacaoListaServidores {
+    $porMat=@{};$pendencias=New-Object 'System.Collections.Generic.List[object]'
+    foreach($r in @($script:Records)){
+        $mat=([string]$r.matricula).Trim();$nome=([string]$r.nome).Trim()
+        if(-not $mat){[void]$pendencias.Add([pscustomobject]@{Matricula='';Nome=$nome;Motivo='Cadastro sem matrícula; não incluído na lista principal'});continue}
+        if(-not $porMat.ContainsKey($mat)){$porMat[$mat]=New-Object 'System.Collections.Generic.List[string]'}
+        if($nome){[void]$porMat[$mat].Add($nome.ToUpperInvariant())}
+    }
+    $linhas=New-Object 'System.Collections.Generic.List[object]'
+    foreach($mat in $porMat.Keys){
+        $nomes=@($porMat[$mat] | Sort-Object -Unique)
+        $nome=$nomes -join ' / '
+        [void]$linhas.Add([pscustomobject][ordered]@{'Matrícula'=[string]$mat;Nome=[string]$nome})
+        if($nomes.Count -ne 1){$motivo=if($nomes.Count -eq 0){'Matrícula sem nome cadastrado'}else{'Mais de um nome cadastrado para esta matrícula; todos exibidos, sem escolher automaticamente'};[void]$pendencias.Add([pscustomobject]@{Matricula=[string]$mat;Nome=$nome;Motivo=$motivo})}
+    }
+    return [pscustomobject]@{Cabecalhos=@('Matrícula','Nome');Linhas=@($linhas.ToArray() | Sort-Object Nome,'Matrícula');Pendencias=@($pendencias.ToArray())}
+}
+
+function Exportar-ListaServidoresExcel {
+    $save=New-Object Windows.Forms.SaveFileDialog
+    try{
+        $dados=Get-ExportacaoListaServidores
+        if($dados.Linhas.Count -eq 0 -and $dados.Pendencias.Count -eq 0){[Windows.Forms.MessageBox]::Show('Não existem servidores cadastrados para exportar.','Lista de servidores')|Out-Null;return}
+        $save.Filter='Excel (*.xlsx)|*.xlsx';$save.FileName='SERVIDORES_MATRICULA_NOME_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.xlsx';$save.OverwritePrompt=$true
+        if($save.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return}
+        $orientacoes=@(
+            'A aba Servidores contém Matrícula e Nome de todos os servidores da base atual, independente de filtros ou aceite das férias.',
+            'Cada matrícula aparece uma única vez, mesmo com vários períodos aquisitivos. As matrículas são texto para preservar zeros iniciais.',
+            'Exporte do banco de dados outra lista com Matrícula, CP e Nome. Preserve a matrícula completa como texto nessa outra lista para possibilitar o vínculo exato.',
+            'A aba Pendencias informa matrículas sem nome, nomes diferentes para a mesma matrícula e cadastros sem matrícula. Confira essas situações antes de vincular CPs.',
+            'Esta exportação não vincula CPs e não altera o cadastro. A lista principal possui somente duas colunas.'
+        )
+        Write-ExcelAceitasAccess -Path $save.FileName -Dados $dados -NomeAbaPrincipal 'Servidores' -InstrucoesPersonalizadas $orientacoes -CabecalhosPendencias @('Matricula','Nome','Motivo')
+        [Windows.Forms.MessageBox]::Show("Lista gerada com $($dados.Linhas.Count) matrícula(s) única(s) e $($dados.Pendencias.Count) pendência(s).`n`nA aba Servidores contém Matrícula e Nome. Gere no banco a outra lista com Matrícula, CP e Nome para a conferência e vinculação dos CPs.",'Lista de servidores')|Out-Null
+    }catch{[Windows.Forms.MessageBox]::Show(('Não foi possível gerar a lista: '+$_.Exception.Message),'Lista de servidores')|Out-Null}finally{$save.Dispose()}
+}
+
 function Get-ExportacaoAceitasAccess {
     $headers=@('Codigo do Servidor','Observação','Periodo Aquisitivo_1','Periodo Aquisitivo_2','Agendar Após','Ferias_30_Inicio','Ferias_30_Final','Ferias_Par_1QIn','Ferias_Par_1QFin','Ferias_Par_2QIn','Ferias_Par_2QFin','Programacao_Ano','Processo_20Dias')
     $cpPorMat=@{}
@@ -1189,7 +1226,7 @@ function Get-ExportacaoAceitasAccess {
     return [pscustomobject]@{Cabecalhos=$headers;Linhas=@($linhas.ToArray());Pendencias=@($pendencias.ToArray())}
 }
 
-function Write-ExcelAceitasAccess([string]$Path,$Dados){
+function Write-ExcelAceitasAccess([string]$Path,$Dados,[string]$NomeAbaPrincipal='Colar_Access',[string[]]$InstrucoesPersonalizadas=@(),[string[]]$CabecalhosPendencias=@('Matricula','Nome','CP','Modalidade','Motivo')){
     # XLSX nativo, sem automação do Excel, macros, fórmulas ou acesso ao banco Access.
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -1224,14 +1261,16 @@ function Write-ExcelAceitasAccess([string]$Path,$Dados){
         'Somente opções explicitamente aceitas são exportadas. Pendentes e férias apenas fixas/bloqueadas sem aceite não são incluídas. A exportação considera toda a base, sem os filtros da lista.',
         'Pendências não estão na aba de colagem. Confira a aba Pendencias. CPs são obtidos por matrícula exata nos registros e histórico; nenhum CP é adivinhado.'
     ) | ForEach-Object {[pscustomobject]@{'Instrução'=$_}}
+    if($InstrucoesPersonalizadas.Count -gt 0){$instrucoes=@($InstrucoesPersonalizadas | ForEach-Object {[pscustomobject]@{'Instrução'=$_}})}
     $files=[ordered]@{}
     $files['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'
     $files['_rels/.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
     $files['xl/workbook.xml']='<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Colar_Access" sheetId="1" r:id="rId1"/><sheet name="Pendencias" sheetId="2" r:id="rId2"/><sheet name="Instrucoes" sheetId="3" r:id="rId3"/></sheets></workbook>'
+    $files['xl/workbook.xml']=$files['xl/workbook.xml'].Replace('Colar_Access',(XmlAccess $NomeAbaPrincipal))
     $files['xl/_rels/workbook.xml.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
     $files['xl/styles.xml']='<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="0000"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'
     $files['xl/worksheets/sheet1.xml']=SheetAccess $Dados.Cabecalhos $Dados.Linhas $true
-    $files['xl/worksheets/sheet2.xml']=SheetAccess @('Matricula','Nome','CP','Modalidade','Motivo') $Dados.Pendencias $false
+    $files['xl/worksheets/sheet2.xml']=SheetAccess $CabecalhosPendencias $Dados.Pendencias $false
     $files['xl/worksheets/sheet3.xml']=SheetAccess @('Instrução') $instrucoes $false
     $temp=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp';$zip=$null
     try{
@@ -7476,7 +7515,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R6 | HIST-R6"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R7 | HIST-R7"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8036,6 +8075,9 @@ $btnRelAceites.Text='Relatório de aceites'
 $btnExportarAccess=New-Object Windows.Forms.ToolStripMenuItem
 $btnExportarAccess.Text='Exportar aceitas para Access (Excel)'
 [void]$menuRelLanc.DropDownItems.Add($btnExportarAccess)
+$btnExportarListaServidores=New-Object Windows.Forms.ToolStripMenuItem
+$btnExportarListaServidores.Text='Exportar lista de servidores (Excel)'
+[void]$menuRelLanc.DropDownItems.Add($btnExportarListaServidores)
 
 $menuExclusaoLanc=New-Object Windows.Forms.ToolStripDropDownButton
 $menuExclusaoLanc.Text='Exclusão'
@@ -15267,6 +15309,7 @@ $btnAutorizacao.add_Click({Gerar-AutorizacaoFeriasServidor})
 $btnRelConferencia.add_Click({Show-RelatorioConferenciaOpcoes})
 $btnRelAceites.add_Click({Show-RelatorioAceitesEnfermagem})
 $btnExportarAccess.add_Click({Exportar-AceitasAccess})
+$btnExportarListaServidores.add_Click({Exportar-ListaServidoresExcel})
 $btnSalvar.add_Click({Save-Editor})
 $btnCorrigirPeriodo.add_Click({ Corrigir-PeriodoSelecionado })
 $btnNovaFixa.add_Click({ Cadastrar-FeriasFixaManual })
