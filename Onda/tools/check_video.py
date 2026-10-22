@@ -50,14 +50,14 @@ try:
     played=False
     for _ in range(20):
         log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
-        if 'playing '+filename in log and 'frames '+filename in log:played=True;break
+        if 'playing '+filename in log and 'frames '+filename in log and 'audio '+filename in log:played=True;break
         time.sleep(.5)
     assert played,'No decoded frames for '+filename+'\n'+adb('logcat','-d','-t','100').decode(errors='replace')
     assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Music overlaps video'
     time.sleep(1);capture('12-video-'+extension)
     shell('input','tap',*pause_point);time.sleep(.5)
     assert locate('Reproduzir vídeo') is not None,'Video did not pause'
-    results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True})
+    results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
  tap('Tela cheia do vídeo');time.sleep(1)
  assert locate('Sair da tela cheia') is not None
  capture('13-video-tela-cheia')

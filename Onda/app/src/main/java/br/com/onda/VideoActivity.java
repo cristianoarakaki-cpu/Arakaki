@@ -34,7 +34,7 @@ public class VideoActivity extends Activity {
     private VideoStore.Item current;private VideoStore.Item pending;
     private LibVLC engine;private MediaPlayer video;private ParcelFileDescriptor descriptor;
     private MediaController music;private ListenableFuture<MediaController> connection;
-    private AudioManager audio;private AudioFocusRequest focus;private boolean hasFocus,started,fullscreen,seeking,software,receiverRegistered;
+    private AudioManager audio;private AudioFocusRequest focus;private boolean hasFocus,started,fullscreen,seeking,software,receiverRegistered,keyboardVisible;
     private LinearLayout root,heading,browser,transport;private FrameLayout surfaceBox;private VLCVideoLayout surface;
     private Button play,full;private TextView now,position,status;private SeekBar seek;private EditText search;
     private BaseAdapter adapter;
@@ -46,7 +46,8 @@ public class VideoActivity extends Activity {
             ArrayList<String> options=new ArrayList<>();options.add("--no-video-title-show");options.add("--no-stats");
             engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,false,false);
             video.setEventListener(event->{if(isDestroyed())return;switch(event.type){
-                case MediaPlayer.Event.Playing:android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
+                case MediaPlayer.Event.Playing:status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
+                case MediaPlayer.Event.ESSelected:if(video.getAudioTracksCount()>0&&video.getAudioTrack()>=0)android.util.Log.d("OndaVideo","audio "+(current==null?"":current.file));break;
                 case MediaPlayer.Event.Vout:if(event.getVoutCount()>0)android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));break;
                 case MediaPlayer.Event.Paused:case MediaPlayer.Event.Stopped:handler.removeCallbacks(tick);update();break;
                 case MediaPlayer.Event.EndReached:handler.removeCallbacks(tick);if(started&&queueIndex>=0&&queueIndex+1<queue.size())open(queue.get(++queueIndex),false);else{update();abandonFocus();}break;
@@ -64,6 +65,13 @@ public class VideoActivity extends Activity {
     private void buildUi(){
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,i)->{int pad=fullscreen?0:Ui.dp(this,16);root.setPadding(pad,fullscreen?0:pad+i.getSystemWindowInsetTop(),pad,fullscreen?0:pad+i.getSystemWindowInsetBottom());return i;});setContentView(root);
+        root.getViewTreeObserver().addOnGlobalLayoutListener(()->{
+            android.graphics.Rect frame=new android.graphics.Rect();root.getWindowVisibleDisplayFrame(frame);
+            boolean visible=root.getRootView().getHeight()-frame.bottom>Ui.dp(this,150);
+            if(visible==keyboardVisible||surfaceBox==null)return;keyboardVisible=visible;
+            if(visible&&video!=null&&video.isPlaying())pauseVideo();
+            surfaceBox.setVisibility(visible?View.GONE:View.VISIBLE);transport.setVisibility(visible?View.GONE:View.VISIBLE);now.setVisibility(visible||fullscreen?View.GONE:View.VISIBLE);
+        });
         heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);Button back=Ui.button(this,"‹",v->onBackPressed());Ui.ghost(back);back.setContentDescription("Voltar à música");heading.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));TextView name=Ui.text(this,"Onda Vídeos",25,Ui.TEXT);Ui.bold(name);heading.addView(name,new LinearLayout.LayoutParams(0,-2,1));Button about=Ui.button(this,"ⓘ",v->about());Ui.ghost(about);about.setContentDescription("Formatos e licenças de vídeo");heading.addView(about,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));root.addView(heading);
         now=Ui.text(this,"Escolha um vídeo para assistir",14,Ui.CYAN);now.setMaxLines(1);now.setEllipsize(TextUtils.TruncateAt.END);now.setPadding(0,Ui.dp(this,8),0,Ui.dp(this,8));root.addView(now);
         surfaceBox=new FrameLayout(this);surfaceBox.setBackgroundColor(Color.BLACK);surface=new VLCVideoLayout(this);surfaceBox.addView(surface,new FrameLayout.LayoutParams(-1,-1));root.addView(surfaceBox,new LinearLayout.LayoutParams(-1,Ui.dp(this,205)));
