@@ -35,10 +35,6 @@ for extension,vcodec,acodec,mime in formats:
     remote='/sdcard/Movies/OndaDemo/'+filename;adb('push',str(local),remote)
     shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote)
     time.sleep(.3)
-    # Indexing support varies; explicitly register fixtures so every codec is exercised.
-    indexed=shell('content','query','--uri','content://media/external/video/media','--projection','_id','--where',"_display_name='"+filename+"'").decode()
-    if 'No result found' in indexed:
-        shell('content','insert','--uri','content://media/external/video/media','--bind','_data:s:'+remote,'--bind','_display_name:s:'+filename,'--bind','title:s:'+filename,'--bind','mime_type:s:'+mime,'--bind','duration:l:20000','--bind','_size:l:'+str(local.stat().st_size))
 # Independent integration test: no dependency on the music UI capture script.
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
 entry=point(locate('Abrir biblioteca de vídeos'))
@@ -52,13 +48,19 @@ results=[]
 try:
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
-    tap('Buscar vídeos por nome');shell('input','keyevent','123')
-    field=locate('Buscar vídeos por nome')
-    previous=field.attrib.get('text','')
-    if previous and previous!='Buscar vídeo no celular':
-        for _ in previous:shell('input','keyevent','67')
-    shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
-    row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
+    if extension in ('avi','flv','wmv'):
+        # These files may be absent from the video collection. Exercise Android's Open with flow.
+        content=shell('content','query','--uri','content://media/external/file','--projection','_id','--where',"_data='/sdcard/Movies/OndaDemo/"+filename+"'").decode()
+        match=re.search(r'_id=(\d+)',content);assert match,content
+        adb('logcat','-c')
+        shell('am','start','-W','-a','android.intent.action.VIEW','-d','content://media/external/file/'+match.group(1),'-t',mime,'--grant-read-uri-permission','-n',PACKAGE+'/br.com.onda.VideoActivity')
+    else:
+        tap('Buscar vídeos por nome');shell('input','keyevent','123')
+        field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
+        if previous and previous!='Buscar vídeo no celular':
+            for _ in previous:shell('input','keyevent','67')
+        shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
+        row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
     played=False
     for _ in range(20):
         log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
