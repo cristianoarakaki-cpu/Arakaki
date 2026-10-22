@@ -96,7 +96,7 @@ assert 'PlaybackState {state=2,' in shell('dumpsys','media_session').decode(erro
 # Seek near the end while paused, then verify automatic fade and next-track playback.
 seek=next(n for n in nodes() if n.attrib.get('content-desc')=='Posição na música')
 coords=[int(v) for v in re.findall(r'\d+',seek.attrib['bounds'])]
-shell('input','tap',coords[0]+int((coords[2]-coords[0])*.96),(coords[1]+coords[3])//2)
+shell('input','tap',coords[0]+int((coords[2]-coords[0])*.90),(coords[1]+coords[3])//2)
 shell('input','keyevent','126');time.sleep(8)
 fade_log=adb('logcat','-d','-s','OndaFade:D').decode(errors='replace')
 assert 'fade-out' in fade_log and 'fade-in' in fade_log,fade_log
