@@ -39,6 +39,9 @@ def click(description=None,text=None,prefix=None):
             shell('input','tap',(coords[0]+coords[2])//2,(coords[1]+coords[3])//2)
             time.sleep(1)
             return True
+    moved={'Reler arquivos do celular':'Recarregar biblioteca','Onda Lab':'Coleções inteligentes','Ver letra da música':'Letra da música','Atualizações':'Atualizações'}
+    if description in moved:
+        return click(description='Menu da biblioteca') and click(text=moved[description])
     return False
 def capture(name):
     time.sleep(.5)

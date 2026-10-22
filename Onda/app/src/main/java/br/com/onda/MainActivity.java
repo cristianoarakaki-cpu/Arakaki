@@ -31,7 +31,7 @@ public class MainActivity extends Activity {
     private ListenableFuture<MediaController> connection;
     private LinearLayout rows;
     private TextView status, title, artist, elapsed, total;
-    private Button play, shuffle, repeat, favorite, allTab, favoritesTab;
+    private Button play, shuffle, repeat, favorite, allTab, favoritesTab, searchFilter;
     private final Map<String,View> rowViews=new HashMap<>();
     private String activeRowId="";
     private SeekBar seek;
@@ -58,20 +58,16 @@ public class MainActivity extends Activity {
         LinearLayout topBar=new LinearLayout(this);topBar.setGravity(Gravity.CENTER_VERTICAL);topBar.addView(Ui.art(this,38,0));
         LinearLayout identity=column();TextView brand=Ui.text(this,"onda",27,Ui.TEXT);brand.setLetterSpacing(.08f);Ui.bold(brand);identity.addView(brand);TextView subbrand=Ui.text(this,"MEDIA PLAYER",9,muted);subbrand.setLetterSpacing(.18f);identity.addView(subbrand);
         LinearLayout.LayoutParams identityParams=new LinearLayout.LayoutParams(0,-2,1);identityParams.leftMargin=dp(10);topBar.addView(identity,identityParams);
-        Button lab=button("Lab",v->startActivity(new Intent(this,SmartLibraryActivity.class)));Ui.ghost(lab);lab.setContentDescription("Onda Lab");topBar.addView(lab,new LinearLayout.LayoutParams(dp(52),dp(48)));
-        Button updates=button("Atualizações",v->startActivity(new Intent(this,UpdateActivity.class)));Ui.ghost(updates);updates.setTextSize(12);updates.setContentDescription("Atualizações");topBar.addView(updates,new LinearLayout.LayoutParams(dp(100),dp(48)));root.addView(topBar);
-        Button videos=button("▶  Vídeos do celular",v->startActivity(new Intent(this,VideoActivity.class)));Ui.chip(videos,false);videos.setContentDescription("Abrir biblioteca de vídeos");LinearLayout.LayoutParams videoParams=new LinearLayout.LayoutParams(-1,dp(48));videoParams.topMargin=dp(8);root.addView(videos,videoParams);
-        LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);TextView library=Ui.text(this,"Biblioteca",25,Ui.TEXT);Ui.bold(library);section.addView(library,new LinearLayout.LayoutParams(0,-2,1));
-        Button online=button("Explorar ↗",v->startActivity(new Intent(this,OnlineActivity.class)));Ui.chip(online,true);online.setContentDescription("Buscar e ouvir online");section.addView(online,new LinearLayout.LayoutParams(dp(116),dp(48)));LinearLayout.LayoutParams sectionParams=new LinearLayout.LayoutParams(-1,dp(64));sectionParams.topMargin=dp(8);root.addView(section,sectionParams);
+        Button menu=Ui.menuButton(this,"Menu da biblioteca",this::showLibraryMenu);topBar.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));root.addView(topBar);
+        LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);TextView library=Ui.text(this,"Minhas músicas",24,Ui.TEXT);Ui.bold(library);section.addView(library,new LinearLayout.LayoutParams(0,-2,1));
+        searchFilter=button("Filtrar",v->filter());Ui.ghost(searchFilter);searchFilter.setContentDescription("Filtrar busca no celular");section.addView(searchFilter,new LinearLayout.LayoutParams(dp(90),dp(48)));LinearLayout.LayoutParams sectionParams=new LinearLayout.LayoutParams(-1,dp(56));sectionParams.topMargin=dp(8);root.addView(section,sectionParams);
         LinearLayout searchRow=new LinearLayout(this);LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,dp(50));searchParams.bottomMargin=dp(8);root.addView(searchRow,searchParams);
         EditText search=new EditText(this);localSearch=search;Ui.input(search);search.setHint("Buscar no celular");search.setContentDescription("Buscar música, artista ou álbum no celular");searchRow.addView(search,new LinearLayout.LayoutParams(0,-1,1));
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();render();}public void afterTextChanged(Editable e){}});
         Button voice=Ui.voiceButton(this,"Busca por voz no celular",v->VoiceSearch.start(this,true));LinearLayout.LayoutParams voiceParams=new LinearLayout.LayoutParams(dp(48),-1);voiceParams.leftMargin=dp(8);searchRow.addView(voice,voiceParams);
-        Spinner scope=new Spinner(this);scope.setAdapter(new ArrayAdapter<>(this,R.layout.spinner_item,new String[]{"Tudo", "Música", "Artista", "Álbum"}));Ui.spinner(scope);scope.setContentDescription("Filtrar busca no celular");scope.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> a,View v,int position,long id){searchScope=position;render();}public void onNothingSelected(AdapterView<?> a){}});
-        LinearLayout.LayoutParams scopeParams=new LinearLayout.LayoutParams(dp(90),-1);scopeParams.leftMargin=dp(8);searchRow.addView(scope,scopeParams);
         LinearLayout tabs=new LinearLayout(this);allTab=button("Todas",v->{onlyFavorites=false;render();});favoritesTab=button("Favoritas",v->{onlyFavorites=true;render();});
         LinearLayout.LayoutParams tabParams=new LinearLayout.LayoutParams(0,dp(48),1);tabParams.rightMargin=dp(8);tabs.addView(allTab,tabParams);tabs.addView(favoritesTab,new LinearLayout.LayoutParams(0,dp(48),1));
-        Button rescan=button("↻",v->permission());Ui.ghost(rescan);rescan.setTextSize(25);rescan.setContentDescription("Reler arquivos do celular");tabs.addView(rescan,new LinearLayout.LayoutParams(dp(48),dp(48)));root.addView(tabs);
+        root.addView(tabs);
         status=label("Preparando biblioteca…",12,muted);root.addView(status);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);scroll.setClipToPadding(false);scroll.setPadding(0,dp(4),0,dp(6));rows=column();scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout now=column();now.setPadding(dp(14),dp(12),dp(14),dp(8));Ui.playerCard(now);root.addView(now);
@@ -88,7 +84,7 @@ public class MainActivity extends Activity {
         Button next=Ui.transport(this,"next",v->{if(player!=null)player.seekToNext();});next.setContentDescription("Próxima música");
         repeat=Ui.transport(this,"repeat",v->{if(player!=null){player.setRepeatMode((player.getRepeatMode()+1)%3);refresh();}});repeat.setContentDescription("Alternar repetição");
         for(Button b:new Button[]{shuffle,previous,play,next,repeat}){LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(56),1);if(b==play){FrameLayout holder=new FrameLayout(this);holder.addView(b,new FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER));controls.addView(holder,params);}else controls.addView(b,params);}LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(-1,dp(60));controlsParams.topMargin=dp(4);now.addView(controls,controlsParams);
-        LinearLayout extras=new LinearLayout(this);Button timer=button("Temporizador",v->sleep());Ui.ghost(timer);extras.addView(timer,new LinearLayout.LayoutParams(0,dp(48),1));Button lyrics=button("Letra da música  ›",v->{if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));});lyrics.setContentDescription("Ver letra da música");Ui.ghost(lyrics);lyrics.setTextColor(Ui.CYAN);extras.addView(lyrics,new LinearLayout.LayoutParams(0,dp(48),1));now.addView(extras);
+        root.addView(Ui.navigation(this,0));
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){if(e.size()!=1||!e.contains(Player.EVENT_VOLUME_CHANGED))refresh();}@Override public void onPlayerError(PlaybackException e){new AlertDialog.Builder(MainActivity.this).setTitle("Não foi possível tocar").setMessage("O arquivo pode estar indisponível ou usar um codec incompatível com este aparelho. Tente outra música.").setPositiveButton("OK",null).show();}});refresh();if(pendingVoice!=null&&libraryReady){String phrase=pendingVoice;pendingVoice=null;handleVoice(phrase);}}catch(Exception e){status.setText("Falha ao conectar o tocador. Feche e abra o app.");}},handler::post);
         pendingVoice=getIntent().getStringExtra("voice_phrase");permission();
@@ -105,13 +101,19 @@ public class MainActivity extends Activity {
             if(queue.isEmpty()){VoiceControl.say(this,"Nenhuma música encontrada no celular.");return;}player.setMediaItems(queue);player.prepare();player.play();
         }
     }
+    private void showLibraryMenu(View anchor){Ui.menu(this,anchor,
+        new String[]{"Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações"},
+        new String[]{"Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações"},
+        new Runnable[]{()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class))});}
+    private void lyrics(){if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}
+    private void filter(){String[] fields={"Todos os campos","Música","Artista","Álbum"};new AlertDialog.Builder(this).setTitle("Buscar por").setSingleChoiceItems(fields,searchScope,(dialog,which)->{searchScope=which;render();dialog.dismiss();}).setNegativeButton("Fechar",null).show();}
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}
     @Override public void onRequestPermissionsResult(int code,String[] p,int[] results){super.onRequestPermissionsResult(code,p,results);if(code==10&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();else{status.setText("Permita acesso às músicas para abrir sua biblioteca.");rows.removeAllViews();Button settings=button("Abrir configurações",v->startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))));rows.addView(settings);}}
     private void scan(){status.setText("Buscando músicas no celular…");scanner.execute(()->{ArrayList<MediaItem> found=new ArrayList<>();String error=null;
         try{found.addAll(LibraryStore.scan(this));}catch(Exception e){error="Não foi possível ler a biblioteca. Verifique a permissão e tente atualizar.";}
         String message=error;runOnUiThread(()->{if(isDestroyed())return;songs.clear();songs.addAll(found);libraryReady=true;render();if(pendingVoice!=null&&player!=null){String phrase=pendingVoice;pendingVoice=null;handleVoice(phrase);}if(message!=null)status.setText(message);});});}
     private void render(){
-        if(rows==null)return;rows.removeAllViews();rowViews.clear();activeRowId="";Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
+        if(rows==null)return;searchFilter.setText(new String[]{"Filtrar","Música","Artista","Álbum"}[searchScope]);Ui.chip(searchFilter,searchScope!=0);rows.removeAllViews();rowViews.clear();activeRowId="";Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
         ArrayList<MediaItem> visible=new ArrayList<>();
         for(MediaItem item:songs){
             MediaMetadata m=item.mediaMetadata;
@@ -124,7 +126,7 @@ public class MainActivity extends Activity {
         }
         highlightCurrentRow();
         int count=visible.size();status.setText(count+" de "+songs.size()+" músicas no celular"+(onlyFavorites?" • favoritas":""));
-        if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou selecione Tudo.",16,muted));
+        if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou ajuste o filtro.",16,muted));
     }
     private void refresh(){if(!screenStarted||player==null)return;MediaItem item=player.getCurrentMediaItem();if(item!=null){title.setText(item.mediaMetadata.title);artist.setText(item.mediaMetadata.artist);favorite.setText(favorites.contains(item.mediaId)?"♥":"♡");favorite.setTextColor(favorites.contains(item.mediaId)?Ui.CYAN:Ui.MUTED);favorite.setContentDescription(favorites.contains(item.mediaId)?"Remover dos favoritos":"Adicionar aos favoritos");}play.setText(player.isPlaying()?"❚❚":"▶");play.setContentDescription(player.isPlaying()?"Pausar":"Reproduzir");shuffle.setTextColor(player.getShuffleModeEnabled()?green:muted);repeat.setText(player.getRepeatMode()==Player.REPEAT_MODE_ONE?"↻ 1":"↻");repeat.setTextColor(player.getRepeatMode()!=Player.REPEAT_MODE_OFF?green:muted);long duration=player.getDuration();seek.setMax(duration>0?(int)Math.min(Integer.MAX_VALUE,duration):0);total.setText(time(duration));highlightCurrentRow();restartProgress();}
     private void toggleFavorite(){if(player==null||player.getCurrentMediaItem()==null)return;String id=player.getCurrentMediaItem().mediaId;if(!favorites.remove(id))favorites.add(id);prefs.edit().putStringSet("favorites",new HashSet<>(favorites)).apply();refresh();render();}

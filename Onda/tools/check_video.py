@@ -12,6 +12,11 @@ def point(node):
     v=[int(x) for x in re.findall(r'\d+',node.attrib['bounds'])];return ((v[0]+v[2])//2,(v[1]+v[3])//2)
 def locate(desc):return next(n for n in nodes() if n.attrib.get('content-desc')==desc)
 def tap(desc):shell('input','tap',*point(locate(desc)));time.sleep(.5)
+def tap_text(text):
+    node=next(n for n in nodes() if n.attrib.get('text')==text)
+    shell('input','tap',*point(node));time.sleep(.5)
+def menu_action(description,label):
+    tap(description);tap_text(label)
 def capture(name):
     (OUTPUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
     (OUTPUT/(name+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
@@ -37,6 +42,27 @@ for extension,vcodec,acodec,mime in formats:
     time.sleep(.3)
 # Independent integration test: no dependency on the music UI capture script.
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
+# Verify the simplified navigation and relocated actions on the actual Android UI.
+capture('01-musicas-interface')
+tap('Filtrar busca no celular');tap_text('Artista')
+assert locate('Filtrar busca no celular').attrib.get('text')=='Artista'
+tap('Filtrar busca no celular');tap_text('Todos os campos')
+tap('Menu da biblioteca');capture('02-menu-biblioteca');tap_text('Coleções inteligentes')
+assert any(n.attrib.get('text')=='Onda Lab' for n in nodes())
+shell('input','keyevent','4');time.sleep(.5)
+menu_action('Menu da biblioteca','Atualizações');capture('03-atualizacoes-menu')
+shell('input','keyevent','4');time.sleep(.5)
+menu_action('Menu da biblioteca','Temporizador')
+assert any(n.attrib.get('text')=='30 minutos' for n in nodes())
+shell('input','keyevent','4');time.sleep(.5)
+menu_action('Menu da biblioteca','Recarregar biblioteca')
+tap('Buscar e ouvir online');capture('04-explorar-interface')
+assert not any(n.attrib.get('content-desc')=='Fonte da busca online' for n in nodes()),'Online filters should start collapsed'
+menu_action('Menu de explorar','Fontes e filtros')
+assert locate('Fonte da busca online') is not None
+capture('05-filtros-online')
+menu_action('Menu de explorar','Fontes e filtros')
+tap('Abrir biblioteca de músicas')
 entry=point(locate('Abrir biblioteca de vídeos'))
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions');time.sleep(1)
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Music fixture not playing before video'
@@ -44,13 +70,14 @@ shell('input','tap',*entry);time.sleep(2)
 assert locate('Buscar vídeos por nome') is not None
 pause_point=point(locate('Reproduzir vídeo'))
 capture('11-biblioteca-videos')
+tap('Menu de vídeos');capture('06-menu-videos');shell('input','keyevent','4');time.sleep(.3)
 results=[]
 try:
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):
         # Use the real system file selector, which grants read access to unindexed formats.
-        tap('Abrir arquivo de vídeo');time.sleep(1)
+        menu_action('Menu de vídeos','Abrir arquivo');time.sleep(1)
         tree=nodes()
         folder=next((n for n in tree if n.attrib.get('text')=='OndaDemo'),None)
         if folder is not None:shell('input','tap',*point(folder));time.sleep(.5)
@@ -94,7 +121,7 @@ try:
  adb('logcat','-c');shell('input','keyevent','3');time.sleep(1)
  assert 'paused' in adb('logcat','-d','-s','OndaVideo:D').decode(),'Video did not pause when app hidden'
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
- print('Android video: 8 containers decoded, audio exclusive, search, pause, fullscreen and background pause passed.')
+ print('Android: menus, music/video/online navigation, local filters, online filter panel, timer, collections, updates and 8 video containers passed.')
 finally:
  (OUTPUT/'video-tests.json').write_text(json.dumps(results,indent=2)+'\n')
  (OUTPUT/'video-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))

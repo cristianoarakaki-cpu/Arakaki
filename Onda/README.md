@@ -141,3 +141,14 @@ LibVLC © VideoLAN e colaboradores, licença LGPL 2.1 ou posterior, incluída em
 O APK de distribuição inclui ARM de 32 e 64 bits com bibliotecas comprimidas, para permanecer abaixo de 64 MiB e funcionar com o atualizador anterior. O CI guarda esse APK antes de reconstruir uma variante x86_64 apenas para os testes do emulador; essa variante não é publicada. Os mesmos código Java, versão e bibliotecas LibVLC são usados nas duas compilações.
 
 A atividade de vídeo também aceita ACTION_VIEW com URI content:// e MIME video/*, para usar “Abrir com Onda” no gerenciador de arquivos com permissão temporária de leitura. O motor abre o descritor de arquivo concedido, sem precisar converter o caminho em acesso irrestrito ao armazenamento. Formatos não indexados como vídeos pelo Android podem ser abertos pelo seletor ou pelo gerenciador de arquivos.
+
+
+## Versão 0.10.0 — Menus e navegação
+
+Três destinos principais na barra inferior: Músicas, Vídeos e Explorar, com seção atual destacada. A mudança de seção reaproveita a biblioteca principal e fecha a tela anterior de vídeo/online, evitando empilhar players.
+
+Menu da biblioteca: Coleções inteligentes, Letra da música, Temporizador, Recarregar biblioteca e Atualizações. O botão Filtrar abre a escolha de Todos os campos, Música, Artista ou Álbum. As abas Todas/Favoritas e os controles essenciais permanecem à vista; o campo de busca ganha largura.
+
+Menu de vídeos: Abrir arquivo, Acesso aos vídeos, Recarregar vídeos e Formatos e licenças. Navegação inferior se recolhe durante a digitação e em tela cheia. No Explorar, fontes e filtros ficam em um painel recolhido, acessível pelo menu ou tocando na identificação da fonte. A indicação de prévias continua visível.
+
+Os menus e a navegação usam componentes nativos estáticos, sem novos serviços ou animações em segundo plano. O emulador verifica os destinos de navegação, filtros, menus e ações transferidas, além da reprodução de vídeo e tela cheia.

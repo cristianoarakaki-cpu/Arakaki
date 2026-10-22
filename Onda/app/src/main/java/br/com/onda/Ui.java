@@ -1,6 +1,8 @@
 package br.com.onda;
 
 import android.content.Context;
+import android.content.Intent;
+import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.*;
 import android.graphics.drawable.*;
@@ -43,6 +45,19 @@ final class Ui {
     static Button voiceButton(Context c,String description,View.OnClickListener listener){
         Button b=new Button(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
         b.setText("");b.setContentDescription(description);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setBackground(ripple(c,shape(c,RAISED,BORDER,16),16));b.setOnClickListener(listener);return b;
+    }
+    static void menu(Activity activity,View anchor,String[] labels,String[] descriptions,Runnable[] actions){
+        PopupMenu popup=new PopupMenu(activity,anchor);for(int i=0;i<labels.length;i++)popup.getMenu().add(0,i,i,labels[i]).setContentDescription(descriptions[i]);
+        popup.setOnMenuItemClickListener(item->{actions[item.getItemId()].run();return true;});popup.show();
+    }
+    static Button menuButton(Context context,String description,View.OnClickListener listener){Button b=button(context,"☰",listener);ghost(b);b.setTextSize(25);b.setContentDescription(description);return b;}
+    @androidx.media3.common.util.UnstableApi
+    static LinearLayout navigation(Activity activity,int current){
+        LinearLayout bar=new LinearLayout(activity);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(activity,4),dp(activity,4),dp(activity,4),dp(activity,4));bar.setBackground(shape(activity,SURFACE,BORDER,18));
+        String[] labels={"Músicas","Vídeos","Explorar"},descriptions={"Abrir biblioteca de músicas","Abrir biblioteca de vídeos","Buscar e ouvir online"};
+        Class<?>[] targets={MainActivity.class,VideoActivity.class,OnlineActivity.class};
+        for(int i=0;i<labels.length;i++){final int destination=i;Button b=button(activity,labels[i],v->{if(current==destination)return;activity.startActivity(new Intent(activity,targets[destination]).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));if(!(activity instanceof MainActivity))activity.finish();});b.setTextSize(12);b.setContentDescription(descriptions[i]);b.setSelected(i==current);if(i==current)chip(b,true);else ghost(b);bar.addView(b,new LinearLayout.LayoutParams(0,dp(activity,48),1));}
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(activity,56));params.topMargin=dp(activity,8);bar.setLayoutParams(params);return bar;
     }
     private static final class SignalArt extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int seed;
