@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R10 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R11 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R10 HIST-R10 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R11 HIST-R11 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -7636,7 +7636,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R10 | HIST-R10"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R11 | HIST-R11"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -8601,9 +8601,9 @@ function Gerar-TodasFeriasFixasHTML {
     }
 }
 # V1.0.168 - Relatorio de simultaneidade por setor (consulta, sem modificar JSON).
-function Get-EntradasConferenciaSetor([bool]$IncluirPendentes) {
+function Get-EntradasConferenciaSetor([bool]$IncluirPendentes,$Registros=$script:Records) {
     $itens=New-Object 'System.Collections.Generic.List[object]'
-    foreach($r in @($script:Records)) {
+    foreach($r in @($Registros)) {
         if($null -eq $r){continue}
         $setor=([string]$r.setor).Trim(); if(-not $setor){$setor='SETOR NAO INFORMADO'}
         $mat=([string]$r.matricula).Trim(); $nome=([string]$r.nome).Trim(); if(-not $mat){$mat='REGISTRO:'+([string]$r.id)}
@@ -8661,23 +8661,7 @@ function Normalizar-TurnoConferencia([string]$Valor){
         default {return 'NAO INFORMADO'}
     }
 }
-function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPendentes,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
-    $enc={param($v) [System.Net.WebUtility]::HtmlEncode([string]$v)}
-    $selecionados=@{};foreach($s in $Setores){$selecionados[[string]$s]=$true}
-    # O turno pertence ao registro aquisitivo de origem, nunca ao primeiro cadastro da matricula.
-    $itens=@(Get-EntradasConferenciaSetor $IncluirPendentes | Where-Object {$selecionados.ContainsKey([string]$_.Setor)} | ForEach-Object {
-        [pscustomobject]@{Setor=[string]$_.Setor;Matricula=[string]$_.Matricula;Nome=[string]$_.Nome;Inicio=[datetime]$_.Inicio;Fim=[datetime]$_.Fim;Situacao=[string]$_.Situacao;Turno=[string]$_.Turno;RegistroId=[string]$_.RegistroId}
-    })
-    $grupos=@()
-    if($Modo -eq 'ENTRE_SETORES'){$grupos=@([pscustomobject]@{Nome='ENTRE SETORES SELECIONADOS';Itens=@($itens)})}
-    else {foreach($s in @($Setores | Sort-Object -Unique)){$grupos+= [pscustomobject]@{Nome=$s;Itens=@($itens | Where-Object {$_.Setor -eq $s})}}}
-    $htmlPartes=New-Object System.Text.StringBuilder
-    $totalCriticos=0;$totalAtencao=0;$totalPendentes=0;$totalEventos=0
-    foreach($g in $grupos){
-        $arr=@($g.Itens)
-        [void]$htmlPartes.Append('<section class="setor"><h2>'+(& $enc $g.Nome)+'</h2>')
-        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada.</p></section>');continue}
-        # Pontos de corte: inicio e dia seguinte ao termino (fim inclusivo).
+function Get-EventosConflitoSetor($arr,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
         $pontos=New-Object 'System.Collections.Generic.List[datetime]'
         foreach($it in $arr){$pontos.Add($it.Inicio.Date);if($it.Fim.Date -lt [datetime]::MaxValue.Date){$pontos.Add($it.Fim.Date.AddDays(1))}}
         $cortes=@($pontos | Sort-Object -Unique)
@@ -8731,7 +8715,7 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
                 if(@($t.Group | Select-Object -ExpandProperty Setor -Unique).Count -ge 2){$mesmoTurno=$true;break}
             }
             $pendente=(@($ativos | Where-Object {$_.Situacao -match 'PENDENTE'}).Count -gt 0)
-            $grau=if($mesmoTurno){'CRITICO'}else{'ATENCAO'}
+            $grau=Get-GrauConflitoSetor $ativos $Modo
             $confirmacao=if($pendente){'ENVOLVE PENDENTE'}else{'CONFIRMADO'}
             # Cada trecho pertence a um conjunto IDENTICO de lancamentos, nao apenas matriculas.
             # Nao unir periodos distintos do mesmo servidor ou mudancas de turno/status.
@@ -8743,6 +8727,58 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
                 $eventos[$eventos.Count-1].Fim=$fim
             }else{$eventos.Add([pscustomobject]@{Inicio=$ini;Fim=$fim;Chave=$chave;Participantes=$ativos;Grau=$grau;Confirmacao=$confirmacao})}
         }
+    return $eventos.ToArray()
+}
+
+function Get-GrauConflitoSetor($Participantes,[string]$Modo='POR_SETOR'){
+    foreach($t in @($Participantes | Where-Object {$_.Turno -ne 'NAO INFORMADO'} | Group-Object Turno | Where-Object {$_.Count -ge 2})){
+        if($Modo -eq 'POR_SETOR' -or @($t.Group | Select-Object -ExpandProperty Setor -Unique).Count -ge 2){return 'CRITICO'}
+    }
+    return 'ATENCAO'
+}
+
+function Get-ConflitosConferenciaAceitas($Registros,[int]$Ano,[int]$Mes=0){
+    # Mesma origem do relatorio: aceites independentes comum/FR e fixas, sem pendentes.
+    $entradas=@(Get-EntradasConferenciaSetor $false $Registros)
+    $mapa=@{};$inicio=[datetime]::new($Ano,1,1);$fim=$inicio.AddYears(1).AddDays(-1)
+    if($Mes -ge 1 -and $Mes -le 12){$inicio=[datetime]::new($Ano,$Mes,1);$fim=$inicio.AddMonths(1).AddDays(-1)}
+    foreach($grupo in @($entradas | Group-Object Setor)){
+        foreach($evento in @(Get-EventosConflitoSetor @($grupo.Group))){
+            $de=$evento.Inicio;if($inicio -gt $de){$de=$inicio}
+            $ate=$evento.Fim;if($fim -lt $ate){$ate=$fim}
+            if($ate -lt $de){continue}
+            foreach($participante in $evento.Participantes){
+                $id=[string]$participante.RegistroId
+                if(-not $mapa.ContainsKey($id)){$mapa[$id]=New-Object 'System.Collections.Generic.List[string]'}
+                foreach($outro in $evento.Participantes){
+                    if($outro.Matricula -eq $participante.Matricula){continue}
+                    $texto=('{0}: {1} a {2} | {3} (mat. {4}; {5})' -f $evento.Grau,$de.ToString('dd/MM/yyyy'),$ate.ToString('dd/MM/yyyy'),$outro.Nome,$outro.Matricula,$outro.Turno)
+                    if(-not $mapa[$id].Contains($texto)){$mapa[$id].Add($texto)}
+                }
+            }
+        }
+    }
+    return $mapa
+}
+
+function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPendentes,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
+    $enc={param($v) [System.Net.WebUtility]::HtmlEncode([string]$v)}
+    $selecionados=@{};foreach($s in $Setores){$selecionados[[string]$s]=$true}
+    # O turno pertence ao registro aquisitivo de origem, nunca ao primeiro cadastro da matricula.
+    $itens=@(Get-EntradasConferenciaSetor $IncluirPendentes | Where-Object {$selecionados.ContainsKey([string]$_.Setor)} | ForEach-Object {
+        [pscustomobject]@{Setor=[string]$_.Setor;Matricula=[string]$_.Matricula;Nome=[string]$_.Nome;Inicio=[datetime]$_.Inicio;Fim=[datetime]$_.Fim;Situacao=[string]$_.Situacao;Turno=[string]$_.Turno;RegistroId=[string]$_.RegistroId}
+    })
+    $grupos=@()
+    if($Modo -eq 'ENTRE_SETORES'){$grupos=@([pscustomobject]@{Nome='ENTRE SETORES SELECIONADOS';Itens=@($itens)})}
+    else {foreach($s in @($Setores | Sort-Object -Unique)){$grupos+= [pscustomobject]@{Nome=$s;Itens=@($itens | Where-Object {$_.Setor -eq $s})}}}
+    $htmlPartes=New-Object System.Text.StringBuilder
+    $totalCriticos=0;$totalAtencao=0;$totalPendentes=0;$totalEventos=0
+    foreach($g in $grupos){
+        $arr=@($g.Itens)
+        [void]$htmlPartes.Append('<section class="setor"><h2>'+(& $enc $g.Nome)+'</h2>')
+        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada.</p></section>');continue}
+        # Pontos de corte: inicio e dia seguinte ao termino (fim inclusivo).
+        $eventos=@(Get-EventosConflitoSetor $arr $Modo $ExigirMesmoTurno)
         if($eventos.Count -eq 0){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada neste escopo.</p></section>');continue}
         [void]$htmlPartes.Append('<p class="section-caption">'+ $eventos.Count +' ocorrência(s) neste setor ou grupo. Cada linha reúne um intervalo de coincidência.</p>')
         [void]$htmlPartes.Append('<div class="table-wrap"><table><caption class="sr-only">Ocorrências de coincidência de férias: '+(& $enc $g.Nome)+'</caption><thead><tr><th scope="col">Classificação</th><th scope="col">Situação</th><th scope="col">Período coincidente</th><th scope="col">Dias</th><th scope="col">Servidores e férias programadas</th><th scope="col">Pessoas</th></tr></thead><tbody>')
@@ -10259,9 +10295,9 @@ function Get-OpcaoConfirmadaRegistro($r){
     return $op
 }
 
-function Get-ContagemInstitucionalAprovadaMes([int]$ano,[int]$mes){
+function Get-ContagemInstitucionalAprovadaMes([int]$ano,[int]$mes,$Registros=$script:Records){
     $porChave=@{}
-    foreach($r in $script:Records){
+    foreach($r in $Registros){
         $op=Get-OpcaoConfirmadaRegistro $r
         if($null -eq $op){continue}
         $peso=[double](Get-PesoOpcaoInstitucionalMes $op $ano $mes)
@@ -14608,7 +14644,7 @@ function Show-RelatorioConferenciaOpcoes {
     # V1.0.140 - janela organizada em dois blocos fixos (resumo acima + detalhes abaixo),
     # sem sobreposicao visual e com cabecalhos nativos sempre visiveis.
     $dialog=New-Object Windows.Forms.Form
-    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - V1.0.157'
+    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - HIST-R11'
     $dialog.Size=New-Object Drawing.Size(1365,910)
     $dialog.MinimumSize=New-Object Drawing.Size(1120,760)
     $dialog.StartPosition='CenterScreen'
@@ -14631,7 +14667,7 @@ function Show-RelatorioConferenciaOpcoes {
     $lbl=New-Object Windows.Forms.Label;$lbl.Text='Opcao:';$lbl.SetBounds(12,11,55,23);$top.Controls.Add($lbl)
     $select=New-Object Windows.Forms.ComboBox
     $select.DropDownStyle='DropDownList';$select.SetBounds(68,9,150,27)
-    [void]$select.Items.AddRange([object[]]@('1a opcao','2a opcao','3a opcao'))
+    [void]$select.Items.AddRange([object[]]@('1a opcao','2a opcao','3a opcao','Férias aceitas'))
     $select.SelectedIndex=0;$top.Controls.Add($select)
 
     $lblAno=New-Object Windows.Forms.Label;$lblAno.Text='Ano:';$lblAno.SetBounds(232,11,40,23);$top.Controls.Add($lblAno)
@@ -14769,11 +14805,11 @@ function Show-RelatorioConferenciaOpcoes {
         'Periodo FR 20'='fr_periodo';
         'Fixa inicio'='fixo_inicio';'Fixa fim'='fixo_fim';
         'Opcao comum aprovada'='opcao_aprovada';'Opcao FR aprovada'='fr_opcao_aprovada';
-        'Situacao'='situacao';'Observacoes'='observacoes'
+        'Situacao'='situacao';'Conflitos no setor'='conflitos_setor';'Observacoes'='observacoes'
     }
     foreach($name in $fields.Keys){
         $ix=$checks.Items.Add($name)
-        if(@('Matricula','Servidor','Setor','Periodo trabalho','Aquisitivo inicio','Aquisitivo fim','Modalidade','Periodo no mes','Tipo ferias comuns','Periodo FR 20') -contains $name){$checks.SetItemChecked($ix,$true)}
+        if(@('Matricula','Servidor','Setor','Periodo trabalho','Aquisitivo inicio','Aquisitivo fim','Modalidade','Periodo no mes','Tipo ferias comuns','Periodo FR 20','Conflitos no setor') -contains $name){$checks.SetItemChecked($ix,$true)}
     }
 
     $store=[pscustomobject]@{Rows=@();Records=@();Shown=$null;Monthly=$null;Refreshing=$false}
@@ -14805,6 +14841,8 @@ function Show-RelatorioConferenciaOpcoes {
 
     $pesoInstitucionalRelatorio = (Get-Command -Name 'Get-PesoBlocoInstitucionalMes' -CommandType Function -ErrorAction Stop).ScriptBlock
     $limiteInstitucionalRelatorio = (Get-Command -Name 'Get-LimiteInstitucionalMes' -CommandType Function -ErrorAction Stop).ScriptBlock
+    $contagemAceitasRelatorio=(Get-Command Get-ContagemInstitucionalAprovadaMes -CommandType Function -ErrorAction Stop).ScriptBlock
+    $conflitosAceitasRelatorio=(Get-Command Get-ConflitosConferenciaAceitas -CommandType Function -ErrorAction Stop).ScriptBlock
 
     # V137: configurar colunas diretamente no mesmo evento, sem scriptblock aninhado.
     # DataGridView gera as colunas a partir do DataTable, com cabeçalhos nativos.
@@ -14818,7 +14856,13 @@ function Show-RelatorioConferenciaOpcoes {
       if($store.Refreshing){return};$store.Refreshing=$true
       $etapa='Iniciar filtros'
       try {
+        $aceitas=($select.SelectedIndex -eq 3)
+        $modo.Enabled=-not $aceitas
+        if($aceitas -and [string]$modo.SelectedItem -ne 'Programacao aprovada'){$modo.SelectedItem='Programacao aprovada'}
+        $analysis=if($aceitas){'Programacao aprovada'}else{[string]$modo.SelectedItem}
         $n=$select.SelectedIndex+1;$y=[int]$year.SelectedItem;$m=$month.SelectedIndex
+        $conflitos=@{}
+        if($analysis -eq 'Programacao aprovada'){$conflitos=& $conflitosAceitasRelatorio $store.Records $y $m}
         $choice=[string]$modality.SelectedItem;$term=$search.Text.Trim()
         $sect=[string]$sector.SelectedItem;$per=[string]$period.SelectedItem
         $chosen=@(& $getChosen)
@@ -14836,7 +14880,6 @@ function Show-RelatorioConferenciaOpcoes {
             if($sect -and $sect -ne 'Todos' -and [string]$r.setor -ne $sect){continue}
             if($per -and $per -ne 'Todos' -and [string]$r.periodo -ne $per){continue}
             if($term -and ([string]$r.nome -notlike "*$term*") -and ([string]$r.matricula -notlike "*$term*")){continue}
-            $analysis=[string]$modo.SelectedItem
             $apC=[int]$r.opcao_aprovada
             $apF=[int]$r.fr_opcao_aprovada
             $modalities=New-Object Collections.Generic.List[object]
@@ -14924,6 +14967,8 @@ function Show-RelatorioConferenciaOpcoes {
             $rr['Total solicit.']=[string]($counts[$mm].X.Count+$counts[$mm].C.Count+$counts[$mm].F.Count)
             $rr['Servidores distintos']=[string]$counts[$mm].All.Count
             $equiv=[double]0; foreach($peso in $counts[$mm].Peso.Values){$equiv += [math]::Min([double]1.0,[math]::Max([double]$peso.Comum,[double]$peso.FR))}
+            # Saldo institucional usa toda a base aprovada, independente dos filtros nominais.
+            if($analysis -eq 'Programacao aprovada'){$equiv=[double](& $contagemAceitasRelatorio $y $mm $store.Records)}
             $limite=[double](& $limiteInstitucionalRelatorio $mm)
             $rr['Equivalentes']=$equiv.ToString('0.##',[Globalization.CultureInfo]::GetCultureInfo('pt-BR'))
             $rr['Limite']=$limite.ToString('0.##',[Globalization.CultureInfo]::GetCultureInfo('pt-BR'))
@@ -14964,6 +15009,11 @@ function Show-RelatorioConferenciaOpcoes {
                             $parts+=('{0} a {1}' -f (& $dateBR ([string]$rg.S)),(& $dateBR ([string]$rg.E)))
                         }
                         $v=([string]::Join(' | ', [string[]]$parts))
+                    }
+                    'conflitos_setor' {
+                        if($analysis -ne 'Programacao aprovada'){$v='Consulte em Férias aceitas'}
+                        elseif($conflitos.ContainsKey([string]$r.id)){$v=$conflitos[[string]$r.id] -join ' | '}
+                        else{$v='Sem coincidência no setor'}
                     }
                     'modalidade' { $v=[string]$item.Kind }
                     'situacao' {
@@ -15033,6 +15083,7 @@ function Show-RelatorioConferenciaOpcoes {
             if($columnWidths.ContainsKey([string]$c.Name)){$c.Width=[int]$columnWidths[[string]$c.Name]}
             elseif($c.Name -eq 'Servidor'){$c.Width=250}
             elseif($c.Name -eq 'Setor'){$c.Width=175}
+            elseif($c.Name -eq 'Conflitos no setor'){$c.Width=380}
             elseif($c.Name -eq 'Periodo no mes'){$c.Width=210}
             else{$c.Width=125}
         }
@@ -15055,7 +15106,12 @@ function Show-RelatorioConferenciaOpcoes {
             if($detailTop -ge 0 -and $detailTop -lt $grid.Rows.Count){$grid.FirstDisplayedScrollingRowIndex=$detailTop}
             if($detailLeft -ge 0){$grid.HorizontalScrollingOffset=$detailLeft}
         }catch{}
-        $info.Text="Resumo acima: demanda da opcao + fixas, nao apenas aprovadas | Registros: $($dt.Rows.Count) | Analise: $analysis | Opcao: $n | Ano: $y | Mes: $([string]$month.SelectedItem) | Solicitações: comum / FR / fixa (nao equivalentes institucionais)"
+        $baseResumo=if($analysis -eq 'Programacao aprovada'){'Aceitas + fixas | Equivalentes e saldo: toda a base aprovada; quantidades: filtros atuais'}else{'Solicitações da opção + fixas | Saldo do cenário filtrado'}
+        $opcaoResumo=if($aceitas){'Férias aceitas'}else{[string]$n}
+        $info.Text="$baseResumo | Registros: $($dt.Rows.Count) | Analise: $analysis | Opcao: $opcaoResumo | Ano: $y"
+        $summary.Columns['Equivalentes'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Equiv. base aceita'}else{'Equivalentes'}
+        $summary.Columns['Saldo'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Saldo aprovado'}else{'Saldo cenário'}
+        $summary.Columns['Total solicit.'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Compromissos'}else{'Total solicitações'}
       } catch {
         $info.Text='Falha ('+$etapa+'): '+$_.Exception.Message
         [Windows.Forms.MessageBox]::Show('Etapa: '+$etapa+[Environment]::NewLine+($_.Exception.ToString() + [Environment]::NewLine + 'Linha: ' + [string]$_.InvocationInfo.ScriptLineNumber + ' | Instrucao: ' + [string]$_.InvocationInfo.Line),'Relatorio de conferencia')|Out-Null
@@ -15138,6 +15194,15 @@ function Show-RelatorioConferenciaOpcoes {
         }catch{}
     }.GetNewClosure())
 
+    $grid.add_CellFormatting({param($sender,$e)
+        if($e.RowIndex -lt 0 -or $e.ColumnIndex -lt 0){return}
+        if($sender.Columns[$e.ColumnIndex].Name -ne 'Conflitos no setor'){return}
+        $texto=[string]$e.Value
+        if($texto -match 'CRITICO:'){$e.CellStyle.BackColor=[Drawing.Color]::MistyRose;$e.CellStyle.ForeColor=[Drawing.Color]::DarkRed}
+        elseif($texto -match 'ATENCAO:'){$e.CellStyle.BackColor=[Drawing.Color]::LightYellow;$e.CellStyle.ForeColor=[Drawing.Color]::DarkGoldenrod}
+        $sender.Rows[$e.RowIndex].Cells[$e.ColumnIndex].ToolTipText=$texto
+    }.GetNewClosure())
+
     $btnCsv.add_Click({
         if($null -eq $store.Shown){return}
         $save=New-Object Windows.Forms.SaveFileDialog;$save.Filter='CSV Excel (*.csv)|*.csv'
@@ -15160,6 +15225,7 @@ function Show-RelatorioConferenciaOpcoes {
             [void]$sb.Append('<div class="toolbar"><button onclick="window.print()">Imprimir / Salvar em PDF</button> (No navegador, escolha a impressora Salvar como PDF.)</div>')
             [void]$sb.Append('<h2>Conferencia de ferias - '+([System.Net.WebUtility]::HtmlEncode([string]$modo.SelectedItem))+' - '+([System.Net.WebUtility]::HtmlEncode([string]$select.SelectedItem))+'</h2>')
             [void]$sb.Append('<p>Ano: '+([System.Net.WebUtility]::HtmlEncode([string]$year.SelectedItem))+' | Mes: '+([System.Net.WebUtility]::HtmlEncode([string]$month.SelectedItem))+' | Modalidade: '+([System.Net.WebUtility]::HtmlEncode([string]$modality.SelectedItem))+' | Registros: '+$store.Shown.Rows.Count+'</p>')
+            [void]$sb.Append('<p>'+[System.Net.WebUtility]::HtmlEncode([string]$info.Text)+'</p>')
             [void]$sb.Append('<h3>Resumo mensal - Fixas / Comuns / FR / Total / Limite / Saldo</h3><table><thead><tr>')
             foreach($col in $store.Monthly.Columns){[void]$sb.Append('<th>'+[System.Net.WebUtility]::HtmlEncode([string]$col.ColumnName)+'</th>')}
             [void]$sb.Append('</tr></thead><tbody>')
