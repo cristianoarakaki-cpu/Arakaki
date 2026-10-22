@@ -1,7 +1,6 @@
 """Real Android decoding checks with generated, redistributable video fixtures."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,math,struct,wave,xml.etree.ElementTree as ET
-from urllib.parse import quote
 PACKAGE='br.com.onda.musica'
 OUTPUT=Path('Onda/ui-preview');OUTPUT.mkdir(exist_ok=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
@@ -50,10 +49,15 @@ try:
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):
-        # These files may be absent from the video collection. Exercise Android's Open with flow.
-        uri='content://com.android.externalstorage.documents/document/'+quote('primary:Movies/OndaDemo/'+filename,safe='')
-        adb('logcat','-c')
-        shell('am','start','-W','-a','android.intent.action.VIEW','-d',uri,'-t',mime,'--grant-read-uri-permission','-n',PACKAGE+'/br.com.onda.VideoActivity')
+        # Use the real system file selector, which grants read access to unindexed formats.
+        tap('Abrir arquivo de vídeo');time.sleep(1)
+        tree=nodes()
+        folder=next((n for n in tree if n.attrib.get('text')=='OndaDemo'),None)
+        if folder is not None:shell('input','tap',*point(folder));time.sleep(.5)
+        tree=nodes()
+        (OUTPUT/('picker-'+extension+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
+        document=next(n for n in tree if n.attrib.get('text')==filename)
+        adb('logcat','-c');shell('input','tap',*point(document));time.sleep(.5)
     else:
         tap('Buscar vídeos por nome');shell('input','keyevent','123')
         field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
