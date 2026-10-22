@@ -17,10 +17,10 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
       - name: Verificar parser de letras
         run: |
           javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/Lrc.java Onda/tests/LrcTest.java
@@ -56,7 +56,7 @@ jobs:
             Onda/app/build/intermediates/lint_intermediate_text_report/
       - name: Conferir pacote independente
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
           python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert re.search(r"package: name=.br[.]com[.]onda[.]musica.",s); print("Pacote independente confirmado")'
       - uses: actions/upload-artifact@v4
         with:
