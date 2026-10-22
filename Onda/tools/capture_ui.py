@@ -1,6 +1,7 @@
 """Capture the real Android UI with temporary local demo audio (not shipped in app)."""
 from pathlib import Path
 import math
+import atexit
 import re
 import shlex
 import struct
@@ -16,6 +17,15 @@ def adb(*args):
     return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):
     return adb('shell',shlex.join(str(a) for a in args))
+def diagnostics():
+    try:
+        (OUTPUT/'android-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
+        (OUTPUT/'media-session.txt').write_bytes(shell('dumpsys','media_session'))
+        (OUTPUT/'last-screen.png').write_bytes(adb('exec-out','screencap','-p'))
+        (OUTPUT/'last-window.xml').write_bytes(shell('cat','/sdcard/onda-window.xml'))
+    except Exception as e:
+        print('Diagnostic collection:', e)
+atexit.register(diagnostics)
 def nodes():
     shell('uiautomator','dump','/sdcard/onda-window.xml')
     return list(ET.fromstring(shell('cat','/sdcard/onda-window.xml')).iter('node'))
@@ -61,8 +71,14 @@ time.sleep(1)
 capture('01-biblioteca')
 assert click(prefix='Tocar '),'Demo audio not visible in library'
 time.sleep(1)
-assert any(n.attrib.get('content-desc')=='Pausar' for n in nodes()),'Playback did not start'
+playing=False
+for _ in range(5):
+    if any(n.attrib.get('content-desc')=='Pausar' for n in nodes()):
+        playing=True
+        break
+    time.sleep(1)
 capture('02-reproducao')
+assert playing,'Playback did not start' 
 assert click(description='Ver letra da música'),'Lyrics button unavailable'
 capture('03-letras')
 shell('input','keyevent','4');time.sleep(.5)

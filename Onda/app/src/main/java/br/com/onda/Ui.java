@@ -17,7 +17,7 @@ final class Ui {
     static GradientDrawable shape(Context c,int fill,int border,int radius){GradientDrawable d=new GradientDrawable();d.setColor(fill);d.setCornerRadius(dp(c,radius));if(border!=0)d.setStroke(dp(c,1),border);return d;}
     static GradientDrawable gradient(Context c,int first,int last,int radius){GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{first,last});d.setCornerRadius(dp(c,radius));return d;}
     static RippleDrawable ripple(Context c,Drawable content,int radius){return new RippleDrawable(ColorStateList.valueOf(0x2269E7FF),content,shape(c,Color.WHITE,0,radius));}
-    static void background(View v){v.setBackground(gradient(v.getContext(),BG,Color.rgb(12,17,34),0));}
+    static void background(View v){v.setPadding(dp(v.getContext(),20),dp(v.getContext(),12),dp(v.getContext(),20),dp(v.getContext(),12));v.setBackground(gradient(v.getContext(),BG,Color.rgb(12,17,34),0));}
     static void card(View v,boolean active){Context c=v.getContext();v.setBackground(ripple(c,shape(c,active?Color.rgb(20,42,58):SURFACE,active?0x8869E7FF:BORDER,18),18));}
     static void playerCard(View v){Context c=v.getContext();GradientDrawable d=gradient(c,Color.rgb(21,38,55),Color.rgb(27,24,50),24);d.setStroke(dp(c,1),Color.rgb(53,77,101));v.setBackground(d);}
     static TextView text(Context c,String value,int size,int color){TextView t=new TextView(c);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setFontFeatureSettings("kern");t.setIncludeFontPadding(false);return t;}
