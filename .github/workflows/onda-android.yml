@@ -64,6 +64,12 @@ jobs:
           path: Onda/app/build/outputs/apk/debug/app-debug.apk
 
 
+      - name: Guardar APK de distribuição e preparar variante do emulador
+        run: |
+          mkdir -p Onda/distribution
+          cp Onda/app/build/outputs/apk/debug/app-debug.apk Onda/distribution/Onda-Musica.apk
+          python -c 'from pathlib import Path; p=Path("Onda/distribution/Onda-Musica.apk"); assert p.stat().st_size <= 64*1024*1024, "APK excede o limite do atualizador anterior"; print("APK de distribuição:",p.stat().st_size,"bytes")'
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
       - name: Preparar gerador de vídeos de teste
         run: |
           if ! command -v ffmpeg >/dev/null; then

@@ -15,7 +15,7 @@ assert re.fullmatch(r'\d+\.\d+\.\d+', version_name)
 assert package_name == 'br.com.onda.musica'
 repository = os.environ['GITHUB_REPOSITORY']
 assert repository == 'cristianoarakaki-cpu/Arakaki'
-source = root / 'app/build/outputs/apk/debug/app-debug.apk'
+source = root / 'distribution/Onda-Musica.apk'
 output = root / 'release-out'
 output.mkdir(exist_ok=True)
 apk = output / 'Onda-Musica.apk'
