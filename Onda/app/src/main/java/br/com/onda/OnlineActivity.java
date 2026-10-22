@@ -77,7 +77,7 @@ public class OnlineActivity extends Activity {
     private void renderPage(){
         currentShow=null;trackFilter.setVisibility(View.GONE);results.removeAllViews();if(savedPage==null)return;
         status.setText(savedPage.shows.isEmpty()?(savedPage.catalog?"Nenhuma prévia encontrada neste catálogo. Tente outro nome de música ou artista.":"Nenhum show disponível para essa busca. Tente a fonte Catálogo • prévias."):savedPage.total+(savedPage.catalog?" prévias encontradas":" shows encontrados")+" • página "+page+(savedPage.broadened?" • busca ampliada":""));
-        for(OnlineRepository.Show show:savedPage.shows)results.addView(Ui.result(this,show.isPreview()?show.title:show.artist,show.isPreview()?show.artist+" • PRÉVIA":show.title,show.id.hashCode(),v->{if(show.isPreview())preview(show);else open(show);}));
+        for(OnlineRepository.Show show:savedPage.shows){LinearLayout row=Ui.result(this,show.isPreview()?show.title:show.artist,show.isPreview()?show.artist+" • PRÉVIA":show.title,show.id.hashCode(),v->{if(show.isPreview())preview(show);else open(show);});row.setContentDescription(show.isPreview()?"Ouvir prévia de "+show.title+", "+show.artist:"Abrir show de "+show.artist);results.addView(row);}
         if(page>1)results.addView(button("‹ Página anterior",v->loadPage(page-1)));
         if(page*20<savedPage.total&&!savedPage.shows.isEmpty())results.addView(button("Mais resultados ›",v->loadPage(page+1)));
     }

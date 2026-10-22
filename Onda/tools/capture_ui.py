@@ -2,6 +2,7 @@
 from pathlib import Path
 import math
 import atexit
+import unicodedata
 import re
 import shlex
 import struct
@@ -91,6 +92,32 @@ shell('input','keyevent','4');time.sleep(.5)
 assert click(description='Buscar e ouvir online'),'Online button unavailable'
 assert any(n.attrib.get('content-desc')=='Busca por voz na internet' for n in nodes()),'Online voice search button missing'
 capture('04-online')
+assert click(description='Buscar no acervo online'),'Online search field unavailable'
+shell('input','text','Chitaozinho%se%sxororo')
+assert click(text='Buscar online  ↗'),'Search action unavailable'
+found=False
+for _ in range(12):
+    tree=nodes()
+    for node in tree:
+        desc=node.attrib.get('content-desc','')
+        plain=''.join(c for c in unicodedata.normalize('NFD',desc.lower()) if unicodedata.category(c)!='Mn')
+        if desc.startswith('Ouvir prévia de ') and 'chitaozinho' in plain and 'xororo' in plain:
+            found=True
+            break
+    if found:break
+    time.sleep(2)
+assert found,'Chitaozinho e xororo not found in Android catalog search'
+capture('06-busca-artista')
+assert click(prefix='Ouvir prévia de '),'Preview action unavailable'
+started=False
+for _ in range(15):
+    if 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(errors='replace'):
+        started=True
+        break
+    time.sleep(1)
+assert started,'Online preview did not start on Android'
+capture('07-previa-artista')
+shell('input','keyevent','127');time.sleep(1)
 shell('input','keyevent','4');time.sleep(.5)
 assert click(description='Atualizações'),'Updates button unavailable'
 capture('05-atualizacoes')
