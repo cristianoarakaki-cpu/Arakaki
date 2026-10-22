@@ -43,7 +43,11 @@ for extension,vcodec,acodec,mime in formats:
 # Independent integration test: no dependency on the music UI capture script.
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
 # Verify the simplified navigation and relocated actions on the actual Android UI.
-capture('01-musicas-interface')
+nodes();capture('01-musicas-interface')
+tap('Buscar música, artista ou álbum no celular');shell('input','text','Onda');time.sleep(.5)
+assert any(n.attrib.get('content-desc','').startswith('Tocar ') for n in nodes()),'Music results hidden by keyboard'
+capture('01b-busca-musicas')
+shell('input','keyevent','4');time.sleep(.5)
 tap('Filtrar busca no celular');tap_text('Artista')
 assert locate('Filtrar busca no celular').attrib.get('text')=='Artista'
 tap('Filtrar busca no celular');tap_text('Todos os campos')

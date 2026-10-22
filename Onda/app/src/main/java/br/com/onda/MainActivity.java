@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaController player;
     private ListenableFuture<MediaController> connection;
-    private LinearLayout rows;
+    private LinearLayout rows,nowPanel,mainNavigation;
     private TextView status, title, artist, elapsed, total;
     private Button play, shuffle, repeat, favorite, allTab, favoritesTab, searchFilter;
     private final Map<String,View> rowViews=new HashMap<>();
@@ -39,12 +39,12 @@ public class MainActivity extends Activity {
     private String query = "";
     private int searchScope = 0;
     private boolean onlyFavorites = false, seeking = false;
-    private boolean screenStarted = false, libraryReady=false;
+    private boolean screenStarted = false, libraryReady=false, keyboardVisible=false;
     private String pendingVoice;
     private Set<String> favorites;
     private SharedPreferences prefs;
     private final Runnable progress = new Runnable() { public void run() {
-        if (!screenStarted) return;
+        if (!screenStarted||keyboardVisible) return;
         if (player != null && !seeking) { seek.setProgress((int)player.getCurrentPosition()); elapsed.setText(time(player.getCurrentPosition())); }
         if (player != null && player.isPlaying()) handler.postDelayed(this, 1000);
     }};
@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
         root.addView(tabs);
         status=label("Preparando biblioteca…",12,muted);root.addView(status);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);scroll.setClipToPadding(false);scroll.setPadding(0,dp(4),0,dp(6));rows=column();scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout now=column();now.setPadding(dp(14),dp(12),dp(14),dp(8));Ui.playerCard(now);root.addView(now);
+        LinearLayout now=column();nowPanel=now;now.setPadding(dp(14),dp(12),dp(14),dp(8));Ui.playerCard(now);root.addView(now);
         now.addView(Ui.eyebrow(this,"TOCANDO AGORA"));
         LinearLayout songInfo=new LinearLayout(this);songInfo.setGravity(Gravity.CENTER_VERTICAL);LinearLayout.LayoutParams songInfoParams=new LinearLayout.LayoutParams(-1,dp(60));songInfoParams.topMargin=dp(3);now.addView(songInfo,songInfoParams);songInfo.addView(Ui.art(this,44,0));
         LinearLayout metadata=column();title=Ui.text(this,"Selecione uma música",16,Ui.TEXT);Ui.bold(title);title.setMaxLines(1);title.setEllipsize(android.text.TextUtils.TruncateAt.END);metadata.addView(title);artist=Ui.text(this,"Sua trilha começa aqui",12,muted);artist.setMaxLines(1);artist.setEllipsize(android.text.TextUtils.TruncateAt.END);LinearLayout.LayoutParams artistParams=new LinearLayout.LayoutParams(-1,-2);artistParams.topMargin=dp(5);metadata.addView(artist,artistParams);LinearLayout.LayoutParams metadataParams=new LinearLayout.LayoutParams(0,-2,1);metadataParams.leftMargin=dp(10);songInfo.addView(metadata,metadataParams);
@@ -84,7 +84,8 @@ public class MainActivity extends Activity {
         Button next=Ui.transport(this,"next",v->{if(player!=null)player.seekToNext();});next.setContentDescription("Próxima música");
         repeat=Ui.transport(this,"repeat",v->{if(player!=null){player.setRepeatMode((player.getRepeatMode()+1)%3);refresh();}});repeat.setContentDescription("Alternar repetição");
         for(Button b:new Button[]{shuffle,previous,play,next,repeat}){LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(56),1);if(b==play){FrameLayout holder=new FrameLayout(this);holder.addView(b,new FrameLayout.LayoutParams(dp(52),dp(52),Gravity.CENTER));controls.addView(holder,params);}else controls.addView(b,params);}LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(-1,dp(60));controlsParams.topMargin=dp(4);now.addView(controls,controlsParams);
-        root.addView(Ui.navigation(this,0));
+        mainNavigation=Ui.navigation(this,0);root.addView(mainNavigation);
+        root.getViewTreeObserver().addOnGlobalLayoutListener(()->{android.graphics.Rect frame=new android.graphics.Rect();root.getWindowVisibleDisplayFrame(frame);boolean visible=root.getRootView().getHeight()-frame.bottom>dp(150);if(visible==keyboardVisible)return;keyboardVisible=visible;nowPanel.setVisibility(visible?View.GONE:View.VISIBLE);mainNavigation.setVisibility(visible?View.GONE:View.VISIBLE);restartProgress();});
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events e){if(e.size()!=1||!e.contains(Player.EVENT_VOLUME_CHANGED))refresh();}@Override public void onPlayerError(PlaybackException e){new AlertDialog.Builder(MainActivity.this).setTitle("Não foi possível tocar").setMessage("O arquivo pode estar indisponível ou usar um codec incompatível com este aparelho. Tente outra música.").setPositiveButton("OK",null).show();}});refresh();if(pendingVoice!=null&&libraryReady){String phrase=pendingVoice;pendingVoice=null;handleVoice(phrase);}}catch(Exception e){status.setText("Falha ao conectar o tocador. Feche e abra o app.");}},handler::post);
         pendingVoice=getIntent().getStringExtra("voice_phrase");permission();
@@ -137,7 +138,7 @@ public class MainActivity extends Activity {
     private void highlightCurrentRow(){String id=player!=null&&player.getCurrentMediaItem()!=null?player.getCurrentMediaItem().mediaId:"";if(id.equals(activeRowId))return;View old=rowViews.get(activeRowId);if(old!=null)Ui.card(old,false);View selected=rowViews.get(id);if(selected!=null)Ui.card(selected,true);activeRowId=id;}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
-    private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted)handler.post(progress);}
+    private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted&&!keyboardVisible)handler.post(progress);}
     @Override protected void onStart(){super.onStart();screenStarted=true;refresh();restartProgress();}
     @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
     @Override public void onDestroy(){handler.removeCallbacksAndMessages(null);scanner.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
