@@ -126,3 +126,14 @@ Comandos de voz pelo botão de microfone: “próxima música”, “pause”, �
 Coleções favoritas, mais tocadas, recentes e redescobrir usam apenas os arquivos e histórico deste celular. A reprodução é contada após até 30 segundos de escuta efetiva; músicas curtas usam metade da duração, mínimo 5 segundos. Possíveis duplicatas comparam título/artista e duração com tolerância de 1,5 segundo, sem apagar arquivos ou comparar áudio.
 
 Fade suave desligado ou de 1 a 3 segundos: desce volume no fim e sobe no início da próxima faixa automática; sem sobreposição. Não aplicado a prévias de catálogo, faixas muito curtas ou duração desconhecida. Agendamento pontual e rampas curtas evitam processamento permanente.
+
+
+## Versão 0.9.0 — Vídeos do celular
+
+Botão Vídeos do celular: lista MediaStore com busca por título e nome do arquivo, fila dos resultados, seek, pausar e tela cheia em paisagem. Abrir arquivo usa o seletor de documentos sem exigir acesso à biblioteca inteira, inclusive para formatos que o MediaStore não indexa. Android 13+ pede READ_MEDIA_VIDEO separadamente de música; Android 14+ aceita seleção parcial.
+
+LibVLC Android 3.7.7 amplia contêineres e codecs além do decoder nativo do Android. MP4, MKV, AVI, MOV, WebM, FLV, WMV, MPEG, TS e outros: suporte não é garantia para todo codec, arquivo danificado ou protegido. DRM não é suportado. Usa decoder de hardware quando disponível e uma nova tentativa por software em falha. Bibliotecas nativas aumentam o tamanho do APK.
+
+Ao reproduzir vídeo o controlador pausa a música antes de obter foco de áudio, evitando sobreposição. Interrupções de áudio e desconexão de fones pausam vídeo. Ao ir para outro app ou bloquear a tela, o vídeo pausa e libera foco; não retoma sozinho. Mantém tela acesa somente durante reprodução visível. A música mantém o funcionamento anterior em segundo plano. Libera descritores de arquivo e o motor ao fechar a tela.
+
+LibVLC © VideoLAN e colaboradores, licença LGPL 2.1 ou posterior, incluída em app/src/main/assets/libvlc-license.txt e acessível pela tela de informações. Sem modificações no motor; fonte, versões e instruções para recompilar as bibliotecas substituíveis em https://code.videolan.org/videolan/libvlcjni e https://code.videolan.org/videolan/vlc-android . Artefato Maven org.videolan.android:libvlc-all:3.7.7. O código do Onda é disponibilizado neste repositório para reconstruir o APK com outras versões da biblioteca.

@@ -64,6 +64,12 @@ jobs:
           path: Onda/app/build/outputs/apk/debug/app-debug.apk
 
 
+      - name: Preparar gerador de vídeos de teste
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
       - name: Habilitar aceleração do emulador
         run: sudo chmod 666 /dev/kvm
       - name: Conferir telas no Android
@@ -76,7 +82,9 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
-          script: python Onda/tools/capture_ui.py
+          script: |
+            python Onda/tools/capture_ui.py
+            python Onda/tools/check_video.py
       - name: Salvar capturas das telas
         if: always()
         uses: actions/upload-artifact@v4
