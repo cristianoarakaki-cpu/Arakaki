@@ -7,6 +7,7 @@ import android.provider.MediaStore;
 import androidx.media3.common.*;
 import java.util.*;
 
+@androidx.media3.common.util.UnstableApi
 final class LibraryStore {
     static List<MediaItem> scan(Context context){
         ArrayList<MediaItem> songs=new ArrayList<>();

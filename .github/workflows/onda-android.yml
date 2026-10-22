@@ -46,6 +46,14 @@ jobs:
           keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
           python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest
+      - name: Salvar relatórios de falhas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Build-Reports
+          path: |
+            Onda/app/build/reports/
+            Onda/app/build/intermediates/lint_intermediate_text_report/
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
