@@ -86,6 +86,13 @@ assert playing,'Playback did not start'
 # Stop the changing counter before UIAutomator waits for an idle UI tree.
 shell('input','keyevent','127')
 time.sleep(1)
+# Exercise the command execution path without assuming an emulator speech service.
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions')
+time.sleep(31)
+assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(errors='replace'),'Voice play command failed'
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause')
+time.sleep(1)
+assert 'PlaybackState {state=2,' in shell('dumpsys','media_session').decode(errors='replace'),'Voice pause command failed'
 # Seek near the end while paused, then verify automatic fade and next-track playback.
 seek=next(n for n in nodes() if n.attrib.get('content-desc')=='Posição na música')
 coords=[int(v) for v in re.findall(r'\d+',seek.attrib['bounds'])]
@@ -97,6 +104,10 @@ shell('input','keyevent','127');time.sleep(1)
 assert click(description='Onda Lab'),'Smart library entry unavailable'
 assert any(n.attrib.get('content-desc')=='Coleção inteligente' for n in nodes()),'Smart collections missing'
 capture('08-onda-lab')
+assert click(description='Coleção inteligente')
+assert click(text='Mais tocadas')
+assert any('1 reproduções' in n.attrib.get('text','') for n in nodes()),'Actual listening history was not recorded'
+capture('10-mais-tocadas')
 assert click(description='Coleção inteligente')
 assert click(text='Redescobrir')
 assert any(n.attrib.get('content-desc','').startswith('Tocar ') for n in nodes()),'Rediscovery has no local music'
