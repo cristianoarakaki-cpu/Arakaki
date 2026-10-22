@@ -53,6 +53,27 @@ jobs:
           name: Onda-Android-APK
           path: Onda/app/build/outputs/apk/debug/app-debug.apk
 
+
+      - name: Habilitar aceleração do emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Conferir telas no Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: python Onda/tools/capture_ui.py
+      - name: Salvar capturas das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: Onda/ui-preview/
+
       - name: Preparar publicação da atualização
         id: update_release
         run: python Onda/tools/prepare_release.py

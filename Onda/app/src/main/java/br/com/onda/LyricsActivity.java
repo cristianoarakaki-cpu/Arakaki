@@ -16,7 +16,7 @@ import java.util.concurrent.*;
 
 @androidx.media3.common.util.UnstableApi
 public class LyricsActivity extends Activity {
-    private final int green = Color.rgb(184,243,107), muted = Color.rgb(159,174,156);
+    private final int green = Ui.CYAN, muted = Ui.MUTED;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newFixedThreadPool(2);
     private ListenableFuture<MediaController> connection;
@@ -56,18 +56,18 @@ public class LyricsActivity extends Activity {
     }};
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        LinearLayout root = column(); root.setBackgroundColor(Color.rgb(16,20,16));
+        LinearLayout root = column(); Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(dp(20),dp(12)+i.getSystemWindowInsetTop(),dp(20),dp(12)+i.getSystemWindowInsetBottom());return i;});
         setContentView(root);
-        root.addView(button("‹ Voltar à biblioteca", v->finish()));
-        heading = text("Letra da música", 25, Color.WHITE); root.addView(heading);
+        Button back=button("‹ Biblioteca",v->finish());Ui.ghost(back);back.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);root.addView(back);root.addView(Ui.eyebrow(this,"SINTA CADA VERSO"));
+        heading = text("Letra da música", 27, Ui.TEXT);heading.setMaxLines(2); root.addView(heading);
         status = text("Conectando ao tocador…", 13, muted); root.addView(status);
-        track = new EditText(this);track.setSingleLine(true);track.setTextColor(Color.WHITE);track.setHintTextColor(muted);track.setHint("Nome da música");track.setContentDescription("Nome da música para buscar letra");root.addView(track);
-        artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(muted);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");root.addView(artist);
-        root.addView(button("Buscar letra",v->load()));
+        track = new EditText(this);track.setSingleLine(true);track.setTextColor(Color.WHITE);track.setHintTextColor(muted);track.setHint("Nome da música");track.setContentDescription("Nome da música para buscar letra");Ui.input(track);LinearLayout searchFields=new LinearLayout(this);LinearLayout.LayoutParams trackParams=new LinearLayout.LayoutParams(0,dp(52),1);trackParams.rightMargin=dp(8);searchFields.addView(track,trackParams);root.addView(searchFields);
+        artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(muted);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");Ui.input(artist);searchFields.addView(artist,new LinearLayout.LayoutParams(0,dp(52),1));
+        Button search=button("Buscar letra",v->load());LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,dp(48));searchParams.topMargin=dp(8);root.addView(search,searchParams);
         scroll = new ScrollView(this);linesView = column();scroll.addView(linesView);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;return false;});
-        play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});root.addView(play);
+        play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});Ui.primary(play);root.addView(play);
         root.addView(text("Letras: LRCLIB • título e artista são enviados para buscar.\nA disponibilidade e a sincronização variam por música.",11,muted));
         connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){restartTick();}});if(screenStarted)followSong();restartTick();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
@@ -116,8 +116,8 @@ public class LyricsActivity extends Activity {
     }
     private void style(TextView v,boolean current){v.setTextColor(current?green:muted);v.setTypeface(null,current?Typeface.BOLD:Typeface.NORMAL);}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
-    private TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setPadding(0,dp(4),0,dp(4));return t;}
-    private Button button(String s,View.OnClickListener l){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextColor(green);b.setBackgroundColor(Color.TRANSPARENT);b.setOnClickListener(l);return b;}
+    private TextView text(String s,int size,int color){TextView t=Ui.text(this,s,size,color);t.setPadding(0,dp(6),0,dp(6));if(size>=24)Ui.bold(t);return t;}
+    private Button button(String s,View.OnClickListener l){return Ui.button(this,s,l);}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     @Override public void onDestroy(){generation++;if(request!=null)request.cancel(true);network.shutdownNow();handler.removeCallbacksAndMessages(null);if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

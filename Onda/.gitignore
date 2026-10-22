@@ -6,3 +6,4 @@ local.properties
 
 .signing/
 release-out/
+ui-preview/

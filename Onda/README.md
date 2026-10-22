@@ -99,3 +99,10 @@ Validação no aparelho: nenhuma atualização, sem internet, download, permiss�
 A barra de progresso da biblioteca para completamente quando a tela da atividade deixa de estar visível e quando a música está pausada; enquanto toca com a interface visível, atualiza uma vez por segundo. A letra acompanha a posição a cada 500 ms apenas em reprodução e visível; em pausa, muda somente por eventos. A rolagem só se repete ao mudar de verso ou após uma rolagem manual. O Wi-Fi lock fica restrito a faixas HTTP/HTTPS; músicas locais mantêm apenas o CPU lock necessário para reprodução com a tela apagada. O ExoPlayer gerencia a liberação dos locks quando a reprodução pausa. Nenhuma verificação periódica de atualizações ou letras foi adicionada.
 
 Validar no celular: continuar tocando após apagar a tela, música local sem lock de Wi-Fi, troca local/online, pausa e retomada, retorno à biblioteca, seek com letra pausada e rolagem manual. Compilação não substitui medição: não há estimativa de percentual de economia sem ensaio no aparelho.
+
+
+## Identidade visual (0.6.0)
+
+Tema escuro com acentos ciano e violeta, cartões de músicas com ícones vetoriais, filtros com estado selecionado, controles de reprodução desenhados em Canvas e player compacto com ação de favoritos. As telas de biblioteca, letras, busca online e atualizações compartilham a mesma identidade. Ícone do app atualizado. Os elementos gráficos são estáticos; não há loop de animação nem downloads de capas. As otimizações de bateria da versão 0.5.1 permanecem.
+
+`tools/capture_ui.py` usa áudio de demonstração temporário no emulador e captura as telas reais; esses arquivos de áudio não são incluídos no APK. As capturas ficam no artefato Onda-Visual-Preview do CI. Verificar layout, textos, tamanho dos controles, reprodução e navegação em aparelho físico.
