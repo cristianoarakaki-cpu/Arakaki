@@ -88,9 +88,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
-          script: |
-            python Onda/tools/capture_ui.py
-            python Onda/tools/check_video.py
+          script: python Onda/tools/check_video.py
       - name: Salvar capturas das telas
         if: always()
         uses: actions/upload-artifact@v4

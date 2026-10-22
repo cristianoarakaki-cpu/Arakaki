@@ -1,6 +1,6 @@
 """Real Android decoding checks with generated, redistributable video fixtures."""
 from pathlib import Path
-import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
+import subprocess,shlex,time,re,json,math,struct,wave,xml.etree.ElementTree as ET
 PACKAGE='br.com.onda.musica'
 OUTPUT=Path('Onda/ui-preview');OUTPUT.mkdir(exist_ok=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
@@ -16,6 +16,18 @@ def capture(name):
     (OUTPUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
     (OUTPUT/(name+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
 formats=[('mp4','libx264','aac','video/mp4'),('mkv','libx264','aac','video/x-matroska'),('avi','mpeg4','libmp3lame','video/avi'),('webm','libvpx','libvorbis','video/webm'),('flv','flv','libmp3lame','video/x-flv'),('wmv','wmv2','wmav2','video/x-ms-wmv'),('mov','libx264','aac','video/quicktime'),('ts','libx264','aac','video/mp2ts')]
+adb('install','-r','Onda/app/build/outputs/apk/debug/app-debug.apk')
+shell('pm','grant',PACKAGE,'android.permission.READ_EXTERNAL_STORAGE')
+shell('mkdir','-p','/sdcard/Music/OndaDemo')
+audio=Path('/tmp/Onda-Audio.wav')
+with wave.open(str(audio),'wb') as wav:
+ wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000)
+ second=b''.join(struct.pack('<h',int(1000*math.sin(2*math.pi*220*i/8000))) for i in range(8000))
+ for _ in range(60):wav.writeframesraw(second)
+adb('push',str(audio),'/sdcard/Music/OndaDemo/Onda-Audio.wav')
+shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Music/OndaDemo/Onda-Audio.wav')
+time.sleep(1)
+shell('content','update','--uri','content://media/external/audio/media','--bind','artist:s:Onda Sessions','--where',"_display_name='Onda-Audio.wav'")
 shell('mkdir','-p','/sdcard/Movies/OndaDemo')
 for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension;local=Path('/tmp')/filename
@@ -27,8 +39,8 @@ for extension,vcodec,acodec,mime in formats:
     indexed=shell('content','query','--uri','content://media/external/video/media','--projection','_id','--where',"_display_name='"+filename+"'").decode()
     if 'No result found' in indexed:
         shell('content','insert','--uri','content://media/external/video/media','--bind','_data:s:'+remote,'--bind','_display_name:s:'+filename,'--bind','title:s:'+filename,'--bind','mime_type:s:'+mime,'--bind','duration:l:20000','--bind','_size:l:'+str(local.stat().st_size))
-# Return from updates to the main library left by capture_ui.py.
-shell('input','keyevent','4');time.sleep(.5)
+# Independent integration test: no dependency on the music UI capture script.
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
 entry=point(locate('Abrir biblioteca de vídeos'))
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions');time.sleep(1)
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Music fixture not playing before video'
