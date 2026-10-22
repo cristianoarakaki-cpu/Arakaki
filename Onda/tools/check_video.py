@@ -54,9 +54,13 @@ try:
         tree=nodes()
         folder=next((n for n in tree if n.attrib.get('text')=='OndaDemo'),None)
         if folder is not None:shell('input','tap',*point(folder));time.sleep(.5)
-        tree=nodes()
+        document=None
+        for _ in range(5):
+            tree=nodes();document=next((n for n in tree if n.attrib.get('text')==filename),None)
+            if document is not None:break
+            shell('input','swipe',540,1550,540,650,350);time.sleep(.3)
         (OUTPUT/('picker-'+extension+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
-        document=next(n for n in tree if n.attrib.get('text')==filename)
+        assert document is not None,'File not visible in picker: '+filename
         adb('logcat','-c');shell('input','tap',*point(document));time.sleep(.5)
     else:
         tap('Buscar vídeos por nome');shell('input','keyevent','123')
