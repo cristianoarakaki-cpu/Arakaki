@@ -86,6 +86,22 @@ assert playing,'Playback did not start'
 # Stop the changing counter before UIAutomator waits for an idle UI tree.
 shell('input','keyevent','127')
 time.sleep(1)
+# Seek near the end while paused, then verify automatic fade and next-track playback.
+seek=next(n for n in nodes() if n.attrib.get('content-desc')=='Posição na música')
+coords=[int(v) for v in re.findall(r'\d+',seek.attrib['bounds'])]
+shell('input','tap',coords[0]+int((coords[2]-coords[0])*.96),(coords[1]+coords[3])//2)
+shell('input','keyevent','126');time.sleep(8)
+fade_log=adb('logcat','-d','-s','OndaFade:D').decode(errors='replace')
+assert 'fade-out' in fade_log and 'fade-in' in fade_log,fade_log
+shell('input','keyevent','127');time.sleep(1)
+assert click(description='Onda Lab'),'Smart library entry unavailable'
+assert any(n.attrib.get('content-desc')=='Coleção inteligente' for n in nodes()),'Smart collections missing'
+capture('08-onda-lab')
+assert click(description='Coleção inteligente')
+assert click(text='Redescobrir')
+assert any(n.attrib.get('content-desc','').startswith('Tocar ') for n in nodes()),'Rediscovery has no local music'
+capture('09-redescobrir')
+shell('input','keyevent','4');time.sleep(.5)
 assert click(description='Ver letra da música'),'Lyrics button unavailable'
 capture('03-letras')
 shell('input','keyevent','4');time.sleep(.5)

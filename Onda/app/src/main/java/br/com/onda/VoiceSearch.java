@@ -14,7 +14,7 @@ final class VoiceSearch {
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE,"pt-BR")
             .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3)
-            .putExtra(RecognizerIntent.EXTRA_PROMPT,"Diga o nome da música ou do artista")
+            .putExtra(RecognizerIntent.EXTRA_PROMPT,"Diga música, artista, próxima música ou pare em 30 minutos")
             .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,local);
         try{activity.startActivityForResult(intent,REQUEST);}
         catch(ActivityNotFoundException|SecurityException e){Toast.makeText(activity,"Reconhecimento de voz indisponível neste celular. Você pode digitar a busca ou usar o microfone do teclado.",Toast.LENGTH_LONG).show();}

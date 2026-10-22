@@ -29,7 +29,7 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f'Onda Música {version_name}\n\nInstale o APK para atualizar o Onda Música sem remover a instalação anterior. Esta versão adiciona busca por voz no celular e na internet e um catálogo de músicas com prévias identificadas do Apple Music / iTunes. Shows completos continuam disponíveis na fonte Internet Archive. Use o botão Atualizações para consultar e baixar futuras versões pelo próprio app. O Android sempre exige confirmação para instalar.\n\nPacote: `{package_name}`. Assinado com o certificado de teste fixado do projeto.\n')
+(output / 'notes.md').write_text(f'Onda Música {version_name}\n\nInstale o APK para atualizar o Onda Música sem remover a instalação anterior. Esta versão adiciona comandos de voz, coleções inteligentes com histórico local, possíveis duplicatas sem apagar arquivos e fade suave configurável entre faixas. O catálogo online oferece prévias identificadas do Apple Music / iTunes. Shows completos continuam disponíveis na fonte Internet Archive. Use o botão Atualizações para consultar e baixar futuras versões pelo próprio app. O Android sempre exige confirmação para instalar.\n\nPacote: `{package_name}`. Assinado com o certificado de teste fixado do projeto.\n')
 with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
     file.write(f'tag={tag}\nversion={version_name}\n')
 print(f'Preparada versão {version_name}, código {version_code}.')

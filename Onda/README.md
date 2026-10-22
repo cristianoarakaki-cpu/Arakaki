@@ -117,3 +117,12 @@ A fonte padrão online agora é **Catálogo • prévias**, usando a API públic
 **Shows completos** mantém o Internet Archive e amplia automaticamente o filtro caso uma busca específica não encontre shows. Há distinção entre serviço indisponível/resposta inválida e consulta válida sem resultados. As consultas de catálogo ficam em memória por cinco minutos, no máximo oito termos, evitando repetir downloads de metadados ao mudar de página.
 
 Os testes cobrem o nome da dupla, prioridade de artista, números de ID, URLs e resposta inválida; `tests/check_catalog.py` confere o artista e baixa bytes reais de uma prévia. O emulador verifica presença dos dois microfones; não simula reconhecimento de fala.
+
+
+## Versão 0.8.0 — Onda Lab
+
+Comandos de voz pelo botão de microfone: “próxima música”, “pause”, “toque minhas favoritas”, “toque [nome]” na biblioteca e “pare em 30 minutos”. O reconhecimento depende do serviço de voz instalado no celular; não há escuta em segundo plano. Na internet, “toque [nome]” mostra resultados para escolher uma prévia.
+
+Coleções favoritas, mais tocadas, recentes e redescobrir usam apenas os arquivos e histórico deste celular. A reprodução é contada após até 30 segundos de escuta efetiva; músicas curtas usam metade da duração, mínimo 5 segundos. Possíveis duplicatas comparam título/artista e duração com tolerância de 1,5 segundo, sem apagar arquivos ou comparar áudio.
+
+Fade suave desligado ou de 1 a 3 segundos: desce volume no fim e sobe no início da próxima faixa automática; sem sobreposição. Não aplicado a prévias de catálogo, faixas muito curtas ou duração desconhecida. Agendamento pontual e rampas curtas evitam processamento permanente.

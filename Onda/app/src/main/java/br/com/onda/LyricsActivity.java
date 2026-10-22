@@ -70,7 +70,7 @@ public class LyricsActivity extends Activity {
         play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});Ui.primary(play);root.addView(play);
         root.addView(text("Letras: LRCLIB • título e artista são enviados para buscar.\nA disponibilidade e a sincronização variam por música.",11,muted));
         connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
-        connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){restartTick();}});if(screenStarted)followSong();restartTick();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
+        connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){if(events.size()!=1||!events.contains(Player.EVENT_VOLUME_CHANGED))restartTick();}});if(screenStarted)followSong();restartTick();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
     }
     private void restartTick(){handler.removeCallbacks(tick);if(screenStarted)handler.post(tick);}
     @Override protected void onStart(){super.onStart();screenStarted=true;restartTick();}

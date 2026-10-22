@@ -85,6 +85,11 @@ jobs:
           ONDA_TAG: ${{ steps.update_release.outputs.tag }}
           ONDA_VERSION: ${{ steps.update_release.outputs.version }}
         run: |
+          CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
+            echo "Build antigo: a publicação aguarda a versão atual de main."
+            exit 0
+          fi
           if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
             echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
           else
