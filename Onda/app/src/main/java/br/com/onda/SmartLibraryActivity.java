@@ -19,7 +19,7 @@ public class SmartLibraryActivity extends Activity {
     private LinearLayout rows;private TextView status;private Spinner collections;
     private MediaController player;private ListenableFuture<MediaController> connection;
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);LinearLayout root=new LinearLayout(this);root.setOrientation(1);Ui.background(root);int pad=Ui.dp(this,20);
+        super.onCreate(state);LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);int pad=Ui.dp(this,20);
         root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(pad,pad+i.getSystemWindowInsetTop(),pad,pad+i.getSystemWindowInsetBottom());return i;});setContentView(root);
         Button back=Ui.button(this,"‹  Biblioteca",v->finish());Ui.ghost(back);root.addView(back);
         TextView heading=Ui.text(this,"Onda Lab",30,Ui.TEXT);Ui.bold(heading);root.addView(heading);
@@ -31,7 +31,7 @@ public class SmartLibraryActivity extends Activity {
         fade.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,android.view.View v,int position,long id){int ms=position*1000;getSharedPreferences("audio",0).edit().putInt("fade_ms",ms).apply();if(player!=null)player.sendCustomCommand(new SessionCommand("fade",Bundle.EMPTY),Bundle.EMPTY);}});
         root.addView(Ui.text(this,"Volume desce no fim e sobe na próxima faixa. Sem sobrepor músicas. Não aplicado às prévias online.",12,Ui.MUTED));
         collections=new Spinner(this);collections.setContentDescription("Coleção inteligente");collections.setAdapter(new ArrayAdapter<>(this,R.layout.spinner_item,new String[]{"Favoritas","Mais tocadas","Ouvidas recentemente","Redescobrir","Possíveis duplicatas"}));Ui.spinner(collections);root.addView(collections);
-        status=Ui.text(this,"Lendo biblioteca…",12,Ui.MUTED);root.addView(status);ScrollView scroll=new ScrollView(this);rows=new LinearLayout(this);rows.setOrientation(1);scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        status=Ui.text(this,"Lendo biblioteca…",12,Ui.MUTED);root.addView(status);ScrollView scroll=new ScrollView(this);rows=new LinearLayout(this);rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         collections.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,android.view.View v,int position,long id){render(position);}});
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();connection.addListener(()->{try{player=connection.get();}catch(Exception ignored){}},command->new Handler(Looper.getMainLooper()).post(command));
         worker.execute(()->{try{List<MediaItem> found=LibraryStore.scan(this);runOnUiThread(()->{if(isDestroyed())return;songs.addAll(found);render(collections.getSelectedItemPosition());});}catch(Exception e){runOnUiThread(()->status.setText("Permita acesso às músicas na Biblioteca e tente novamente."));}});
