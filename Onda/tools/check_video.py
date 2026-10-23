@@ -103,6 +103,10 @@ capture('18-playlists')
 tap('Tocar playlist');time.sleep(1)
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.7)
 assert 'size=2' in shell('dumpsys','media_session').decode(),'Playlist did not create two-item queue'
+# Start from a different one-song queue so an unchanged queue cannot pass.
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque DJ Artist 2');time.sleep(.8)
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.4)
+assert 'size=1' in shell('dumpsys','media_session').decode()
 # Same recognized-phrase handler as the microphone; playlist lookup runs locally.
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque minha playlist TesteOndaEditada');time.sleep(1)
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.5)
@@ -341,6 +345,8 @@ try:
             for _ in previous:shell('input','keyevent','67')
         shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
         row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
+        # The PiP exercise deliberately ran MP4 long enough to save its bookmark.
+        if extension=='mp4':tap_text('Recomeçar')
     played=False
     for _ in range(20):
         log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
