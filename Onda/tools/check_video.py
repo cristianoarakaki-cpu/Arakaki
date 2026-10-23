@@ -5,6 +5,15 @@ PACKAGE='br.com.onda.musica'
 OUTPUT=Path('Onda/ui-preview');OUTPUT.mkdir(exist_ok=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
 def shell(*a):return adb('shell',shlex.join(str(v) for v in a))
+# Always preserve the actual failure screen, including early UI failures.
+import sys
+def on_failure(kind,value,tb):
+    try:
+        nodes();capture('failure-screen')
+        (OUTPUT/'failure-logcat.txt').write_bytes(adb('logcat','-d'))
+    except Exception:pass
+    sys.__excepthook__(kind,value,tb)
+sys.excepthook=on_failure
 def nodes():
     shell('rm','-f','/sdcard/onda-video.xml');shell('uiautomator','dump','/sdcard/onda-video.xml')
     return list(ET.fromstring(shell('cat','/sdcard/onda-video.xml')).iter('node'))
@@ -77,14 +86,16 @@ menu_action('Menu de explorar','Fontes e filtros')
 tap('Abrir biblioteca de músicas')
 # Playlist persistence, editing and playback through the real UI.
 menu_action('Menu da biblioteca','Playlists')
-tap('Criar playlist ou adicionar músicas');shell('input','text','TesteOnda');tap_text('Salvar')
+tap('Criar playlist ou adicionar músicas');tap('Nome da playlist');shell('input','text','TesteOnda');tap_text('Salvar')
 tap('Criar playlist ou adicionar músicas')
 tap_text('DJ-2 — DJ Artist 2');tap_text('DJ-3 — DJ Artist 3');tap_text('Salvar seleção')
 assert any('2 músicas • 2 disponíveis' in n.attrib.get('text','') for n in nodes())
 tap_text('1. DJ-2\nDJ Artist 2');tap_text('Mover para baixo')
 assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
 tap('Opções da playlist');tap_text('Renomear')
-shell('input','keyevent','KEYCODE_MOVE_END');shell('input','text','Editada');tap_text('Salvar')
+tap('Nome da playlist');shell('input','keyevent','123');shell('input','text','Editada');tap_text('Salvar')
+assert any(n.attrib.get('text')=='TesteOndaEditada' for n in nodes()),'Renamed playlist not displayed'
+capture('18a-playlist-renamed')
 shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
 menu_action('Menu da biblioteca','Playlists');tap_text('TesteOndaEditada\n2 músicas')
 assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
