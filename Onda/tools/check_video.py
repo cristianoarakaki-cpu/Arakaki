@@ -190,40 +190,15 @@ capture('11-biblioteca-videos')
 tap('Menu de vídeos');capture('06-menu-videos');shell('input','keyevent','4');time.sleep(.3)
 results=[]
 try:
- for extension,vcodec,acodec,mime in formats:
-    filename='Onda-Video.'+extension
-    if extension in ('avi','flv','wmv'):
-        # Use the real system file selector, which grants read access to unindexed formats.
-        menu_action('Menu de vídeos','Abrir arquivo');time.sleep(1)
-        tree=nodes()
-        folder=next((n for n in tree if n.attrib.get('text')=='OndaDemo'),None)
-        if folder is not None:shell('input','tap',*point(folder));time.sleep(.5)
-        document=None
-        for _ in range(5):
-            tree=nodes();document=next((n for n in tree if n.attrib.get('text')==filename),None)
-            if document is not None:break
-            shell('input','swipe',540,1550,540,650,350);time.sleep(.3)
-        (OUTPUT/('picker-'+extension+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
-        assert document is not None,'File not visible in picker: '+filename
-        adb('logcat','-c');shell('input','tap',*point(document));time.sleep(.5)
-    else:
-        tap('Buscar vídeos por nome');shell('input','keyevent','123')
-        field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
-        if previous and previous!='Buscar vídeo no celular':
-            for _ in previous:shell('input','keyevent','67')
-        shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
-        row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
-    played=False
-    for _ in range(20):
-        log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
-        if 'playing '+filename in log and 'frames '+filename in log and 'audio '+filename in log:played=True;break
-        time.sleep(.5)
-    assert played,'No decoded frames for '+filename+'\n'+adb('logcat','-d','-t','100').decode(errors='replace')
-    assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Music overlaps video'
-    time.sleep(1);capture('12-video-'+extension)
-    shell('input','tap',*pause_point);time.sleep(.5)
-    assert locate('Reproduzir vídeo') is not None,'Video did not pause'
-    results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
+ # Exercise new controls first, then run the full container regression checks.
+ tap('Buscar vídeos por nome');shell('input','text','ts');shell('input','keyevent','4');time.sleep(.3)
+ first=locate('Assistir Onda-Video.ts');adb('logcat','-c');shell('input','tap',*point(first))
+ for _ in range(20):
+    if 'frames Onda-Video.ts' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    time.sleep(.3)
+ else:raise AssertionError('Initial video did not render')
+ shell('input','tap',*pause_point);time.sleep(.5)
+ assert locate('Reproduzir vídeo') is not None
  # Gestures on the paused surface do not change global device settings.
  gesture=locate('Área de gestos do vídeo');bounds=[int(v) for v in re.findall(r'\d+',gesture.attrib['bounds'])]
  left,top,right,bottom=bounds;height=bottom-top;adb('logcat','-c')
@@ -265,6 +240,40 @@ try:
  assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
  assert locate('Reproduzir vídeo') is not None
  (OUTPUT/'video-controls-tests.json').write_text(json.dumps({'externalSrtSelected':True,'gestures':True,'resumeAfterReopen':True,'restart':True},indent=2)+'\n')
+ for extension,vcodec,acodec,mime in formats:
+    filename='Onda-Video.'+extension
+    if extension in ('avi','flv','wmv'):
+        # Use the real system file selector, which grants read access to unindexed formats.
+        menu_action('Menu de vídeos','Abrir arquivo');time.sleep(1)
+        tree=nodes()
+        folder=next((n for n in tree if n.attrib.get('text')=='OndaDemo'),None)
+        if folder is not None:shell('input','tap',*point(folder));time.sleep(.5)
+        document=None
+        for _ in range(5):
+            tree=nodes();document=next((n for n in tree if n.attrib.get('text')==filename),None)
+            if document is not None:break
+            shell('input','swipe',540,1550,540,650,350);time.sleep(.3)
+        (OUTPUT/('picker-'+extension+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
+        assert document is not None,'File not visible in picker: '+filename
+        adb('logcat','-c');shell('input','tap',*point(document));time.sleep(.5)
+    else:
+        tap('Buscar vídeos por nome');shell('input','keyevent','123')
+        field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
+        if previous and previous!='Buscar vídeo no celular':
+            for _ in previous:shell('input','keyevent','67')
+        shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
+        row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
+    played=False
+    for _ in range(20):
+        log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+        if 'playing '+filename in log and 'frames '+filename in log and 'audio '+filename in log:played=True;break
+        time.sleep(.5)
+    assert played,'No decoded frames for '+filename+'\n'+adb('logcat','-d','-t','100').decode(errors='replace')
+    assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Music overlaps video'
+    time.sleep(1);capture('12-video-'+extension)
+    shell('input','tap',*pause_point);time.sleep(.5)
+    assert locate('Reproduzir vídeo') is not None,'Video did not pause'
+    results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
  tap('Tela cheia do vídeo');time.sleep(1)
  # Android shows its own immersive-mode tutorial on the first fullscreen entry.
  prompt=next((n for n in nodes() if n.attrib.get('text','').upper() in ('GOT IT','ENTENDI')),None)
