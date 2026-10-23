@@ -193,7 +193,7 @@ try:
  # Exercise new controls first, then run the full container regression checks.
  tap('Buscar vídeos por nome');shell('input','text','ts');shell('input','keyevent','4');time.sleep(.3)
  first=locate('Assistir Onda-Video.ts');adb('logcat','-c');shell('input','tap',*point(first))
- for _ in range(20):
+ for _ in range(60):
     if 'frames Onda-Video.ts' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
     time.sleep(.3)
  else:raise AssertionError('Initial video did not render')

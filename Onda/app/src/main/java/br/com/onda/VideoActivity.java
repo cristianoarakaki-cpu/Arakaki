@@ -40,7 +40,12 @@ public class VideoActivity extends Activity {
     private BaseAdapter adapter;
     private java.io.File subtitleFile;private String subtitleName="";private boolean subtitleEnabled,subtitleAttached,subtitleWasPlaying,ducked,captionsOff;
     private int subtitleGeneration,videoVolume=100;private TextView gestureFeedback;private View gestureLayer;
-    private AlertDialog resumeDialog;
+    private AlertDialog resumeDialog;private boolean framesSeen;
+    private final Runnable firstFrameCheck=()->{
+        if(!started||video==null||current==null||framesSeen||!video.isPlaying())return;
+        if(!software){android.util.Log.d("OndaVideo","no frames; software fallback");open(current,true,Math.max(pendingSeek,Math.max(0,video.getTime())));}
+        else{pauseVideo();status.setText("Não foi possível exibir a imagem deste arquivo.");}
+    };
     private final Runnable hideGesture=()->{if(gestureFeedback!=null)gestureFeedback.setVisibility(View.GONE);};
     private final BroadcastReceiver noisy=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){pauseVideo();}};
     private final Runnable tick=new Runnable(){public void run(){if(!started||video==null)return;update();if(video.isPlaying())handler.postDelayed(this,1000);}};
@@ -54,7 +59,7 @@ public class VideoActivity extends Activity {
                 case MediaPlayer.Event.TimeChanged:if(!video.isPlaying())update();break;
                 case MediaPlayer.Event.SeekableChanged:case MediaPlayer.Event.LengthChanged:applyPendingSeek();break;
                 case MediaPlayer.Event.ESSelected:if(video.getAudioTracksCount()>0&&video.getAudioTrack()>=0)android.util.Log.d("OndaVideo","audio "+(current==null?"":current.file));if(video.getSpuTrack()>=0)android.util.Log.d("OndaVideo","subtitle-selected "+video.getSpuTrack());break;
-                case MediaPlayer.Event.Vout:if(event.getVoutCount()>0)android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));break;
+                case MediaPlayer.Event.Vout:if(event.getVoutCount()>0){framesSeen=true;handler.removeCallbacks(firstFrameCheck);android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));}break;
                 case MediaPlayer.Event.Paused:case MediaPlayer.Event.Stopped:handler.removeCallbacks(tick);update();break;
                 case MediaPlayer.Event.EndReached:if(current!=null)VideoProgressStore.clear(this,current.uri);handler.removeCallbacks(tick);if(started&&queueIndex>=0&&queueIndex+1<queue.size())open(queue.get(++queueIndex),false);else{update();abandonFocus();}break;
                 case MediaPlayer.Event.EncounteredError:handler.removeCallbacks(tick);getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(!software&&current!=null&&started){open(current,true,Math.max(0,video.getTime()));}else{abandonFocus();status.setText("Não foi possível reproduzir este arquivo.");new AlertDialog.Builder(this).setTitle("Vídeo indisponível").setMessage("O arquivo pode estar danificado, protegido ou usar um codec incompatível. Tente outro vídeo.").setPositiveButton("OK",null).show();}break;
@@ -111,7 +116,7 @@ public class VideoActivity extends Activity {
     private void open(VideoStore.Item item,boolean useSoftware){open(item,useSoftware,0);}
     private void open(VideoStore.Item item,boolean useSoftware,long startPosition){
         if(video==null||!started)return;if(music==null){pending=item;status.setText("Preparando áudio…");return;}
-        music.pause();if(!requestFocus())return;remember();
+        music.pause();if(!requestFocus())return;remember();handler.removeCallbacks(firstFrameCheck);framesSeen=false;
         if(current==null||!current.uri.equals(item.uri)){subtitleGeneration++;clearSubtitle();}subtitleAttached=false;video.stop();
         // A document picker destroys the old Surface. Bind a fresh window after stopping,
         // so software decoders wait for the new Surface instead of producing audio only.
@@ -120,7 +125,7 @@ public class VideoActivity extends Activity {
         try{
             descriptor=getContentResolver().openFileDescriptor(item.uri,"r");if(descriptor==null)throw new java.io.IOException("Arquivo indisponível");
             Media media=new Media(engine,descriptor.getFileDescriptor());try{media.setHWDecoderEnabled(!useSoftware,false);video.setMedia(media);}finally{media.release();}
-            video.play();status.setText(useSoftware?"Reproduzindo com decoder de software":"Abrindo vídeo…");
+            video.play();handler.postDelayed(firstFrameCheck,8000);status.setText(useSoftware?"Reproduzindo com decoder de software":"Abrindo vídeo…");
         }catch(Exception e){abandonFocus();status.setText("Não foi possível abrir o vídeo. O arquivo pode ter sido removido ou o acesso expirou.");Toast.makeText(this,"Tente selecionar o arquivo novamente.",Toast.LENGTH_LONG).show();closeDescriptor();}
     }
     private void choose(VideoStore.Item item){
@@ -162,7 +167,7 @@ public class VideoActivity extends Activity {
     private boolean requestFocus(){if(audio==null||focus==null)return false;hasFocus=audio.requestAudioFocus(focus)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;if(hasFocus){ducked=false;applyVideoVolume();}if(!hasFocus)Toast.makeText(this,"Áudio ocupado. Tente novamente.",Toast.LENGTH_SHORT).show();return hasFocus;}
     private void abandonFocus(){if(audio!=null&&focus!=null)audio.abandonAudioFocusRequest(focus);hasFocus=false;}
     private void resumeVideo(){if(video==null||current==null||!started||music==null)return;long at=Math.max(0,video.getTime()),length=video.getLength();open(current,software,length>0&&at>=length-500?0:at);}
-    private void pauseVideo(){remember();if(video!=null){video.pause();android.util.Log.d("OndaVideo","paused at "+Math.max(0,video.getTime()));}handler.removeCallbacks(tick);getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);abandonFocus();update();if(adapter!=null)adapter.notifyDataSetChanged();}
+    private void pauseVideo(){handler.removeCallbacks(firstFrameCheck);remember();if(video!=null){video.pause();android.util.Log.d("OndaVideo","paused at "+Math.max(0,video.getTime()));}handler.removeCallbacks(tick);getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);abandonFocus();update();if(adapter!=null)adapter.notifyDataSetChanged();}
     private void update(){if(video==null)return;boolean playing=video.isPlaying();play.setText(playing?"Pausar":"Reproduzir");play.setContentDescription(playing?"Pausar vídeo":"Reproduzir vídeo");long length=Math.max(0,video.getLength()),time=Math.max(0,video.getTime());if(!seeking)seek.setProgress(length>0?(int)Math.min(1000,time*1000/length):0);seek.setEnabled(video.isSeekable());position.setText(VideoText.duration(time)+" / "+VideoText.duration(length));if(started&&playing)getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);}
     private void restartTick(){handler.removeCallbacks(tick);if(started)handler.post(tick);}
     private void setFullscreen(boolean value){fullscreen=value;heading.setVisibility(value?View.GONE:View.VISIBLE);now.setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);navigation.setVisibility(value?View.GONE:View.VISIBLE);surfaceBox.setLayoutParams(value?new LinearLayout.LayoutParams(-1,0,1):new LinearLayout.LayoutParams(-1,Ui.dp(this,205)));full.setText(value?"Sair da tela":"Tela cheia");full.setContentDescription(value?"Sair da tela cheia":"Tela cheia do vídeo");getWindow().getDecorView().setSystemUiVisibility(value?View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE:View.SYSTEM_UI_FLAG_LAYOUT_STABLE);setRequestedOrientation(value?ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE:ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);root.requestApplyInsets();}
