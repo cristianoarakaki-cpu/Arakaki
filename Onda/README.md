@@ -1,3 +1,7 @@
+## Novidades 0.18 — Continuar de onde parou
+
+O Onda restaura a fila local, a faixa e a posição ao reabrir, sempre pausado. Toque Reproduzir para continuar. Preserva os modos de repetição e embaralhamento (a sequência aleatória pode mudar). Salva ao pausar, trocar, buscar e a cada 15 segundos enquanto toca; um encerramento abrupto pode perder os últimos segundos. Arquivos ausentes são ignorados; se a faixa atual faltar, começa a próxima disponível do zero. Filas online não são restauradas. Listas maiores que 10.000 faixas não são salvas. Nenhuma análise contínua ou serviço externo.
+
 ## Novidades 0.17 — Playlists
 
 Menu → Playlists: crie listas, renomeie, escolha músicas por título ou artista, mova faixas e remova da lista. As listas ficam salvas no aparelho. Ouvir lista substitui a fila e toca na ordem exibida, sem embaralhar ou repetir. Arquivos indisponíveis ficam indicados e são ignorados na reprodução; excluir uma playlist não exclui músicas. Limites: 100 listas, 2.000 faixas por lista; listas locais, sem sincronização entre aparelhos.
@@ -65,7 +69,7 @@ A versão 0.1 passou por compilação e lint no GitHub Actions, e o usuário con
 
 ## Limites da primeira versão
 
-Sem navegação separada por pastas. A fila segue os resultados selecionados; playlists, DJ e Estúdio de som estão disponíveis pelo menu. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila e a posição não são restauradas após encerramento do processo. O APK de debug é destinado a teste, não a publicação na Google Play.
+Sem navegação separada por pastas. A fila segue os resultados selecionados; playlists, DJ e Estúdio de som estão disponíveis pelo menu. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila local e a posição são restauradas conforme descrito acima. O APK de debug é destinado a teste, não a publicação na Google Play.
 
 
 ## Instalação 0.3.1

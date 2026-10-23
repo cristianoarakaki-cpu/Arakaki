@@ -103,6 +103,21 @@ capture('18-playlists')
 tap('Tocar playlist');time.sleep(1)
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.7)
 assert 'size=2' in shell('dumpsys','media_session').decode(),'Playlist did not create two-item queue'
+# Seek while paused, terminate the process, then verify the recovered queue and position.
+seek=locate('Posição na música');bounds=[int(x) for x in re.findall(r'\d+',seek.attrib['bounds'])]
+shell('input','tap',bounds[0]+(bounds[2]-bounds[0])//3,(bounds[1]+bounds[3])//2);time.sleep(.7)
+shell('am','force-stop',PACKAGE);adb('logcat','-c')
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
+for _ in range(20):
+ log=adb('logcat','-d','-s','OndaResume:D').decode(errors='replace')
+ if 'restored count=2' in log:break
+ time.sleep(.25)
+match=re.search(r'restored count=2 index=0 position=(\d+)',log)
+assert match and 10000<int(match.group(1))<35000,'Music position not restored: '+log
+session=shell('dumpsys','media_session').decode();assert 'size=2' in session
+assert 'PlaybackState {state=3,' not in session,'Restoration unexpectedly started playback'
+nodes();capture('19-retomar-musica')
+(OUTPUT/'music-resume-tests.json').write_text(json.dumps({'queue':True,'position':int(match.group(1)),'restoresPaused':True}))
 menu_action('Menu da biblioteca','Playlists');tap_text('TesteOndaEditada\n2 músicas')
 tap_text('2. DJ-2\nDJ Artist 2');tap_text('Remover da playlist')
 assert any('1 músicas • 1 disponíveis' in n.attrib.get('text','') for n in nodes())
