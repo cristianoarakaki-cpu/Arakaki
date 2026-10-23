@@ -76,6 +76,9 @@ voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
 voice('Onda, toque minhas músicas favoritas, por favor')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'
+voice('pause')
+voice('coloca aquelas musicas que eu mais gosto')
+assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Local intent classifier did not play favorites'
 voice('pause');voice('remova dos favoritos')
 assert locate('Adicionar aos favoritos') is not None
 voice('toque as favoritas')

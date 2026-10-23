@@ -42,6 +42,7 @@ final class LocalVoiceModel {
     static VoiceCommand interpret(String phrase){
         VoiceCommand direct=VoiceCommand.parse(phrase);
         if(direct.action!=VoiceCommand.Action.SEARCH||!SearchText.spokenQuery(phrase).equals(phrase==null?"":phrase.trim()))return direct;
+        if(SearchText.normalize(phrase).matches("(?:(?:onda|por favor) )*(?:busque|buscar|pesquise|pesquisar|procure|procurar) .*"))return direct;
         // Negation in a free phrase is ambiguous; never guess the opposite action.
         if(SearchText.normalize(phrase).matches(".*\\b(?:nao|nunca|nem)\\b.*"))return direct;
         Map<String,Double> query=INSTANCE.vector(phrase);if(query.size()<2)return direct;
