@@ -1,3 +1,9 @@
+## Novidades 0.20 — Fones e Bluetooth
+
+Menu → Fones e Bluetooth em Músicas, Explorar e Vídeos. A tela abre as configurações Bluetooth para parear/conectar o fone e oferece o seletor nativo de saídas de mídia do Android quando há rotas compatíveis. Não faz busca Bluetooth em segundo plano nem força modo de chamada/SCO. O Android confirma o pareamento e negocia o codec; disponibilidade e troca de saída dependem do aparelho. Saídas disponíveis e rota informada pelo sistema são exibidas separadamente; não medimos qual dispositivo está efetivamente emitindo áudio.
+
+Estúdio de som: novos perfis manuais Fones equilibrados, Fones voz nítida e Alto-falante claro, com compensação de ganho. Aplicam-se a músicas e áudio online; vídeos usam tocador separado. Não há amplificação garantida, calibração automática, alteração de codec ou simulação de áudio sem perdas. Ajustes e efeitos dependem do hardware. Monitoramento de saídas apenas enquanto a tela Fones e Bluetooth está aberta.
+
 ## Novidades 0.19 — Janela flutuante e voz para playlists
 
 Vídeos: durante a reprodução, Menu → Janela flutuante abre o modo imagem em imagem do Android, com pausa/reprodução e os controles do sistema para expandir ou fechar. Depende do suporte e da permissão de imagem em imagem do aparelho. A entrada é explícita: sair normalmente continua pausando o vídeo. Não exige permissão para desenhar sobre outros apps.

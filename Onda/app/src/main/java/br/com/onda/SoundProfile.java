@@ -5,9 +5,9 @@ import java.util.Arrays;
 /** Device-independent settings; all gains are dB, BassBoost strength is percent. */
 final class SoundProfile {
     static final int[] FREQUENCIES={60,230,910,3600,14000};
-    static final String[] PRESETS={"Original","Voz","Sertanejo","Rock","Pop","Graves suaves"};
-    private static final int[][] CURVES={{0,0,0,0,0},{-2,-1,2,3,1},{2,0,1,2,2},{4,2,-1,2,4},{-1,1,3,1,-1},{3,2,0,-1,-2}};
-    private static final int[] BASS={0,0,15,20,10,30};
+    static final String[] PRESETS={"Original","Voz","Sertanejo","Rock","Pop","Graves suaves","Fones equilibrados","Fones voz nítida","Alto-falante claro"};
+    private static final int[][] CURVES={{0,0,0,0,0},{-2,-1,2,3,1},{2,0,1,2,2},{4,2,-1,2,4},{-1,1,3,1,-1},{3,2,0,-1,-2},{1,-1,0,1,0},{-2,-1,2,2,-1},{-3,-1,2,2,-1}};
+    private static final int[] BASS={0,0,15,20,10,30,10,0,0};
     final boolean enabled;final int bass;private final int[] gains;
     SoundProfile(boolean enabled,int[] gains,int bass){this.enabled=enabled;this.gains=new int[5];for(int i=0;i<5;i++)this.gains[i]=Math.max(-6,Math.min(6,gains!=null&&i<gains.length?gains[i]:0));this.bass=Math.max(0,Math.min(100,bass));}
     static SoundProfile preset(int index,boolean enabled){int i=Math.max(0,Math.min(PRESETS.length-1,index));return new SoundProfile(enabled,CURVES[i],BASS[i]);}

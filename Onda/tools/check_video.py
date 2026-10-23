@@ -25,7 +25,11 @@ def tap_text(text):
     node=next(n for n in nodes() if n.attrib.get('text','').casefold()==text.casefold())
     shell('input','tap',*point(node));time.sleep(.5)
 def menu_action(description,label):
-    tap(description);tap_text(label)
+    tap(description)
+    for _ in range(3):
+        if any(n.attrib.get('text','').casefold()==label.casefold() for n in nodes()):break
+        shell('input','swipe',850,1500,850,650,300);time.sleep(.3)
+    tap_text(label)
 def capture(name):
     (OUTPUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
     (OUTPUT/(name+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
@@ -153,12 +157,12 @@ assert locate('Escolher preset de som').attrib.get('text')=='Preset: Rock'
 sound=sound_state();assert sound['enabled'] is True
 if sound['equalizer']:
  assert len(sound['levels'])==len(sound['frequencies'])>0
- def expected_level(hz):
-  frequencies=[60,230,910,3600,14000];gains=[4,2,-1,2,4]
-  if hz<=60:return 400
+ def expected_level(hz,gains=None):
+  frequencies=[60,230,910,3600,14000];gains=[4,2,-1,2,4] if gains is None else gains
+  if hz<=60:return gains[0]*100
   for i in range(1,5):
    if hz<=frequencies[i]:return round(100*(gains[i-1]+math.log(hz/frequencies[i-1])/math.log(frequencies[i]/frequencies[i-1])*(gains[i]-gains[i-1])))
-  return 400
+  return gains[4]*100
  for frequency,level in zip(sound['frequencies'],sound['levels']):assert abs(level-expected_level(frequency))<=2,'Equalizer readback differs from preset'
  assert sound['eq_enabled'] is False,'Paused equalizer still processing'
 assert 0<sound['headroom']<=1
@@ -179,6 +183,24 @@ tap_text('Restaurar som original');time.sleep(.5)
 assert sound_state()['enabled'] is False
 (OUTPUT/'sound-tests.json').write_text(json.dumps({'configured':sound,'playing':playing_sound,'paused':paused_sound,'reset':sound_state()},indent=2)+'\n')
 tap('Voltar')
+# Output screen uses native Android routing; pairing is delegated to system settings.
+menu_action('Menu da biblioteca','Fones e Bluetooth')
+assert locate('Saída de áudio do Android') is not None
+assert locate('Saídas disponíveis no aparelho') is not None
+assert locate('Escolher saída de áudio') is not None
+capture('21-fones-bluetooth')
+tap('Conectar fone Bluetooth');time.sleep(.8)
+assert 'com.android.settings' in shell('dumpsys','activity','activities').decode(),'Bluetooth settings did not open'
+shell('input','keyevent','4');time.sleep(.5)
+tap('Ajustar som para fones');tap('Ativar ajustes de som');tap('Escolher preset de som');tap_text('Fones equilibrados');time.sleep(.5)
+assert locate('Escolher preset de som').attrib.get('text')=='Preset: Fones equilibrados'
+headphone=sound_state();assert headphone['enabled'] is True and 0<headphone['headroom']<=1
+if headphone['equalizer']:
+ for frequency,level in zip(headphone['frequencies'],headphone['levels']):assert abs(level-expected_level(frequency,[1,-1,0,1,0]))<=2,'Headphone curve was not applied'
+capture('22-perfil-fones')
+for _ in range(2):shell('input','swipe',540,1500,540,500,250)
+tap_text('Restaurar som original');tap('Voltar');tap('Voltar dos fones')
+(OUTPUT/'headphone-tests.json').write_text(json.dumps({'opensBluetoothSettings':True,'routingControl':True,'profile':headphone}))
 voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
 # The preview is local and finite; playing must publish the exact generated queue.
