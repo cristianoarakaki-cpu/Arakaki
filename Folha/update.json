@@ -1,0 +1,8 @@
+{
+  "packageName": "com.folha.pdf",
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/folha-v1.1.0/Folha-PDF.apk",
+  "sha256": "9c6cfbed86905fc0ebe80be3af2bf94ed47391c117187f24434cbbd7290641d4",
+  "notes": "Novos recursos: girar páginas, PDF para JPG, nome personalizado e compartilhar resultados. Verificação automática de versões pelo GitHub e instalação com confirmação do Android. OCR e conversões permanecem locais."
+}
