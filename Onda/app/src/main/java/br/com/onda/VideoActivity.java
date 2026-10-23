@@ -48,7 +48,7 @@ public class VideoActivity extends Activity {
         super.onCreate(state);videoVolume=Math.max(0,Math.min(100,getSharedPreferences("video_controls",0).getInt("volume",100)));buildUi();
         try{
             ArrayList<String> options=new ArrayList<>();options.add("--no-video-title-show");options.add("--no-stats");
-            engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,false,false);
+            engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,true,false);
             video.setEventListener(event->{if(isDestroyed())return;switch(event.type){
                 case MediaPlayer.Event.Playing:applyPendingSeek();applyVideoVolume();attachSubtitle();status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
                 case MediaPlayer.Event.TimeChanged:if(!video.isPlaying())update();break;
@@ -115,7 +115,7 @@ public class VideoActivity extends Activity {
         if(current==null||!current.uri.equals(item.uri)){subtitleGeneration++;clearSubtitle();}subtitleAttached=false;video.stop();
         // A document picker destroys the old Surface. Bind a fresh window after stopping,
         // so software decoders wait for the new Surface instead of producing audio only.
-        video.detachViews();video.attachViews(surface,null,false,false);pendingSeek=Math.max(0,startPosition);
+        video.detachViews();video.attachViews(surface,null,true,false);pendingSeek=Math.max(0,startPosition);
         closeDescriptor();current=item;software=useSoftware;now.setText(item.title);adapter.notifyDataSetChanged();
         try{
             descriptor=getContentResolver().openFileDescriptor(item.uri,"r");if(descriptor==null)throw new java.io.IOException("Arquivo indisponível");
