@@ -73,7 +73,7 @@ public class VideoActivity extends Activity {
         connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
         connection.addListener(()->{if(isDestroyed())return;try{music=connection.get();if(pending!=null&&started){VideoStore.Item item=pending;pending=null;choose(item);}}catch(Exception e){pending=null;status.setText("Não foi possível conectar o áudio. Volte e tente novamente.");}},handler::post);
         IntentFilter filter=new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);if(Build.VERSION.SDK_INT>=33)registerReceiver(noisy,filter,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(noisy,filter);receiverRegistered=true;
-        IntentFilter pipFilter=new IntentFilter(PIP_ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(pipControls,pipFilter,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(pipControls,pipFilter);pipReceiverRegistered=true;
+        IntentFilter pipFilter=new IntentFilter(PIP_ACTION);androidx.core.content.ContextCompat.registerReceiver(this,pipControls,pipFilter,androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED);pipReceiverRegistered=true;
         receiveView(getIntent());permission(false);
     }
     private void buildUi(){
