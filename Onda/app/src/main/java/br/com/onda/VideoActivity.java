@@ -139,6 +139,7 @@ public class VideoActivity extends Activity {
     private void applyVideoVolume(){if(video!=null)video.setVolume(ducked?Math.round(videoVolume*.25f):videoVolume);}
     private void clearSubtitle(){captionsOff=false;subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
     private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
+        // The String overload takes a filesystem path, not a file:// URI.
         subtitleAttached=video.addSlave(Media.Slave.Type.Subtitle,subtitleFile.getAbsolutePath(),true);
         android.util.Log.d("OndaVideo","subtitle "+(subtitleAttached?"attached ":"failed ")+subtitleName);
         if(!subtitleAttached)Toast.makeText(this,"Não foi possível ativar a legenda. Tente outro arquivo.",Toast.LENGTH_LONG).show();
