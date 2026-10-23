@@ -16,7 +16,7 @@ def tap(label):
    x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')));adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));return
  raise AssertionError(label)
 def shared(text):
- adb('shell','am','start','-n',package+'/.DownloadsActivity','-a','android.intent.action.SEND','-t','text/plain','--es','android.intent.extra.TEXT',text);time.sleep(2)
+ adb('shell','am','start','-n',package+'/br.com.onda.DownloadsActivity','-a','android.intent.action.SEND','-t','text/plain','--es','android.intent.extra.TEXT',text);time.sleep(2)
 shared('https://youtube.com.evil.test/watch?v=aqz-KE-bpKQ');tap('Analisar link');time.sleep(1)
 assert any('Cole um link HTTPS' in n.get('text','') for n in nodes().iter('node'));capture('01-invalid-link')
 shared('https://www.youtube.com/watch?v=aqz-KE-bpKQ');tap('Analisar link')
