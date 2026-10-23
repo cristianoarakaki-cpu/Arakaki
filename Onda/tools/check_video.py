@@ -33,6 +33,12 @@ adb('push',str(audio),'/sdcard/Music/OndaDemo/Onda-Audio.wav')
 shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Music/OndaDemo/Onda-Audio.wav')
 time.sleep(1)
 shell('content','update','--uri','content://media/external/audio/media','--bind','artist:s:Onda Sessions','--where',"_display_name='Onda-Audio.wav'")
+# A small diverse local library for real DJ queue checks.
+for index in range(2,5):
+ name=f'DJ-{index}.wav';remote='/sdcard/Music/OndaDemo/'+name
+ adb('push',str(audio),remote)
+ shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote);time.sleep(.4)
+ shell('content','update','--uri','content://media/external/audio/media','--bind',f'artist:s:DJ Artist {index}','--where',f"_display_name='{name}'")
 shell('mkdir','-p','/sdcard/Movies/OndaDemo')
 for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension;local=Path('/tmp')/filename
@@ -108,6 +114,27 @@ assert sound_state()['enabled'] is False
 tap('Voltar')
 voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
+# The preview is local and finite; playing must publish the exact generated queue.
+menu_action('Menu da biblioteca','DJ automático')
+assert locate('Modo do DJ') is not None
+preview=nodes();dj_rows=[n for n in preview if n.attrib.get('content-desc','').startswith('Ouvir seleção a partir de ')]
+assert len(dj_rows)==4,'DJ did not include the local library'
+tap('Modo do DJ');tap_text('Só favoritas');time.sleep(.3)
+favorites_preview=[n for n in nodes() if n.attrib.get('content-desc','').startswith('Ouvir seleção a partir de ')]
+assert len(favorites_preview)==1,'Favorites-only DJ included other songs'
+tap('Modo do DJ');tap_text('Redescobrir');time.sleep(.3)
+assert len([n for n in nodes() if n.attrib.get('content-desc','').startswith('Ouvir seleção a partir de ')])==4
+tap('Modo do DJ');tap_text('Para você');tap('Gerar nova mistura do DJ')
+preview=nodes();dj_titles=[n.attrib.get('content-desc','') for n in preview if n.attrib.get('content-desc','').startswith('Ouvir seleção a partir de ')]
+assert len(dj_titles)==len(set(dj_titles))==4
+capture('14-dj-automatico')
+tap('Tocar seleção do DJ');time.sleep(.8)
+dj_session=shell('dumpsys','media_session').decode()
+assert 'PlaybackState {state=3,' in dj_session,'DJ queue did not start playing'
+assert re.search(r'queue[^\n]*size=4',dj_session,re.I),'DJ did not publish four queue entries: '+dj_session
+voice('pause')
+(OUTPUT/'dj-tests.json').write_text(json.dumps({'queueEntries':4,'favoriteEntries':1,'preview':dj_titles,'played':True},indent=2)+'\n')
+
 voice('Onda, toque minhas músicas favoritas, por favor')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'
 voice('pause')
@@ -138,6 +165,11 @@ voice('pause');voice('remova dos favoritos')
 assert locate('Adicionar aos favoritos') is not None
 voice('toque as favoritas')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Empty favorites unexpectedly started playback'
+menu_action('Menu da biblioteca','DJ automático');tap('Modo do DJ');tap_text('Só favoritas');time.sleep(.3)
+assert locate('Tocar seleção do DJ').attrib.get('enabled')=='false','Empty favorites DJ must not play'
+assert any('Nenhuma favorita disponível' in n.attrib.get('text','') for n in nodes())
+tap('Voltar')
+
 voice('ajuda');assert any(n.attrib.get('text')=='Comandos de voz' for n in nodes());capture('07-comandos-voz')
 tap_text('Entendi')
 menu_action('Menu da biblioteca','Assistente com IA')
