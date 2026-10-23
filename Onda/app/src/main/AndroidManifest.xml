@@ -16,7 +16,7 @@
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
         </activity>
         <service android:name=".MediaDownloadService" android:foregroundServiceType="dataSync" android:exported="false" />
-        <activity android:name=".DownloadsActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
+        <activity android:name=".DownloadsActivity" android:launchMode="singleTop" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>
         <activity android:name=".BackupActivity" android:exported="false" />

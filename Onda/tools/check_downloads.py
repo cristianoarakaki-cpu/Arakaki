@@ -16,7 +16,8 @@ def tap(label):
    x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')));adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));return
  raise AssertionError(label)
 def shared(text):
- adb('shell','am','start','-n',package+'/br.com.onda.DownloadsActivity','-a','android.intent.action.SEND','-t','text/plain','--es','android.intent.extra.TEXT',text);time.sleep(2)
+ adb('shell','am','start','-n',package+'/br.com.onda.DownloadsActivity','-f','0x20000000','-a','android.intent.action.SEND','-t','text/plain','--es','android.intent.extra.TEXT',text);time.sleep(2)
+ assert any(n.get('content-desc')=='Link do vídeo' and n.get('text')==text for n in nodes().iter('node')),'Shared link did not reach input'
 shared('https://youtube.com.evil.test/watch?v=aqz-KE-bpKQ');tap('Analisar link');time.sleep(1)
 assert any('Cole um link HTTPS' in n.get('text','') for n in nodes().iter('node'));capture('01-invalid-link')
 shared('https://www.youtube.com/watch?v=aqz-KE-bpKQ');tap('Analisar link')
@@ -30,7 +31,7 @@ while time.monotonic()<end:
  except (subprocess.CalledProcessError,ET.ParseError):continue
  if 'Escolha um formato para baixar' in status:result='formats-found';break
  if 'Não foi possível analisar' in status:result='provider-unavailable';break
- if not adb('shell','pidof',package).strip():result='app-crashed';break
+ if subprocess.run(['adb','shell','pidof',package],stdout=subprocess.PIPE,timeout=10).returncode!=0:result='app-crashed';break
 time.sleep(1)
 nodes();capture('02-youtube-result')
 logs=adb('logcat','-d','-s','OndaDownload:I','AndroidRuntime:E','*:S').decode(errors='replace')
