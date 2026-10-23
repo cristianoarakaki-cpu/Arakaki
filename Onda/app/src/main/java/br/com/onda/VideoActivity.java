@@ -38,7 +38,7 @@ public class VideoActivity extends Activity {
     private LinearLayout root,heading,browser,transport,navigation;private FrameLayout surfaceBox;private VLCVideoLayout surface;
     private Button play,full;private TextView now,position,status;private SeekBar seek;private EditText search;
     private BaseAdapter adapter;
-    private java.io.File subtitleFile;private String subtitleName="";private boolean subtitleEnabled,subtitleAttached,subtitleWasPlaying,ducked;
+    private java.io.File subtitleFile;private String subtitleName="";private boolean subtitleEnabled,subtitleAttached,subtitleWasPlaying,ducked,captionsOff;
     private int subtitleGeneration,videoVolume=100;private TextView gestureFeedback;private View gestureLayer;
     private AlertDialog resumeDialog;
     private final Runnable hideGesture=()->{if(gestureFeedback!=null)gestureFeedback.setVisibility(View.GONE);};
@@ -127,13 +127,13 @@ public class VideoActivity extends Activity {
         if(video!=null&&video.isPlaying())pauseVideo();long saved=VideoProgressStore.read(this,item.uri,item.duration);
         if(saved<=0){open(item,false);return;}if(resumeDialog!=null)resumeDialog.dismiss();
         resumeDialog=new AlertDialog.Builder(this).setTitle("Continuar vídeo?").setMessage(item.title+"\nContinuar de "+VideoText.duration(saved)+"?")
-            .setPositiveButton("Continuar",(d,w)->open(item,false,saved)).setNeutralButton("Recomeçar",(d,w)->{VideoProgressStore.clear(this,item.uri);open(item,false);}).setNegativeButton("Cancelar",null).show();
+            .setPositiveButton("Continuar",(d,w)->open(item,false,saved)).setNeutralButton("Recomeçar",(d,w)->{open(item,false);VideoProgressStore.clear(this,item.uri);}).setNegativeButton("Cancelar",null).show();
     }
     private void remember(){if(video!=null&&current!=null&&video.getLength()>0)VideoProgressStore.save(this,current.uri,Math.max(0,video.getTime()),video.getLength());}
     private void applyPendingSeek(){if(pendingSeek>0&&video!=null&&video.isSeekable()&&video.getLength()>0){long target=Math.min(pendingSeek,Math.max(0,video.getLength()-500));pendingSeek=0;if(target>0){video.setTime(target);android.util.Log.d("OndaVideo","resumed "+target);}}}
     private void applyVideoVolume(){if(video!=null)video.setVolume(ducked?Math.round(videoVolume*.25f):videoVolume);}
-    private void clearSubtitle(){subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
-    private void attachSubtitle(){if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
+    private void clearSubtitle(){captionsOff=false;subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
+    private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
         subtitleAttached=video.addSlave(Media.Slave.Type.Subtitle,subtitleFile.toURI().toString(),true);
         android.util.Log.d("OndaVideo","subtitle "+(subtitleAttached?"attached ":"failed ")+subtitleName);
         if(!subtitleAttached)Toast.makeText(this,"Não foi possível ativar a legenda. Tente outro arquivo.",Toast.LENGTH_LONG).show();
@@ -141,7 +141,7 @@ public class VideoActivity extends Activity {
     private void subtitles(){if(current==null){Toast.makeText(this,"Abra um vídeo primeiro.",Toast.LENGTH_SHORT).show();return;}
         new AlertDialog.Builder(this).setTitle("Legendas do vídeo").setMessage((subtitleEnabled?"Arquivo: "+subtitleName:"Nenhuma legenda externa ativa")+"\nSRT, VTT, ASS e SSA, até 2 MB. A legenda fica disponível nesta sessão do vídeo.")
             .setPositiveButton("Abrir legenda",(d,w)->{subtitleWasPlaying=video!=null&&video.isPlaying();Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents","primary:Download"));try{startActivityForResult(intent,SUBTITLE);}catch(ActivityNotFoundException e){Toast.makeText(this,"Seletor de arquivos indisponível.",Toast.LENGTH_LONG).show();}})
-            .setNeutralButton("Desativar",(d,w)->{if(video!=null)video.setSpuTrack(-1);subtitleEnabled=false;Toast.makeText(this,"Legenda desativada",Toast.LENGTH_SHORT).show();}).setNegativeButton("Fechar",null).show();
+            .setNeutralButton("Desativar",(d,w)->{if(video!=null)video.setSpuTrack(-1);captionsOff=true;subtitleEnabled=false;Toast.makeText(this,"Legenda desativada",Toast.LENGTH_SHORT).show();}).setNegativeButton("Fechar",null).show();
     }
     private void loadSubtitle(Uri uri){if(current==null)return;Uri owner=current.uri;String name=selected(uri).file;String lower=name.toLowerCase(Locale.ROOT);String suffix=null;for(String ext:new String[]{".srt",".vtt",".ass",".ssa"})if(lower.endsWith(ext)){suffix=ext;break;}
         if(suffix==null){Toast.makeText(this,"Escolha uma legenda SRT, VTT, ASS ou SSA.",Toast.LENGTH_LONG).show();return;}

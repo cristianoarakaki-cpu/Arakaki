@@ -258,7 +258,7 @@ try:
  tap('Assistir Onda-Video.ts')
  assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes()),'Bookmark lost after activity recreation'
  adb('logcat','-c');tap_text('Recomeçar');time.sleep(.8)
- fresh_pause=point(locate('Área de gestos do vídeo')) if False else resumed_pause
+ fresh_pause=resumed_pause
  # Transport coordinates are stable in portrait; avoid idle dumps during playback.
  shell('input','tap',*fresh_pause);time.sleep(.5)
  assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
