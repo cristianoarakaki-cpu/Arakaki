@@ -77,6 +77,27 @@ assert locate('Remover dos favoritos') is not None
 voice('Onda, toque minhas músicas favoritas, por favor')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'
 voice('pause')
+# Create, persist, execute, edit and delete a phrase through the actual native UI.
+menu_action('Menu da biblioteca','Minhas frases')
+tap('Adicionar frase de voz');tap('Frase personalizada');shell('input','text','hora%sde%srelaxar');shell('input','keyevent','4');time.sleep(.3)
+tap_text('Salvar');assert locate('Editar frase: hora de relaxar') is not None
+capture('09-minhas-frases')
+shell('input','keyevent','4');time.sleep(.3)
+voice('hora de relaxar')
+assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Custom favorites phrase did not play'
+voice('pause')
+menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: hora de relaxar');tap('Frase personalizada');shell('input','keyevent','123')
+for _ in 'hora de relaxar':shell('input','keyevent','67')
+shell('input','text','meu%smomento');shell('input','keyevent','4');time.sleep(.3)
+tap('Ação da frase');tap_text('Pausar');tap_text('Salvar')
+assert locate('Editar frase: meu momento') is not None
+shell('input','keyevent','4');time.sleep(.3)
+voice('toque Onda Sessions');voice('meu momento')
+assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Edited phrase did not pause'
+menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: meu momento');tap_text('Excluir')
+assert any(n.attrib.get('text')=='Excluir frase?' for n in nodes());tap_text('Excluir')
+assert not any(n.attrib.get('content-desc','').startswith('Editar frase:') for n in nodes()),'Deleted phrase remained'
+shell('input','keyevent','4');time.sleep(.3)
 voice('coloca aquelas musicas que eu mais gosto')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Local intent classifier did not play favorites'
 voice('pause');voice('remova dos favoritos')

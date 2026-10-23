@@ -115,9 +115,9 @@ public class MainActivity extends Activity {
         }
     }
     private void showLibraryMenu(View anchor){Ui.menu(this,anchor,
-        new String[]{"Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações","Comandos de voz","Assistente com IA"},
-        new String[]{"Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações","Comandos de voz","Assistente com IA"},
-        new Runnable[]{()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class)),()->VoiceSearch.help(this),()->VoiceAiSettings.show(this)});}
+        new String[]{"Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
+        new String[]{"Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
+        new Runnable[]{()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class)),()->VoiceSearch.help(this),()->VoiceAiSettings.show(this),()->startActivity(new Intent(this,VoicePhrasesActivity.class))});}
     private void lyrics(){if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}
     private void filter(){String[] fields={"Todos os campos","Música","Artista","Álbum"};new AlertDialog.Builder(this).setTitle("Buscar por").setSingleChoiceItems(fields,searchScope,(dialog,which)->{searchScope=which;render();dialog.dismiss();}).setNegativeButton("Fechar",null).show();}
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}

@@ -9,9 +9,21 @@ final class VoiceCommand {
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
-    static VoiceCommand parse(String phrase){
+    static String cleanPhrase(String phrase){
         String clean=phrase==null?"":phrase.trim();
         clean=clean.replaceFirst("(?iu)^onda[ ,:!]+", "").replaceFirst("(?iu)^por favor[, ]+", "").replaceFirst("(?iu)[, ]+por favor[.!?]*$", "").trim();
+        return clean;
+    }
+    static VoiceCommand custom(Action action,String query,int minutes){
+        if(action==null||action==Action.INVALID)throw new IllegalArgumentException("Escolha uma ação válida.");
+        boolean search=action==Action.SEARCH||action==Action.PLAY_QUERY;
+        if(search&&(query.isEmpty()||query.length()>160))throw new IllegalArgumentException("Informe uma música ou artista de até 160 caracteres.");
+        if(!search&&!query.isEmpty())throw new IllegalArgumentException("Essa ação não usa busca.");
+        if(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0))throw new IllegalArgumentException("Use de 0 a 120 minutos; 0 cancela o temporizador.");
+        return new VoiceCommand(action,query,minutes);
+    }
+    static VoiceCommand parse(String phrase){
+        String clean=cleanPhrase(phrase);
         String q=SearchText.normalize(clean);
         // Explicit searches must not execute commands, even for titles such as Favoritas.
         if(q.matches("(?:busque|buscar|pesquise|pesquisar|procure|procurar) .+"))return new VoiceCommand(Action.SEARCH,SearchText.spokenQuery(clean),0);
