@@ -7,6 +7,7 @@ import android.view.*;
 import android.widget.*;
 import androidx.media3.common.Player;
 import androidx.media3.session.*;
+import androidx.media3.session.MediaController;
 import com.google.common.util.concurrent.ListenableFuture;
 
 @androidx.media3.common.util.UnstableApi
