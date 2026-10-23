@@ -56,7 +56,7 @@ public class VideoActivity extends Activity {
             engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,true,false);
             video.setEventListener(event->{if(isDestroyed())return;switch(event.type){
                 case MediaPlayer.Event.Playing:applyPendingSeek();applyVideoVolume();attachSubtitle();status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
-                case MediaPlayer.Event.TimeChanged:applyPendingSeek();if(!video.isPlaying())update();break;
+                case MediaPlayer.Event.TimeChanged:applyPendingSeek();attachSubtitle();if(!video.isPlaying())update();break;
                 case MediaPlayer.Event.SeekableChanged:case MediaPlayer.Event.LengthChanged:applyPendingSeek();break;
                 case MediaPlayer.Event.ESSelected:if(video.getAudioTracksCount()>0&&video.getAudioTrack()>=0)android.util.Log.d("OndaVideo","audio "+(current==null?"":current.file));if(video.getSpuTrack()>=0)android.util.Log.d("OndaVideo","subtitle-selected "+video.getSpuTrack());break;
                 case MediaPlayer.Event.Vout:if(event.getVoutCount()>0){framesSeen=true;handler.removeCallbacks(firstFrameCheck);android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));}break;
@@ -144,7 +144,7 @@ public class VideoActivity extends Activity {
     }
     private void applyVideoVolume(){if(video!=null)video.setVolume(ducked?Math.round(videoVolume*.25f):videoVolume);}
     private void clearSubtitle(){captionsOff=false;subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
-    private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
+    private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!framesSeen||video.getTime()<=0||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
         // The String overload takes a filesystem path, not a file:// URI.
         subtitleAttached=video.addSlave(Media.Slave.Type.Subtitle,subtitleFile.getAbsolutePath(),true);
         android.util.Log.d("OndaVideo","subtitle "+(subtitleAttached?"attached ":"failed ")+subtitleName);
