@@ -21,7 +21,8 @@ final class BackupData {
  static String json(Archive a)throws JSONException{JSONObject root=new JSONObject().put("format","onda-backup").put("version",1);JSONArray tracks=new JSONArray(),lists=new JSONArray();for(Track t:a.tracks)tracks.put(new JSONObject().put("key",t.id).put("title",t.title).put("artist",t.artist).put("album",t.album).put("duration",t.duration));for(PlaylistStore.Entry e:a.lists)lists.put(new JSONObject().put("name",e.name).put("songs",new JSONArray(e.songs)));return root.put("tracks",tracks).put("playlists",lists).put("favorites",new JSONArray(a.favorites)).put("phrases",new JSONArray(a.phrases.json())).toString(2);}
  static final class Plan {
   List<PlaylistStore.Entry> lists;Set<String> favorites;VoicePhraseBook phrases;int matched,missing,ambiguous,addedLists,addedSongs,addedFavorites,addedPhrases,conflicts;
-  String summary(){return matched+" músicas localizadas; "+missing+" ausentes; "+ambiguous+" ambíguas.\n\nSerão acrescentadas:\n"+addedLists+" playlists, "+addedSongs+" faixas nas listas, "+addedFavorites+" favoritas e "+addedPhrases+" frases.\n\n"+conflicts+" itens ignorados por conflito ou limite. Os dados atuais serão mantidos.";}
+  String summary(){return "Músicas localizadas: "+matched+"\nAusentes: "+missing+" • Ambíguas: "+ambiguous+"\n\nSerão acrescentadas:\nPlaylists: "+addedLists+"\nFaixas nas listas: "+addedSongs+"\nFavoritas: "+addedFavorites+"\nFrases: "+addedPhrases+"\n\nItens ignorados por conflito ou limite: "+conflicts+". Os dados atuais serão mantidos.";}
+
  }
  static String identity(Track t){return PlaylistStore.nameKey(t.title)+"\u0000"+PlaylistStore.nameKey(t.artist);}
  static Plan merge(Archive source,List<Track> available,List<PlaylistStore.Entry> current,Set<String> favorites,VoicePhraseBook phrases){
