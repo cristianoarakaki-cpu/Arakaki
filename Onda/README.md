@@ -1,3 +1,11 @@
+## Novidades 0.21 — Backup e playlists por voz
+
+Menu → Backup e restauração: exporte playlists, favoritas e frases de voz em JSON usando o seletor de arquivos do Android. O arquivo não contém músicas nem histórico, posição/fila, vídeos ou ajustes de som; copie seus áudios separadamente. Backups não são criptografados. Limite de 8 MB e 20.000 faixas referenciadas; permanecem os limites de 100 listas, 2.000 músicas por lista e 100 frases.
+
+A restauração mostra uma prévia e acrescenta dados sem apagar os atuais. Listas de mesmo nome são combinadas mantendo a ordem existente; frases conflitantes mantêm a atual. Músicas são relacionadas por título e artista normalizados, álbum quando informado e duração com tolerância de 1,5 segundo; IDs do outro celular nunca são usados como identidade. Referências ausentes ou ambíguas são ignoradas e contadas. Pode importar novamente após copiar as músicas; a mesclagem evita duplicação. Ao exportar, referências a arquivos indisponíveis são contadas e não incluídas.
+
+Voz: “adicione esta música à minha playlist Viagem”. Usa a faixa local atual, evita duplicação e oferece escolha para nomes ambíguos; listas inexistentes não são criadas automaticamente. Em Minhas frases, a ação Adicionar música atual à playlist aceita atalhos personalizados. Sem API paga. Campo de frase mantém o texto literal, sem correção automática.
+
 ## Novidades 0.20 — Fones e Bluetooth
 
 Menu → Fones e Bluetooth em Músicas, Explorar e Vídeos. A tela abre as configurações Bluetooth para parear/conectar o fone e oferece o seletor nativo de saídas de mídia do Android quando há rotas compatíveis. Não faz busca Bluetooth em segundo plano nem força modo de chamada/SCO. O Android confirma o pareamento e negocia o codec; disponibilidade e troca de saída dependem do aparelho. Saídas disponíveis e rota informada pelo sistema são exibidas separadamente; não medimos qual dispositivo está efetivamente emitindo áudio.

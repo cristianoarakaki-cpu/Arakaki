@@ -115,9 +115,9 @@ public class MainActivity extends Activity {
         }
     }
     private void showLibraryMenu(View anchor){Ui.menu(this,anchor,
-        new String[]{"Playlists","DJ automático","Estúdio de som","Fones e Bluetooth","Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
-        new String[]{"Playlists","DJ automático","Estúdio de som","Fones e Bluetooth","Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
-        new Runnable[]{()->startActivity(new Intent(this,PlaylistsActivity.class)),()->startActivity(new Intent(this,DjActivity.class)),()->startActivity(new Intent(this,SoundActivity.class)),()->startActivity(new Intent(this,AudioOutputActivity.class)),()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class)),()->VoiceSearch.help(this),()->VoiceAiSettings.show(this),()->startActivity(new Intent(this,VoicePhrasesActivity.class))});}
+        new String[]{"Backup e restauração","Playlists","DJ automático","Estúdio de som","Fones e Bluetooth","Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
+        new String[]{"Backup e restauração","Playlists","DJ automático","Estúdio de som","Fones e Bluetooth","Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações","Comandos de voz","Assistente com IA","Minhas frases"},
+        new Runnable[]{()->startActivity(new Intent(this,BackupActivity.class)),()->startActivity(new Intent(this,PlaylistsActivity.class)),()->startActivity(new Intent(this,DjActivity.class)),()->startActivity(new Intent(this,SoundActivity.class)),()->startActivity(new Intent(this,AudioOutputActivity.class)),()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class)),()->VoiceSearch.help(this),()->VoiceAiSettings.show(this),()->startActivity(new Intent(this,VoicePhrasesActivity.class))});}
     private void lyrics(){if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}
     private void filter(){String[] fields={"Todos os campos","Música","Artista","Álbum"};new AlertDialog.Builder(this).setTitle("Buscar por").setSingleChoiceItems(fields,searchScope,(dialog,which)->{searchScope=which;render();dialog.dismiss();}).setNegativeButton("Fechar",null).show();}
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}
@@ -151,7 +151,7 @@ public class MainActivity extends Activity {
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
     private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted&&!keyboardVisible)handler.post(progress);}
-    @Override protected void onStart(){super.onStart();screenStarted=true;refresh();restartProgress();}
+    @Override protected void onStart(){super.onStart();screenStarted=true;favorites=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));render();refresh();restartProgress();}
     @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
     @Override public void onDestroy(){handler.removeCallbacksAndMessages(null);scanner.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

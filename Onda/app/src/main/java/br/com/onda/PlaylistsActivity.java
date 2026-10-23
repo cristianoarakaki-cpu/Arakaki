@@ -50,5 +50,6 @@ public class PlaylistsActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Escolher músicas").setView(box).setNegativeButton("Cancelar",null).setPositiveButton("Salvar seleção",(d,w)->{if(chosen.size()>2000){Toast.makeText(this,"Limite de 2.000 músicas por playlist",Toast.LENGTH_LONG).show();return;}owner.songs.removeIf(id->!chosen.contains(id));for(String id:library.keySet())if(chosen.contains(id)&&!owner.songs.contains(id))owner.songs.add(id);save();}).show();
     }
     private void start(){List<MediaItem> queue=playable();if(player==null||queue.isEmpty())return;player.setShuffleModeEnabled(false);player.setRepeatMode(Player.REPEAT_MODE_OFF);player.setMediaItems(queue,0,0);player.prepare();player.play();startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));finish();}
+    @Override protected void onResume(){super.onResume();String id=selected==null?null:selected.id;lists=PlaylistStore.read(this);selected=null;if(id!=null)for(PlaylistStore.Entry e:lists)if(e.id.equals(id)){selected=e;break;}render();}
     @Override public void onDestroy(){worker.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

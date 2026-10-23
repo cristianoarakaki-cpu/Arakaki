@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -16,7 +16,7 @@ final class VoiceCommand {
     }
     static VoiceCommand custom(Action action,String query,int minutes){
         if(action==null||action==Action.INVALID)throw new IllegalArgumentException("Escolha uma ação válida.");
-        boolean search=action==Action.SEARCH||action==Action.PLAY_QUERY||action==Action.PLAY_PLAYLIST;
+        boolean search=action==Action.SEARCH||action==Action.PLAY_QUERY||action==Action.PLAY_PLAYLIST||action==Action.ADD_PLAYLIST;
         if(search&&(query.isEmpty()||query.length()>160))throw new IllegalArgumentException("Informe uma música ou artista de até 160 caracteres.");
         if(!search&&!query.isEmpty())throw new IllegalArgumentException("Essa ação não usa busca.");
         if(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0))throw new IllegalArgumentException("Use de 0 a 120 minutos; 0 cancela o temporizador.");
@@ -27,6 +27,8 @@ final class VoiceCommand {
         String q=SearchText.normalize(clean);
         // Explicit searches must not execute commands, even for titles such as Favoritas.
         if(q.matches("(?:busque|buscar|pesquise|pesquisar|procure|procurar) .+"))return new VoiceCommand(Action.SEARCH,SearchText.spokenQuery(clean),0);
+        Matcher add=Pattern.compile("(?iu)^(?:adicione|adicionar|inclua|incluir|salve|salvar|coloque|colocar)\\s+(?:(?:esta|essa|a)\\s+)?(?:m[úu]sica|faixa)\\s+(?:na|em|[àa])\\s+(?:(?:minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);
+        if(add.matches())return new VoiceCommand(Action.ADD_PLAYLIST,add.group(1).trim(),0);
         Matcher playlist=Pattern.compile("(?iu)^(?:toque|toca|tocar|reproduza|reproduzir|ouvir|coloque|colocar)\\s+(?:(?:a|minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);
         if(playlist.matches())return new VoiceCommand(Action.PLAY_PLAYLIST,playlist.group(1).trim(),0);
         if(q.matches("ajuda|comandos|comandos de voz|o que posso falar"))return of(Action.HELP);

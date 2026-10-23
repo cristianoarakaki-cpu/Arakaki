@@ -259,6 +259,49 @@ assert locate('Tocar seleção do DJ').attrib.get('enabled')=='false','Empty fav
 assert any('Nenhuma favorita disponível' in n.attrib.get('text','') for n in nodes())
 tap('Voltar')
 
+# Backup and restore through Android's document picker, including cancellation.
+menu_action('Menu da biblioteca','Playlists');tap('Criar playlist ou adicionar músicas');tap('Nome da playlist');shell('input','text','BackupTeste');tap_text('Salvar');tap('Voltar das playlists');tap('Voltar das playlists')
+voice('toque Onda Sessions');voice('pause')
+voice('adicione esta música à minha playlist BackupTeste');voice('adicione esta música à minha playlist BackupTeste')
+menu_action('Menu da biblioteca','Playlists');tap_text('BackupTeste\n1 músicas')
+assert any(n.attrib.get('text')=='1. Onda-Audio\nOnda Sessions' for n in nodes()),'Voice addition duplicated or missed the song'
+tap('Voltar das playlists');tap('Voltar das playlists');voice('adicione aos favoritos')
+menu_action('Menu da biblioteca','Minhas frases');tap('Adicionar frase de voz');tap('Frase personalizada');shell('input','text','meu%sbackup');shell('input','keyevent','4');tap_text('Salvar');tap('Voltar')
+menu_action('Menu da biblioteca','Backup e restauração');tap('Exportar backup do Onda');time.sleep(.5)
+save=next(n for n in nodes() if n.attrib.get('text','').casefold() in ('save','salvar'))
+shell('input','tap',*point(save));time.sleep(1)
+for _ in range(12):
+ if any('Backup exportado:' in n.attrib.get('text','') for n in nodes()):break
+ time.sleep(.25)
+else:raise AssertionError('Backup was not exported')
+exported=json.loads(shell('cat','/sdcard/Download/Onda-backup.json'))
+assert exported['format']=='onda-backup' and len(exported['playlists'])==1 and len(exported['favorites'])==1 and len(exported['phrases'])==1
+capture('23-backup-exportado')
+# New private app state; music stays on shared storage, as on a migrated phone.
+shell('am','force-stop',PACKAGE);shell('pm','clear',PACKAGE);shell('pm','grant',PACKAGE,'android.permission.READ_EXTERNAL_STORAGE')
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
+def open_backup_preview():
+ tap('Restaurar backup do Onda');time.sleep(.5)
+ document=next(n for n in nodes() if n.attrib.get('text')=='Onda-backup.json')
+ shell('input','tap',*point(document));time.sleep(.5)
+ for _ in range(12):
+  if any(n.attrib.get('text')=='Conferir restauração' for n in nodes()):return
+  time.sleep(.25)
+ raise AssertionError('Backup preview did not appear')
+menu_action('Menu da biblioteca','Backup e restauração');open_backup_preview();capture('24-previa-restauracao');tap_text('Cancelar');tap('Voltar do backup')
+menu_action('Menu da biblioteca','Playlists');assert not any('BackupTeste' in n.attrib.get('text','') for n in nodes()),'Cancel changed playlists';tap('Voltar das playlists')
+menu_action('Menu da biblioteca','Backup e restauração');open_backup_preview();tap_text('Restaurar')
+for _ in range(12):
+ if any('Restauração concluída.' in n.attrib.get('text','') for n in nodes()):break
+ time.sleep(.25)
+else:raise AssertionError('Restore did not finish')
+capture('25-backup-restaurado');tap('Voltar do backup')
+menu_action('Menu da biblioteca','Playlists');tap_text('BackupTeste\n1 músicas');tap('Opções da playlist');tap_text('Excluir playlist');tap_text('Excluir');tap('Voltar das playlists')
+menu_action('Menu da biblioteca','Minhas frases');assert locate('Editar frase: meu backup') is not None;tap('Voltar')
+voice('meu backup');assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Restored voice favorite command did not play';voice('pause');voice('remova dos favoritos')
+menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: meu backup');tap_text('Excluir');tap_text('Excluir');tap('Voltar')
+(OUTPUT/'backup-tests.json').write_text(json.dumps({'export':True,'cancelPreservesData':True,'restorePlaylists':True,'restoreFavorites':True,'restoreVoicePhrases':True,'voiceAddsOnce':True}))
+
 voice('ajuda');assert any(n.attrib.get('text')=='Comandos de voz' for n in nodes());capture('07-comandos-voz')
 tap_text('Entendi')
 menu_action('Menu da biblioteca','Assistente com IA')
