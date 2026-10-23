@@ -13,7 +13,7 @@ def point(node):
 def locate(desc):return next(n for n in nodes() if n.attrib.get('content-desc')==desc)
 def tap(desc):shell('input','tap',*point(locate(desc)));time.sleep(.5)
 def tap_text(text):
-    node=next(n for n in nodes() if n.attrib.get('text')==text)
+    node=next(n for n in nodes() if n.attrib.get('text','').casefold()==text.casefold())
     shell('input','tap',*point(node));time.sleep(.5)
 def menu_action(description,label):
     tap(description);tap_text(label)
@@ -82,6 +82,12 @@ voice('toque as favoritas')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Empty favorites unexpectedly started playback'
 voice('ajuda');assert any(n.attrib.get('text')=='Comandos de voz' for n in nodes());capture('07-comandos-voz')
 tap_text('Entendi')
+menu_action('Menu da biblioteca','Assistente com IA')
+assert any(n.attrib.get('text')=='Assistente local gratuito' for n in nodes())
+capture('08-assistente-ia')
+tap_text('Ativar')
+voice('coloca aquelas musicas que eu mais gosto')
+assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
 entry=point(locate('Abrir biblioteca de vídeos'))
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions');time.sleep(1)
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Music fixture not playing before video'
