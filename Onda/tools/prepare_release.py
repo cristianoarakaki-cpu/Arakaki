@@ -29,7 +29,8 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f'Onda Música {version_name} — Vídeos com mais controles\n\nPosição salva ao pausar, trocar de vídeo ou sair, com Continuar/Recomeçar ao abrir novamente. Botão CC para legendas externas SRT, VTT, ASS e SSA de até 2 MB, durante a sessão do vídeo. Gestos verticais: esquerda ajusta brilho da tela do player; direita ajusta o volume do vídeo no Onda. Disponíveis também em tela cheia. Menu → Gestos e posição explica e restaura os ajustes.\n\nSem cobrança adicional ou gravação contínua da posição. DJ automático, Estúdio de som, voz e demais recursos preservados. Mesma assinatura e pacote para atualizar sobre 0.15.0 preservando dados.\n\nVídeos: LibVLC 3.7.7 © VideoLAN e colaboradores, LGPL 2.1 ou posterior. Licença inclusa. Fonte: https://code.videolan.org/videolan/libvlcjni .\n\nPacote: `{package_name}`. Certificado de teste fixado do projeto.\n')
+(output / 'notes.md').write_text(f'Onda Música {version_name} — Playlists\n\nMenu → Playlists: criar, renomear, escolher músicas por título ou artista, mover faixas e remover. Listas salvas no aparelho, sem cobrança ou sincronização. Ouvir lista toca as músicas disponíveis na ordem exibida. Excluir uma lista preserva os arquivos.\n\nMantidos som, DJ, voz e vídeos. Mesmo pacote e certificado para instalar sobre 0.16.0 sem desinstalar.\n\nVídeos: LibVLC 3.7.7 © VideoLAN e colaboradores, LGPL 2.1 ou posterior. Licença inclusa. Fonte: https://code.videolan.org/videolan/libvlcjni .\n\nPacote: `{package_name}`. Certificado de teste fixado do projeto.\n')
+
 with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
     file.write(f'tag={tag}\nversion={version_name}\n')
 print(f'Preparada versão {version_name}, código {version_code}.')

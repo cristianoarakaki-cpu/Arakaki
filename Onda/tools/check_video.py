@@ -75,6 +75,31 @@ assert locate('Fonte da busca online') is not None
 capture('05-filtros-online')
 menu_action('Menu de explorar','Fontes e filtros')
 tap('Abrir biblioteca de músicas')
+# Playlist persistence, editing and playback through the real UI.
+menu_action('Menu da biblioteca','Playlists')
+tap('Criar playlist ou adicionar músicas');shell('input','text','TesteOnda');tap_text('Salvar')
+tap('Criar playlist ou adicionar músicas')
+tap_text('DJ-2 — DJ Artist 2');tap_text('DJ-3 — DJ Artist 3');tap_text('Salvar seleção')
+assert any('2 músicas • 2 disponíveis' in n.attrib.get('text','') for n in nodes())
+tap_text('1. DJ-2\nDJ Artist 2');tap_text('Mover para baixo')
+assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
+tap('Opções da playlist');tap_text('Renomear')
+shell('input','keyevent','KEYCODE_MOVE_END');shell('input','text','Editada');tap_text('Salvar')
+shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
+menu_action('Menu da biblioteca','Playlists');tap_text('TesteOndaEditada\n2 músicas')
+assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
+capture('18-playlists')
+tap('Tocar playlist');time.sleep(1)
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.7)
+assert 'size=2' in shell('dumpsys','media_session').decode(),'Playlist did not create two-item queue'
+menu_action('Menu da biblioteca','Playlists');tap_text('TesteOndaEditada\n2 músicas')
+tap_text('2. DJ-2\nDJ Artist 2');tap_text('Remover da playlist')
+assert any('1 músicas • 1 disponíveis' in n.attrib.get('text','') for n in nodes())
+tap('Opções da playlist');tap_text('Excluir playlist');tap_text('Excluir')
+assert not any('TesteOndaEditada' in n.attrib.get('text','') for n in nodes())
+shell('input','keyevent','4');time.sleep(.5)
+(OUTPUT/'playlist-tests.json').write_text(json.dumps({'persist':True,'reorder':True,'rename':True,'play':True,'remove':True,'delete':True}))
+
 # Exercise recognized phrases through the same handler used by the microphone.
 def voice(phrase):
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase',phrase);time.sleep(.7)

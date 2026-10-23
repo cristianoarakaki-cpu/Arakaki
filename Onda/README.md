@@ -1,3 +1,7 @@
+## Novidades 0.17 — Playlists
+
+Menu → Playlists: crie listas, renomeie, escolha músicas por título ou artista, mova faixas e remova da lista. As listas ficam salvas no aparelho. Ouvir lista substitui a fila e toca na ordem exibida, sem embaralhar ou repetir. Arquivos indisponíveis ficam indicados e são ignorados na reprodução; excluir uma playlist não exclui músicas. Limites: 100 listas, 2.000 faixas por lista; listas locais, sem sincronização entre aparelhos.
+
 # Onda — tocador Android 0.3.0
 
 Primeira implementação nativa em Java, interface em português, Android 8.0 ou superior.
@@ -61,7 +65,7 @@ A versão 0.1 passou por compilação e lint no GitHub Actions, e o usuário con
 
 ## Limites da primeira versão
 
-Sem equalizador, playlists personalizadas ou navegação separada por pastas. A fila segue a biblioteca completa, inclusive ao iniciar a reprodução pela busca ou pelos favoritos. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila e a posição não são restauradas após encerramento do processo. O APK de debug é destinado a teste, não a publicação na Google Play.
+Sem navegação separada por pastas. A fila segue os resultados selecionados; playlists, DJ e Estúdio de som estão disponíveis pelo menu. Favoritos são vinculados ao identificador local do arquivo. A lista usa componentes nativos simples e ainda precisa de otimização para bibliotecas muito grandes. O Android pode encerrar o processo e cancelar o temporizador; a fila e a posição não são restauradas após encerramento do processo. O APK de debug é destinado a teste, não a publicação na Google Play.
 
 
 ## Instalação 0.3.1
