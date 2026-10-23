@@ -67,6 +67,21 @@ assert locate('Fonte da busca online') is not None
 capture('05-filtros-online')
 menu_action('Menu de explorar','Fontes e filtros')
 tap('Abrir biblioteca de músicas')
+# Exercise recognized phrases through the same handler used by the microphone.
+def voice(phrase):
+ shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase',phrase);time.sleep(.7)
+voice('toque Onda Sessions');voice('pause')
+assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
+voice('adicione essa música aos favoritos')
+assert locate('Remover dos favoritos') is not None
+voice('Onda, toque minhas músicas favoritas, por favor')
+assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'
+voice('pause');voice('remova dos favoritos')
+assert locate('Adicionar aos favoritos') is not None
+voice('toque as favoritas')
+assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Empty favorites unexpectedly started playback'
+voice('ajuda');assert any(n.attrib.get('text')=='Comandos de voz' for n in nodes());capture('07-comandos-voz')
+tap_text('Entendi')
 entry=point(locate('Abrir biblioteca de vídeos'))
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions');time.sleep(1)
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Music fixture not playing before video'

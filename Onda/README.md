@@ -152,3 +152,7 @@ Menu da biblioteca: Coleções inteligentes, Letra da música, Temporizador, Rec
 Menu de vídeos: Abrir arquivo, Acesso aos vídeos, Recarregar vídeos e Formatos e licenças. Navegação inferior se recolhe durante a digitação e em tela cheia. No Explorar, fontes e filtros ficam em um painel recolhido, acessível pelo menu ou tocando na identificação da fonte. A indicação de prévias continua visível.
 
 Os menus e a navegação usam componentes nativos estáticos, sem novos serviços ou animações em segundo plano. O emulador verifica os destinos de navegação, filtros, menus e ações transferidas, além da reprodução de vídeo e tela cheia.
+
+
+### Versão 0.11 — comandos de voz
+Toque no microfone e diga “toque minhas músicas favoritas”, “adicione essa música aos favoritos”, “remova dos favoritos”, “ative o modo aleatório”, “repita a música”, “repita todas”, “não repetir”, “pause”, “continue”, “próxima música” ou “pare em 30 minutos”. “Ajuda” e Menu → Comandos de voz mostram exemplos. “Onda,” e “por favor” são aceitos. Favoritas usam arquivos locais disponíveis; lista vazia orienta salvar uma música. Comandos explícitos de pesquisa não executam ações. O reconhecimento depende do serviço de voz do aparelho, acionado pelo botão; não há escuta permanente. Em Explorar, nomes continuam pesquisando o catálogo.

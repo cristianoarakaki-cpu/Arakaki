@@ -95,17 +95,25 @@ public class MainActivity extends Activity {
     private void handleVoice(String phrase){
         if(player==null||!libraryReady){pendingVoice=phrase;return;}
         VoiceCommand command=VoiceCommand.parse(phrase);if(VoiceControl.execute(this,player,command))return;
+        if(command.action==VoiceCommand.Action.FAVORITE_ADD||command.action==VoiceCommand.Action.FAVORITE_REMOVE){
+            MediaItem current=player.getCurrentMediaItem();boolean local=false;
+            if(current!=null)for(MediaItem item:songs)if(item.mediaId.equals(current.mediaId)){local=true;break;}
+            if(!local){VoiceControl.say(this,"Escolha uma música do celular primeiro.");return;}
+            if(command.action==VoiceCommand.Action.FAVORITE_ADD)favorites.add(current.mediaId);else favorites.remove(current.mediaId);
+            prefs.edit().putStringSet("favorites",new HashSet<>(favorites)).apply();refresh();render();
+            VoiceControl.say(this,command.action==VoiceCommand.Action.FAVORITE_ADD?"Música adicionada às favoritas":"Música removida das favoritas");return;
+        }
         onlyFavorites=command.action==VoiceCommand.Action.FAVORITES;searchScope=0;
         localSearch.setText(onlyFavorites?"":command.query);render();
         if(command.action==VoiceCommand.Action.PLAY_QUERY||onlyFavorites){
             ArrayList<MediaItem> queue=new ArrayList<>();for(MediaItem item:songs)if((!onlyFavorites||favorites.contains(item.mediaId))&&SearchText.matches(item.mediaMetadata.title+" "+item.mediaMetadata.artist+" "+item.mediaMetadata.albumTitle,query))queue.add(item);
-            if(queue.isEmpty()){VoiceControl.say(this,"Nenhuma música encontrada no celular.");return;}player.setMediaItems(queue);player.prepare();player.play();
+            if(queue.isEmpty()){VoiceControl.say(this,onlyFavorites?"Você ainda não tem músicas favoritas disponíveis. Toque uma música do celular e diga: adicione aos favoritos.":"Nenhuma música encontrada no celular.");return;}player.setMediaItems(queue);player.prepare();player.play();
         }
     }
     private void showLibraryMenu(View anchor){Ui.menu(this,anchor,
-        new String[]{"Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações"},
-        new String[]{"Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações"},
-        new Runnable[]{()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class))});}
+        new String[]{"Coleções inteligentes","Letra da música","Temporizador","Recarregar biblioteca","Atualizações","Comandos de voz"},
+        new String[]{"Onda Lab","Ver letra da música","Temporizador","Reler arquivos do celular","Atualizações","Comandos de voz"},
+        new Runnable[]{()->startActivity(new Intent(this,SmartLibraryActivity.class)),this::lyrics,this::sleep,this::permission,()->startActivity(new Intent(this,UpdateActivity.class)),()->VoiceSearch.help(this)});}
     private void lyrics(){if(player==null||player.getCurrentMediaItem()==null){Toast.makeText(this,"Escolha uma música primeiro",Toast.LENGTH_SHORT).show();return;}if(player.getCurrentMediaItem().mediaId.startsWith("catalog:")){Toast.makeText(this,"As letras não são sincronizadas para prévias.",Toast.LENGTH_SHORT).show();return;}startActivity(new Intent(this,LyricsActivity.class));}
     private void filter(){String[] fields={"Todos os campos","Música","Artista","Álbum"};new AlertDialog.Builder(this).setTitle("Buscar por").setSingleChoiceItems(fields,searchScope,(dialog,which)->{searchScope=which;render();dialog.dismiss();}).setNegativeButton("Fechar",null).show();}
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}

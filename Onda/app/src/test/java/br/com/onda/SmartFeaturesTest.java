@@ -16,6 +16,21 @@ public class SmartFeaturesTest {
   assertEquals("Chitãozinho e Xororó",VoiceCommand.parse("toque Chitãozinho e Xororó").query);
   assertEquals(VoiceCommand.Action.SEARCH,VoiceCommand.parse("Chitaozinho e xororo").action);
  }
+ @Test public void naturalCommandsAndExplicitSearchesAreDistinct(){
+  for(String phrase:Arrays.asList("toque as favoritas","Onda, toque minhas músicas favoritas, por favor","coloque as minhas favoritas","reproduza músicas favoritas"))assertEquals(phrase,VoiceCommand.Action.FAVORITES,VoiceCommand.parse(phrase).action);
+  assertEquals(VoiceCommand.Action.FAVORITE_ADD,VoiceCommand.parse("adicione essa música aos favoritos").action);
+  assertEquals(VoiceCommand.Action.FAVORITE_REMOVE,VoiceCommand.parse("remova dos favoritos").action);
+  assertEquals(VoiceCommand.Action.SHUFFLE_ON,VoiceCommand.parse("ative o modo aleatório").action);
+  assertEquals(VoiceCommand.Action.SHUFFLE_OFF,VoiceCommand.parse("desative o aleatório").action);
+  assertEquals(VoiceCommand.Action.REPEAT_ONE,VoiceCommand.parse("repita a música").action);
+  assertEquals(VoiceCommand.Action.REPEAT_ALL,VoiceCommand.parse("repita todas").action);
+  assertEquals(VoiceCommand.Action.REPEAT_OFF,VoiceCommand.parse("não repetir").action);
+  assertEquals(VoiceCommand.Action.HELP,VoiceCommand.parse("ajuda").action);
+  assertEquals(VoiceCommand.Action.SEARCH,VoiceCommand.parse("pesquise favoritas").action);
+  assertEquals("favoritas",VoiceCommand.parse("pesquise favoritas").query);
+  assertEquals("Chitãozinho e Xororó",VoiceCommand.parse("Onda, coloque Chitãozinho e Xororó, por favor").query);
+  assertEquals(VoiceCommand.Action.PLAY_QUERY,VoiceCommand.parse("toque Pause").action);
+ }
  @Test public void fadeIsBoundedAndSkipsShortTracks(){
   assertEquals(0,FadeMath.gain(-1,2000,0,1),.0001);
   assertEquals(.5,FadeMath.gain(1000,2000,0,1),.0001);
