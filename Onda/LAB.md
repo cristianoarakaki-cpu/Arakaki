@@ -1,0 +1,13 @@
+# Onda Lab 0.22.0 — experimento de downloads
+
+Esta edição é instalada como `br.com.onda.musica.lab`, com nome Onda Lab. Não substitui o Onda Música, não compartilha preferências e não publica manifesto no canal estável. Para voltar, abra o Onda Música; para levar playlists, use exportação/importação de backup. Não desinstale o Onda Música.
+
+Menu da biblioteca ou Explorar → Downloads experimentais. Cole um link HTTPS de vídeo do YouTube ou compartilhe o link para Onda Lab, analise os formatos e escolha onde salvar pelo seletor Android. M4A/AAC ou MP4/H.264+AAC; vídeo com áudio separado é montado pelo MediaMuxer do Android, sem recompactar. **Não há MP3, login, DRM, lives, playlists completas, download agendado ou retomada automática.** Um arquivo por operação, limite conjunto de entrada 512 MiB/30 minutos; arquivos temporários mais a saída exigem espaço adicional. Uma operação cancelada ou com falha tenta remover o documento incompleto e apaga os temporários. Em encerramento abrupto do processo pelo sistema pode restar documento vazio/temporário: apague-o e tente novamente.
+
+A extração depende de NewPipe Extractor v0.26.5 e pode falhar por bloqueio de IP, verificação, formato ou mudança do YouTube. Nenhuma API paga, serviço intermediário ou cookie de conta. Use conteúdos próprios ou autorizados. Testes de formatos encontrados na rede são registrados separadamente dos testes de montagem; um teste de rede bloqueado não prova que downloads funcionem em um celular físico.
+
+## Licença e fonte
+
+Modificado em 23/10/2026. Esta edição experimental do aplicativo Onda é distribuída como software livre sob GNU GPL versão 3 ou posterior, sem garantia, para cumprir a licença de NewPipe Extractor. A cópia integral está em `app/src/main/assets/COPYING`, acessível pela tela de Downloads → Licença e código-fonte. Dependências preservam suas respectivas licenças (Media3/AndroidX Apache-2.0, LibVLC LGPL-2.1-or-later, NewPipe Extractor GPL-3.0-or-later e seus componentes). Não altera licenças nem código de Folha ou de outros diretórios independentes.
+
+Fonte desta edição: https://github.com/cristianoarakaki-cpu/Arakaki/tree/onda-lab-downloads/Onda ; cada release aponta para o commit testado e inclui o arquivo de fontes correspondente. O arquivo de fontes não contém chave privada; uma chave de teste própria pode ser gerada no caminho `Onda/.signing/debug.keystore`, alias androiddebugkey, senhas android. Android SDK36, Java17, Gradle8.11.1; `gradle -p Onda assembleDebug`. Emulador: `-PondaEmulator=true`. NewPipe: https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.26.5 ; dependências resolvidas com versões explícitas no Gradle e no POM do extrator.

@@ -1,0 +1,121 @@
+name: Onda Lab - Downloads experimentais
+on:
+  workflow_dispatch:
+  push:
+    branches: [onda-lab-downloads]
+    paths: ['Onda/**', '.github/workflows/onda-lab.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Verificar parser de letras
+        run: |
+          javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/Lrc.java Onda/tests/LrcTest.java
+          java -cp /tmp/onda-tests br.com.onda.LrcTest
+          javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/SearchText.java Onda/tests/SearchTextTest.java
+          java -cp /tmp/onda-tests br.com.onda.SearchTextTest
+      - name: Verificar streaming do Internet Archive
+        continue-on-error: true
+        run: python Onda/tests/check_archive.py
+      - name: Conferir busca de catálogo com Chitãozinho e Xororó
+        run: python Onda/tests/check_catalog.py
+      - name: Reutilizar assinatura de teste
+        uses: actions/cache@v4
+        with:
+          path: Onda/.signing/debug.keystore
+          key: onda-musica-debug-signing-v1
+      - name: Preparar assinatura persistente de teste
+        run: |
+          mkdir -p Onda/.signing
+          if [ ! -f Onda/.signing/debug.keystore ]; then
+            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
+          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
+      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest
+      - name: Salvar relatórios de falhas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Build-Reports
+          path: |
+            Onda/app/build/reports/
+            Onda/app/build/intermediates/lint_intermediate_text_report/
+      - name: Conferir pacote Lab e preservar APK ARM
+        run: |
+          mkdir -p Onda/lab-out
+          cp Onda/app/build/outputs/apk/debug/app-debug.apk Onda/lab-out/Onda-Lab.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/lab-out/Onda-Lab.apk > /tmp/lab-package.txt
+          python -c 'from pathlib import Path; s=Path("/tmp/lab-package.txt").read_text(); assert "br.com.onda.musica.lab" in s; p=Path("Onda/lab-out/Onda-Lab.apk"); assert p.stat().st_size<64*1024*1024; print(p.stat().st_size)'
+      - name: Preparar amostras AAC e H264
+        run: |
+          python -m pip install --disable-pip-version-check imageio-ffmpeg==0.6.0
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess,imageio_ffmpeg
+          root=Path("Onda/app/src/androidTest/assets")
+          root.mkdir(parents=True,exist_ok=True)
+          ff=imageio_ffmpeg.get_ffmpeg_exe()
+          def run(*args): subprocess.run([ff,"-y",*args],check=True)
+          run("-f","lavfi","-i","color=c=blue:s=320x180:r=15","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","3","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"combined.mp4"))
+          run("-i",str(root/"combined.mp4"),"-an","-c:v","copy",str(root/"video.mp4"))
+          run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
+          PY
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug assembleDebugAndroidTest
+      - name: Habilitar aceleração do emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Testar montagem e interface no Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w br.com.onda.musica.lab.test/androidx.test.runner.AndroidJUnitRunner > /tmp/lab-tests.txt
+            cat /tmp/lab-tests.txt
+            python -c 's=open("/tmp/lab-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
+            python Onda/tools/check_downloads.py
+      - name: Salvar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Lab-Testes
+          path: |
+            Onda/lab-preview/
+            /tmp/lab-tests.txt
+            Onda/app/build/reports/
+      - name: Publicar prévia independente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/onda-lab-downloads" --jq '.object.sha')
+          if [ "$CURRENT" != "$GITHUB_SHA" ]; then
+            echo "Existe código Lab mais novo; aguardar testes atualizados."
+            exit 0
+          fi
+          cp Onda/LAB.md Onda/lab-out/notes.md
+          cat Onda/lab-preview/live-result.json >> Onda/lab-out/notes.md
+          git archive --format=zip --output=Onda/lab-out/Onda-Lab-Fontes.zip HEAD Onda .github/workflows/onda-lab.yml
+          curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip
+          sha256sum Onda/lab-out/Onda-Lab.apk > Onda/lab-out/SHA256SUMS.txt
+          TAG="onda-lab-0.22.0-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" Onda/lab-out/Onda-Lab.apk Onda/lab-out/Onda-Lab-Fontes.zip Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip Onda/lab-out/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Onda Lab 0.22.0 • downloads experimentais" --prerelease --latest=false --notes-file Onda/lab-out/notes.md
