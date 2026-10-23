@@ -120,8 +120,15 @@ jobs:
         run: |
           CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
-            echo "Build antigo: a publicação aguarda a versão atual de main."
-            exit 0
+            BUILT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$GITHUB_SHA" --jq '.tree[] | select(.path == "Onda") | .sha')
+            CURRENT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$CURRENT_HEAD" --jq '.tree[] | select(.path == "Onda") | .sha')
+            BUILT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$GITHUB_SHA" --jq '.sha')
+            CURRENT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$CURRENT_HEAD" --jq '.sha')
+            if [ -z "$BUILT_ONDA" ] || [ -z "$BUILT_WORKFLOW" ] || [ "$BUILT_ONDA" != "$CURRENT_ONDA" ] || [ "$BUILT_WORKFLOW" != "$CURRENT_WORKFLOW" ]; then
+              echo "Onda ou sua verificação mudou: a publicação aguarda o build atualizado."
+              exit 0
+            fi
+            echo "Somente outros projetos mudaram; o Onda publicado corresponde exatamente ao código testado."
           fi
           if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
             echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
