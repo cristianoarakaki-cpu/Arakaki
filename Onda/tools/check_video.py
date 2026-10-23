@@ -250,7 +250,8 @@ try:
  assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes())
  capture('17-continuar-video');adb('logcat','-c');tap_text('Continuar');time.sleep(.8)
  resume_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
- assert re.search(r'resumed [3-9][0-9]{3,}',resume_log),'Resume position not applied: '+resume_log
+ resume_match=re.search(r'resumed ([0-9]+)',resume_log)
+ assert resume_match and int(resume_match.group(1))>=3000,'Resume position not applied: '+resume_log
  shell('input','tap',*resumed_pause);time.sleep(.3)
  # Finish the activity and reopen: the bookmark must survive the native player instance.
  tap('Voltar à música');tap('Abrir biblioteca de vídeos')
