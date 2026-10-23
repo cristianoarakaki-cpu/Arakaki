@@ -177,3 +177,5 @@ A abertura de vídeo também verifica se chegaram quadros: se houver reproduçã
 Retomada e inclusão de legenda aguardam o relógio de reprodução iniciar e a janela de vídeo estar pronta, evitando buscas prematuras que podem interromper o relógio de alguns arquivos MPEG-TS.
 
 A seleção ou desativação de legendas é aplicada uma única vez por abertura de mídia, sem reconfigurar a faixa a cada atualização de tempo.
+
+A precisão da retomada e da sincronização de legendas depende dos timestamps e da capacidade de busca do arquivo. A validação detalhada dos novos controles usa MP4; a regressão de reprodução mantém MP4, MKV, AVI, WebM, FLV, WMV, MOV e TS.

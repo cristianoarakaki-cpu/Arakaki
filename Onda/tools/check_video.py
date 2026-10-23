@@ -195,10 +195,10 @@ tap('Menu de vídeos');capture('06-menu-videos');shell('input','keyevent','4');t
 results=[]
 try:
  # Exercise new controls first, then run the full container regression checks.
- tap('Buscar vídeos por nome');shell('input','text','ts');shell('input','keyevent','4');time.sleep(.3)
- first=locate('Assistir Onda-Video.ts');adb('logcat','-c');shell('input','tap',*point(first))
+ tap('Buscar vídeos por nome');shell('input','text','mp4');shell('input','keyevent','4');time.sleep(.3)
+ first=locate('Assistir Onda-Video.mp4');adb('logcat','-c');shell('input','tap',*point(first))
  for _ in range(60):
-    if 'frames Onda-Video.ts' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    if 'frames Onda-Video.mp4' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
     time.sleep(.3)
  else:raise AssertionError('Initial video did not render')
  shell('input','tap',*pause_point);time.sleep(.5)
@@ -225,7 +225,7 @@ try:
  else:raise AssertionError('External SRT was not selected by decoder: '+subtitle_log)
  time.sleep(5);capture('16-legenda-video');shell('input','tap',*resumed_pause);time.sleep(.5)
  # Re-selecting asks to continue, and continuing actually seeks in the decoder.
- tap('Assistir Onda-Video.ts')
+ tap('Assistir Onda-Video.mp4')
  assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes())
  capture('17-continuar-video');adb('logcat','-c');tap_text('Continuar');time.sleep(.8)
  resume_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
@@ -234,8 +234,8 @@ try:
  shell('input','tap',*resumed_pause);time.sleep(.3)
  # Finish the activity and reopen: the bookmark must survive the native player instance.
  tap('Voltar à música');tap('Abrir biblioteca de vídeos')
- tap('Buscar vídeos por nome');shell('input','text','ts');shell('input','keyevent','4');time.sleep(.3)
- tap('Assistir Onda-Video.ts')
+ tap('Buscar vídeos por nome');shell('input','text','mp4');shell('input','keyevent','4');time.sleep(.3)
+ tap('Assistir Onda-Video.mp4')
  assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes()),'Bookmark lost after activity recreation'
  adb('logcat','-c');tap_text('Recomeçar');time.sleep(.8)
  fresh_pause=resumed_pause
