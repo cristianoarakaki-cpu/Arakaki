@@ -20,7 +20,7 @@ Se o botão estiver no próprio formulário contínuo, a chamada sem nome també
 
 O arquivo é criado em TEMP/SYSENF_DCE_Protocolos com nome único, codificação UTF-8 e aberto pelo navegador padrão. Se o navegador impedir a abertura, a mensagem informa o caminho para abri-lo manualmente. Os arquivos contêm os dados exportados e permanecem na pasta temporária até sua limpeza.
 
-A tabela tem Matrícula, Nome do Servidor, Cargo e Semestre. Cada linha tem uma lista com Selecione, 1, 2 e 3. O botão Imprimir / Salvar PDF imprime o valor escolhido, sem a caixa de seleção. As escolhas ficam apenas na página aberta: não são gravadas no Access e não devem ser consideradas salvas no HTML original ao fechar/reabrir. Para conservar o resultado preenchido, use Salvar PDF na impressão.
+A tabela tem Matrícula, Nome do Servidor, Cargo e Semestre. Cada linha tem uma lista com Selecione, 1, 2, 3, 4 e 5. O botão Imprimir / Salvar PDF imprime o valor escolhido, sem a caixa de seleção. As escolhas ficam apenas na página aberta: não são gravadas no Access e não devem ser consideradas salvas no HTML original ao fechar/reabrir. Para conservar o resultado preenchido, use Salvar PDF na impressão.
 
 Nenhuma referência adicional ao DAO/ADO precisa ser marcada: os objetos são criados por late binding. O módulo usa os componentes padrão do Access/Windows (ADODB.Stream e Scripting.FileSystemObject), sem API específica de 32/64 bits. Não é um arquivo VBS.
 
@@ -41,3 +41,7 @@ O quadro RECEBIDO aparece ao final do documento, depois da tabela, com Data ____
 Para atualizar uma instalação que já tem o módulo anterior: no editor VBA, remova somente o módulo modProtocoloHTML antigo (guarde uma cópia se desejar) e importe o novo arquivo BAS. Não importe os dois módulos simultaneamente, pois as funções públicas teriam nomes duplicados. O evento do botão pode continuar com a mesma chamada. Gere um novo HTML para receber as alterações.
 
 Verificação R2: edição do título, escape de caracteres, retorno ao título inicial quando vazio, semestre independente por servidor e quadro recebido na impressão foram verificados no Chromium. A validação de execução do VBA continua dependendo do Access/Windows.
+
+## Atualização R3
+
+O campo Semestre oferece 1, 2, 3, 4 e 5. Título configurável, recebido e ano automático foram preservados. Substitua o módulo anterior e gere um novo HTML; a chamada do botão permanece igual.

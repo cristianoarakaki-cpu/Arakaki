@@ -59,7 +59,7 @@ Public Sub GerarProtocoloHTML(ByVal Tela As Access.Form, Optional ByVal NomeCont
         total = total + 1
         nome = TextoCampo(rs.Fields(campoNome).Value)
         inicio = "<tr><td class='matricula'>" & HtmlE(TextoCampo(rs.Fields(campoMat).Value)) & "</td><td>" & HtmlE(nome) & "</td><td>" & HtmlE(TextoCampo(rs.Fields(campoCargo).Value)) & "</td><td class='semestre'>"
-        fluxo.WriteText inicio & "<select aria-label='Semestre de " & HtmlE(nome) & "'><option value=''>Selecione</option><option value='1'>1</option><option value='2'>2</option><option value='3'>3</option></select><span class='valor-impressao' aria-hidden='true'>-</span></td></tr>" & vbCrLf
+        fluxo.WriteText inicio & "<select aria-label='Semestre de " & HtmlE(nome) & "'><option value=''>Selecione</option><option value='1'>1</option><option value='2'>2</option><option value='3'>3</option><option value='4'>4</option><option value='5'>5</option></select><span class='valor-impressao' aria-hidden='true'>-</span></td></tr>" & vbCrLf
         rs.MoveNext
     Loop
     fluxo.WriteText FimHTML(total)
