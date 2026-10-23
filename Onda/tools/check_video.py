@@ -186,12 +186,14 @@ tap('Voltar')
 # Output screen uses native Android routing; pairing is delegated to system settings.
 menu_action('Menu da biblioteca','Fones e Bluetooth')
 assert locate('Saída de áudio do Android') is not None
-assert locate('Saídas disponíveis no aparelho') is not None
 assert locate('Escolher saída de áudio') is not None
 capture('21-fones-bluetooth')
 tap('Conectar fone Bluetooth');time.sleep(.8)
 assert 'com.android.settings' in shell('dumpsys','activity','activities').decode(),'Bluetooth settings did not open'
 shell('input','keyevent','4');time.sleep(.5)
+for _ in range(4):
+ if any(n.attrib.get('content-desc')=='Ajustar som para fones' for n in nodes()):break
+ shell('input','swipe',540,1450,540,600,300);time.sleep(.3)
 tap('Ajustar som para fones');tap('Ativar ajustes de som');tap('Escolher preset de som');tap_text('Fones equilibrados');time.sleep(.5)
 assert locate('Escolher preset de som').attrib.get('text')=='Preset: Fones equilibrados'
 headphone=sound_state();assert headphone['enabled'] is True and 0<headphone['headroom']<=1

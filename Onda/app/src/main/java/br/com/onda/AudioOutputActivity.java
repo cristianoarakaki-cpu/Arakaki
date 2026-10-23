@@ -10,6 +10,7 @@ import android.widget.*;
 import java.util.*;
 
 /** Uses Android's media routing and pairing UI; no Bluetooth scan or communication/SCO route. */
+@androidx.media3.common.util.UnstableApi
 public class AudioOutputActivity extends Activity {
  private AudioManager audio;private MediaRouter router;private TextView selected,devices;private boolean observing;
  private final AudioDeviceCallback deviceEvents=new AudioDeviceCallback(){@Override public void onAudioDevicesAdded(AudioDeviceInfo[] info){refresh();}@Override public void onAudioDevicesRemoved(AudioDeviceInfo[] info){refresh();}};
@@ -22,9 +23,10 @@ public class AudioOutputActivity extends Activity {
   content.addView(Ui.text(this,"Conecte seu fone nas configurações do Android. Depois, use o seletor abaixo quando o sistema oferecer outras saídas de mídia.",14,Ui.MUTED));
   Button pair=Ui.button(this,"Conectar fone Bluetooth",v->openBluetooth());pair.setContentDescription("Conectar fone Bluetooth");Ui.primary(pair);LinearLayout.LayoutParams button=new LinearLayout.LayoutParams(-1,Ui.dp(this,52));button.topMargin=Ui.dp(this,16);content.addView(pair,button);
   LinearLayout routeRow=new LinearLayout(this);routeRow.setGravity(Gravity.CENTER_VERTICAL);Ui.card(routeRow,false);TextView choose=Ui.text(this,"Escolher saída de áudio",15,Ui.TEXT);choose.setPadding(Ui.dp(this,12),0,0,0);routeRow.addView(choose,new LinearLayout.LayoutParams(0,Ui.dp(this,56),1));MediaRouteButton routeButton=new MediaRouteButton(this);routeButton.setRouteTypes(MediaRouter.ROUTE_TYPE_LIVE_AUDIO);routeButton.setContentDescription("Escolher saída de áudio");routeRow.addView(routeButton,new LinearLayout.LayoutParams(Ui.dp(this,56),Ui.dp(this,56)));LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,-2);rowParams.topMargin=Ui.dp(this,12);content.addView(routeRow,rowParams);
+  Button sound=Ui.button(this,"Ajustar som para fones",v->startActivity(new Intent(this,SoundActivity.class)));sound.setContentDescription("Ajustar som para fones");LinearLayout.LayoutParams soundParams=new LinearLayout.LayoutParams(-1,Ui.dp(this,52));soundParams.topMargin=Ui.dp(this,20);content.addView(sound,soundParams);
   TextView explanation=Ui.text(this,"O seletor depende das saídas que o Android disponibiliza e pode ficar desabilitado. Para trocar entre dispositivos Bluetooth, use também as configurações do sistema. A lista abaixo mostra saídas disponíveis, não confirma qual delas está tocando.",12,Ui.MUTED);explanation.setPadding(0,Ui.dp(this,10),0,Ui.dp(this,16));content.addView(explanation);
   devices=Ui.text(this,"",14,Ui.TEXT);devices.setContentDescription("Saídas disponíveis no aparelho");content.addView(devices);
-  Button sound=Ui.button(this,"Ajustar som para fones",v->startActivity(new Intent(this,SoundActivity.class)));sound.setContentDescription("Ajustar som para fones");LinearLayout.LayoutParams soundParams=new LinearLayout.LayoutParams(-1,Ui.dp(this,52));soundParams.topMargin=Ui.dp(this,20);content.addView(sound,soundParams);
+
   TextView note=Ui.text(this,"No Estúdio de som: Fones equilibrados, Fones voz nítida e Alto-falante claro. Os ajustes são manuais e valem para músicas e áudio online; vídeos usam outro tocador. O resultado depende do fone e dos efeitos disponíveis no aparelho. O codec Bluetooth é negociado pelo Android e pelo fone.",12,Ui.MUTED);note.setPadding(0,Ui.dp(this,12),0,0);content.addView(note);refresh();
  }
  private void openBluetooth(){try{startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));}catch(ActivityNotFoundException e){try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(ActivityNotFoundException ignored){Toast.makeText(this,"Abra as configurações de Bluetooth do celular.",Toast.LENGTH_LONG).show();}}}
