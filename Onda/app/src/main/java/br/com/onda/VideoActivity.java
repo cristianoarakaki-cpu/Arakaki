@@ -56,7 +56,7 @@ public class VideoActivity extends Activity {
             engine=new LibVLC(this,options);video=new MediaPlayer(engine);video.attachViews(surface,null,true,false);
             video.setEventListener(event->{if(isDestroyed())return;switch(event.type){
                 case MediaPlayer.Event.Playing:applyPendingSeek();applyVideoVolume();attachSubtitle();status.setText("Reproduzindo • "+(current==null?"vídeo":VideoText.format(current.file))+(software?" • decoder de software":""));android.util.Log.d("OndaVideo","playing "+(current==null?"":current.file));restartTick();break;
-                case MediaPlayer.Event.TimeChanged:if(!video.isPlaying())update();break;
+                case MediaPlayer.Event.TimeChanged:applyPendingSeek();if(!video.isPlaying())update();break;
                 case MediaPlayer.Event.SeekableChanged:case MediaPlayer.Event.LengthChanged:applyPendingSeek();break;
                 case MediaPlayer.Event.ESSelected:if(video.getAudioTracksCount()>0&&video.getAudioTrack()>=0)android.util.Log.d("OndaVideo","audio "+(current==null?"":current.file));if(video.getSpuTrack()>=0)android.util.Log.d("OndaVideo","subtitle-selected "+video.getSpuTrack());break;
                 case MediaPlayer.Event.Vout:if(event.getVoutCount()>0){framesSeen=true;handler.removeCallbacks(firstFrameCheck);android.util.Log.d("OndaVideo","frames "+(current==null?"":current.file));}break;
@@ -135,7 +135,13 @@ public class VideoActivity extends Activity {
             .setPositiveButton("Continuar",(d,w)->open(item,false,saved)).setNeutralButton("Recomeçar",(d,w)->{open(item,false);VideoProgressStore.clear(this,item.uri);}).setNegativeButton("Cancelar",null).show();
     }
     private void remember(){if(video!=null&&current!=null&&video.getLength()>0)VideoProgressStore.save(this,current.uri,Math.max(0,video.getTime()),video.getLength());}
-    private void applyPendingSeek(){if(pendingSeek>0&&video!=null&&video.isSeekable()&&video.getLength()>0){long target=Math.min(pendingSeek,Math.max(0,video.getLength()-500));pendingSeek=0;if(target>0){video.setTime(target);android.util.Log.d("OndaVideo","resumed "+target);}}}
+    private void applyPendingSeek(){
+        // Seeking before the input clock starts can stall MPEG-TS playback.
+        if(pendingSeek>0&&framesSeen&&video!=null&&video.isSeekable()&&video.getLength()>0&&video.getTime()>0){
+            long target=Math.min(pendingSeek,Math.max(0,video.getLength()-500));pendingSeek=0;
+            if(target>0){if(Math.abs(target-video.getTime())>1000)video.setTime(target);android.util.Log.d("OndaVideo","resumed "+target);}
+        }
+    }
     private void applyVideoVolume(){if(video!=null)video.setVolume(ducked?Math.round(videoVolume*.25f):videoVolume);}
     private void clearSubtitle(){captionsOff=false;subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
     private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
