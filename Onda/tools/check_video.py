@@ -240,7 +240,7 @@ assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'C
 voice('pause')
 menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: hora de relaxar');tap('Frase personalizada');shell('input','keyevent','123')
 shell('input','keyevent',*(['67']*125))
-assert locate('Frase personalizada').attrib.get('text','')=='','Old voice phrase was not cleared'
+assert locate('Frase personalizada').attrib.get('text','') in ('','Ex.: hora de relaxar'),'Old voice phrase was not cleared'
 shell('input','text','meu%smomento');shell('input','keyevent','4');time.sleep(.3)
 tap('Ação da frase');tap_text('Pausar');tap_text('Salvar')
 assert locate('Editar frase: meu momento') is not None
