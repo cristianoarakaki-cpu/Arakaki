@@ -10,6 +10,7 @@ import java.net.*;
 import java.util.concurrent.*;
 
 /** One explicit download at a time; no scheduler, retries or idle background loop. */
+@androidx.media3.common.util.UnstableApi
 public class MediaDownloadService extends Service {
  private static final String CHANNEL="onda-download";private static final long LIMIT=512L*1024*1024;
  private final ExecutorService worker=Executors.newSingleThreadExecutor();private volatile boolean cancelled;private volatile HttpURLConnection active;private boolean running;static volatile boolean activeDownload;private long total,lastNotice,startedAt;
@@ -37,6 +38,7 @@ public class MediaDownloadService extends Service {
  }
  private void download(Intent intent){File a=null,b=null,result=null;Uri destination=Uri.parse(intent.getStringExtra("destination"));boolean complete=false;
   try{
+   File[] stale=getCacheDir().listFiles((dir,name)->name.startsWith("onda-download-"));if(stale!=null)for(File f:stale)f.delete();
    a=File.createTempFile("onda-download-",".part",getCacheDir());b=File.createTempFile("onda-download-",".part",getCacheDir());result=File.createTempFile("onda-download-",".mp4",getCacheDir());
    fetch(intent.getStringExtra("first"),a);String second=intent.getStringExtra("second");if(second!=null&&!second.isEmpty())fetch(second,b);
    update("Montando arquivo sem recomprimir…",true);DownloadMux.merge(a,second==null?null:b,result,intent.getBooleanExtra("audio",false),this::check);check();update("Salvando no destino escolhido…",true);
