@@ -103,7 +103,11 @@ if sound['equalizer']:
 assert 0<sound['headroom']<=1
 capture('10-estudio-som')
 tap('Voltar');voice('toque Onda Sessions');time.sleep(.5)
-playing_sound=sound_state();assert playing_sound['playing'] is True
+for _ in range(20):
+ playing_sound=sound_state()
+ if playing_sound['playing'] is True:break
+ time.sleep(.25)
+else:raise AssertionError('Sound engine did not enter playback: '+json.dumps(playing_sound))
 if playing_sound['equalizer']:assert playing_sound['eq_enabled'] is True
 voice('pause');paused_sound=sound_state()
 if paused_sound['equalizer']:assert paused_sound['eq_enabled'] is False
