@@ -144,7 +144,7 @@ public class VideoActivity extends Activity {
     }
     private void applyVideoVolume(){if(video!=null)video.setVolume(ducked?Math.round(videoVolume*.25f):videoVolume);}
     private void clearSubtitle(){captionsOff=false;subtitleEnabled=false;subtitleAttached=false;subtitleName="";if(subtitleFile!=null){subtitleFile.delete();subtitleFile=null;}}
-    private void attachSubtitle(){if(video!=null&&captionsOff){video.setSpuTrack(-1);return;}if(video==null||!framesSeen||video.getTime()<=0||!subtitleEnabled||subtitleAttached||subtitleFile==null)return;
+    private void attachSubtitle(){if(video!=null&&captionsOff){if(!subtitleAttached){video.setSpuTrack(-1);subtitleAttached=true;}return;}if(video==null||!subtitleEnabled||subtitleAttached||subtitleFile==null||!framesSeen||video.getTime()<=0)return;
         // The String overload takes a filesystem path, not a file:// URI.
         subtitleAttached=video.addSlave(Media.Slave.Type.Subtitle,subtitleFile.getAbsolutePath(),true);
         android.util.Log.d("OndaVideo","subtitle "+(subtitleAttached?"attached ":"failed ")+subtitleName);
@@ -153,7 +153,7 @@ public class VideoActivity extends Activity {
     private void subtitles(){if(current==null){Toast.makeText(this,"Abra um vídeo primeiro.",Toast.LENGTH_SHORT).show();return;}
         new AlertDialog.Builder(this).setTitle("Legendas do vídeo").setMessage((subtitleEnabled?"Arquivo: "+subtitleName:"Nenhuma legenda externa ativa")+"\nSRT, VTT, ASS e SSA, até 2 MB. A legenda fica disponível nesta sessão do vídeo.")
             .setPositiveButton("Abrir legenda",(d,w)->{subtitleWasPlaying=video!=null&&video.isPlaying();Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents","primary:Download"));try{startActivityForResult(intent,SUBTITLE);}catch(ActivityNotFoundException e){Toast.makeText(this,"Seletor de arquivos indisponível.",Toast.LENGTH_LONG).show();}})
-            .setNeutralButton("Desativar",(d,w)->{if(video!=null)video.setSpuTrack(-1);captionsOff=true;subtitleEnabled=false;Toast.makeText(this,"Legenda desativada",Toast.LENGTH_SHORT).show();}).setNegativeButton("Fechar",null).show();
+            .setNeutralButton("Desativar",(d,w)->{if(video!=null)video.setSpuTrack(-1);captionsOff=true;subtitleAttached=true;subtitleEnabled=false;Toast.makeText(this,"Legenda desativada",Toast.LENGTH_SHORT).show();}).setNegativeButton("Fechar",null).show();
     }
     private void loadSubtitle(Uri uri){if(current==null)return;Uri owner=current.uri;String name=selected(uri).file;String lower=name.toLowerCase(Locale.ROOT);String suffix=null;for(String ext:new String[]{".srt",".vtt",".ass",".ssa"})if(lower.endsWith(ext)){suffix=ext;break;}
         if(suffix==null){Toast.makeText(this,"Escolha uma legenda SRT, VTT, ASS ou SSA.",Toast.LENGTH_LONG).show();return;}

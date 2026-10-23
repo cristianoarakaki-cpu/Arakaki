@@ -175,3 +175,5 @@ A posição é guardada localmente ao pausar, trocar de vídeo, buscar outra pos
 A abertura de vídeo também verifica se chegaram quadros: se houver reprodução sem imagem por 8 segundos, tenta uma vez o decodificador de software. A verificação é cancelada quando chegam quadros ou ao pausar, sem sondagem contínua. A API String de addSlave recebe caminho local absoluto da cópia de legenda, sem prefixo file://.
 
 Retomada e inclusão de legenda aguardam o relógio de reprodução iniciar e a janela de vídeo estar pronta, evitando buscas prematuras que podem interromper o relógio de alguns arquivos MPEG-TS.
+
+A seleção ou desativação de legendas é aplicada uma única vez por abertura de mídia, sem reconfigurar a faixa a cada atualização de tempo.
