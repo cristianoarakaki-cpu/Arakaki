@@ -22,7 +22,7 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" />
         </provider>
-        <activity android:name=".VideoActivity" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:exported="true" android:launchMode="singleTop" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+        <activity android:name=".VideoActivity" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:exported="true" android:launchMode="singleTop" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
