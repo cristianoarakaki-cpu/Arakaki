@@ -37,6 +37,25 @@ nodes();capture('02-youtube-result')
 logs=adb('logcat','-d','-s','OndaDownload:I','AndroidRuntime:E','*:S').decode(errors='replace')
 (out/'download-logcat.txt').write_text(logs)
 print(logs)
-(out/'live-result.json').write_text(json.dumps({'video':'Blender Big Buck Bunny (CC BY)','result':result,'note':'Live provider availability is separate from native mux and UI assertions.'},indent=2))
+# Exercise the exact finite Mix form supplied by the user; availability may be IP-restricted.
+shared('https://youtube.com/playlist?list=RDqHZiIxprsrs');tap('Analisar link')
+playlist='timeout';end=time.monotonic()+115
+while time.monotonic()<end:
+ time.sleep(2)
+ try:
+  xml=ET.fromstring(adb('shell','run-as',package,'cat','shared_prefs/downloads.xml'))
+  status=next((n.text or '' for n in xml if n.get('name')=='status'),'')
+ except (subprocess.CalledProcessError,ET.ParseError):continue
+ if 'vídeos carregados' in status:playlist='items-found';break
+ if 'Não foi possível analisar' in status:playlist='provider-unavailable';break
+ if subprocess.run(['adb','shell','pidof',package],stdout=subprocess.PIPE,timeout=10).returncode!=0:playlist='app-crashed';break
+nodes();capture('03-playlist-result')
+assert playlist not in ('timeout','app-crashed'),playlist
+if playlist=='items-found':
+ assert any('Baixar seleção em MP3' in n.get('text','') for n in nodes().iter('node'))
+ tap('Limpar seleção');tap('Baixar seleção em MP3');time.sleep(.5)
+ assert any('Selecione pelo menos um vídeo' in n.get('text','') for n in nodes().iter('node'))
+logs=adb('logcat','-d','-s','OndaDownload:I','AndroidRuntime:E','*:S').decode(errors='replace');(out/'download-logcat.txt').write_text(logs);print(logs)
+(out/'live-result.json').write_text(json.dumps({'video':'Blender Big Buck Bunny (CC BY)','result':result,'playlist':playlist,'note':'Live provider availability is separate from native mux and UI assertions.'},indent=2))
 assert result not in ('timeout','app-crashed'),'Extractor did not finish: '+result
 print('Native download UI passed; live provider:',result)

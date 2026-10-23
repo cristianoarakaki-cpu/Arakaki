@@ -16,7 +16,7 @@ public class DownloadMuxTest {
   context.getSharedPreferences("downloads",0).edit().clear().commit();
   android.content.Intent intent=new android.content.Intent(context,MediaDownloadService.class).putExtra("first","https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/onda-lab-downloads/Onda/tests/fixtures/download.mp4").putExtra("destination",android.net.Uri.fromFile(output).toString()).putExtra("audio",false);
   try{getInstrumentation().runOnMainSync(()->context.startForegroundService(intent));long end=System.currentTimeMillis()+90000;boolean started=false;String status="";
-   while(System.currentTimeMillis()<end){status=context.getSharedPreferences("downloads",0).getString("status","");started|=MediaDownloadService.activeDownload||!status.isEmpty();if(started&&!MediaDownloadService.activeDownload&&status.startsWith("Download concluído"))break;if(started&&!MediaDownloadService.activeDownload&&status.startsWith("Falha"))fail(status);Thread.sleep(200);}
+   while(System.currentTimeMillis()<end){status=context.getSharedPreferences("downloads",0).getString("status","");started|=MediaDownloadService.activeDownload||!status.isEmpty();if(started&&!MediaDownloadService.activeDownload&&status.startsWith("Download concluído"))break;if(started&&!MediaDownloadService.activeDownload&&status.startsWith("Operação interrompida"))fail(status);Thread.sleep(200);}
    assertTrue(status,status.startsWith("Download concluído"));verify(output,2);
   }finally{context.stopService(intent);output.delete();}
  }

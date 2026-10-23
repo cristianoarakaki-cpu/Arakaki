@@ -22,5 +22,11 @@ final class DownloadLinks {
    return "https://www.youtube.com/watch?v="+id;
   }catch(Exception e){throw new IllegalArgumentException("Cole um link HTTPS de um vídeo do YouTube (watch, youtu.be ou Shorts).");}
  }
+ static String playlist(String input){
+  try{if(input==null||input.length()>4096)throw new IllegalArgumentException();URI u=new URI(input.trim());String h=u.getHost();if(!"https".equalsIgnoreCase(u.getScheme())||h==null||u.getUserInfo()!=null||u.getPort()!=-1||!(h.equalsIgnoreCase("youtube.com")||h.equalsIgnoreCase("www.youtube.com")||h.equalsIgnoreCase("m.youtube.com")||h.equalsIgnoreCase("music.youtube.com"))||!("/playlist".equals(u.getPath())||"/watch".equals(u.getPath())))throw new IllegalArgumentException();String id=null;if(u.getRawQuery()!=null)for(String q:u.getRawQuery().split("&"))if(q.startsWith("list=")){if(id!=null)throw new IllegalArgumentException();id=q.substring(5);}if(id==null||!id.matches("[A-Za-z0-9_-]{10,100}"))throw new IllegalArgumentException();return "https://www.youtube.com/playlist?list="+id;
+  }catch(Exception e){throw new IllegalArgumentException("Cole um link HTTPS válido de vídeo ou playlist do YouTube.");}
+ }
+ static String resolve(String input){try{return playlist(input);}catch(IllegalArgumentException e){return canonical(input);}}
+ static boolean isPlaylist(String url){return url.startsWith("https://www.youtube.com/playlist?list=");}
  static String filename(String title){String s=title==null?"Onda":title.replaceAll("[\\p{Cntrl}\\\\/:*?\"<>|]"," ").trim();return s.isEmpty()?"Onda":s.substring(0,Math.min(80,s.length()));}
 }

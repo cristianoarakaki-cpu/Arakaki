@@ -9,6 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -17,7 +18,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
@@ -73,6 +74,7 @@ jobs:
           run("-f","lavfi","-i","color=c=blue:s=320x180:r=15","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","3","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"combined.mp4"))
           run("-i",str(root/"combined.mp4"),"-an","-c:v","copy",str(root/"video.mp4"))
           run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
+          run("-i",str(root/"combined.mp4"),"-vn","-ac","2","-ar","48000","-c:a","aac",str(root/"audio-stereo.m4a"))
           PY
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug assembleDebugAndroidTest
       - name: Habilitar aceleração do emulador
@@ -92,7 +94,7 @@ jobs:
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w br.com.onda.musica.lab.test/androidx.test.runner.AndroidJUnitRunner > /tmp/lab-tests.txt
             cat /tmp/lab-tests.txt
-            python -c 's=open("/tmp/lab-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/lab-tests.txt").read(); assert "OK (8 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_downloads.py
       - name: Salvar evidências
         if: always()
@@ -116,6 +118,7 @@ jobs:
           cat Onda/lab-preview/live-result.json >> Onda/lab-out/notes.md
           git archive --format=zip --output=Onda/lab-out/Onda-Lab-Fontes.zip HEAD Onda .github/workflows/onda-lab.yml
           curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip
+          curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/lab-out/LAME-Fontes.zip
           sha256sum Onda/lab-out/Onda-Lab.apk > Onda/lab-out/SHA256SUMS.txt
-          TAG="onda-lab-0.22.0-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" Onda/lab-out/Onda-Lab.apk Onda/lab-out/Onda-Lab-Fontes.zip Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip Onda/lab-out/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Onda Lab 0.22.0 • downloads experimentais" --prerelease --latest=false --notes-file Onda/lab-out/notes.md
+          TAG="onda-lab-0.23.0-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" Onda/lab-out/Onda-Lab.apk Onda/lab-out/Onda-Lab-Fontes.zip Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip Onda/lab-out/LAME-Fontes.zip Onda/lab-out/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Onda Lab 0.23.0 • playlists e MP3" --prerelease --latest=false --notes-file Onda/lab-out/notes.md
