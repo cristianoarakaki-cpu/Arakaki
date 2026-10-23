@@ -25,5 +25,6 @@ final class PlaylistStore {
         }catch(JSONException ignored){}return lists;
     }
     static String encode(List<Entry> lists){JSONArray all=new JSONArray();try{for(Entry e:lists){JSONObject o=new JSONObject();o.put("id",e.id);o.put("name",e.name);o.put("songs",new JSONArray(e.songs));all.put(o);}}catch(JSONException e){throw new IllegalStateException(e);}return all.toString();}
+    static List<Entry> matching(List<Entry> lists,String query){List<Entry> exact=new ArrayList<>(),partial=new ArrayList<>();if(SearchText.normalize(query).isEmpty())return exact;for(Entry e:lists){if(SearchText.normalize(e.name).equals(SearchText.normalize(query)))exact.add(e);else if(SearchText.matches(e.name,query))partial.add(e);}return exact.isEmpty()?partial:exact;}
     static void save(Context c,List<Entry> lists){c.getSharedPreferences("playlists",0).edit().putString("lists",encode(lists)).apply();}
 }

@@ -1,3 +1,9 @@
+## Novidades 0.19 — Janela flutuante e voz para playlists
+
+Vídeos: durante a reprodução, Menu → Janela flutuante abre o modo imagem em imagem do Android, com pausa/reprodução e os controles do sistema para expandir ou fechar. Depende do suporte e da permissão de imagem em imagem do aparelho. A entrada é explícita: sair normalmente continua pausando o vídeo. Não exige permissão para desenhar sobre outros apps.
+
+Voz: diga “toque minha playlist Viagem” ou “toque a lista Treino”. Usa as playlists e os arquivos do aparelho, ignora arquivos indisponíveis e pede uma escolha quando há nomes ambíguos. Prioriza nome exato, aceita diferenças de acento. Pode criar atalhos em Minhas frases → Tocar playlist. Interpretação local sem API paga; o reconhecimento do microfone depende do serviço de voz instalado no celular.
+
 ## Novidades 0.18 — Continuar de onde parou
 
 O Onda restaura a fila local, a faixa e a posição ao reabrir, sempre pausado. Toque Reproduzir para continuar. Preserva os modos de repetição e embaralhamento (a sequência aleatória pode mudar). Salva ao pausar, trocar, buscar e a cada 15 segundos enquanto toca; um encerramento abrupto pode perder os últimos segundos. Arquivos ausentes são ignorados; se a faixa atual faltar, começa a próxima disponível do zero. Filas online não são restauradas. Listas maiores que 10.000 faixas não são salvas. Nenhuma análise contínua ou serviço externo.

@@ -21,7 +21,7 @@ final class VoiceSearch {
     }
     static void help(Activity activity){
         new android.app.AlertDialog.Builder(activity).setTitle("Comandos de voz")
-            .setMessage("Toque no microfone e diga:\n\n• Toque minhas músicas favoritas\n• Toque Chitãozinho e Xororó\n• Pesquise por nome ou artista\n• Pause / continue / próxima música / música anterior\n• Adicione aos favoritos / remova dos favoritos\n• Ative ou desative o modo aleatório\n• Repita a música / repita todas / não repetir\n• Pare em 30 minutos / cancele o temporizador\n\nFavoritas e reprodução por nome usam os arquivos do celular. Em Explorar, nomes pesquisam o catálogo online. O microfone só é usado quando você o aciona. Para pedidos livres, configure o Assistente com IA no menu.")
+            .setMessage("Toque no microfone e diga:\n\n• Toque minha playlist Viagem\n• Toque minhas músicas favoritas\n• Toque Chitãozinho e Xororó\n• Pesquise por nome ou artista\n• Pause / continue / próxima música / música anterior\n• Adicione aos favoritos / remova dos favoritos\n• Ative ou desative o modo aleatório\n• Repita a música / repita todas / não repetir\n• Pare em 30 minutos / cancele o temporizador\n\nFavoritas e reprodução por nome usam os arquivos do celular. Em Explorar, nomes pesquisam o catálogo online. O microfone só é usado quando você o aciona. Para pedidos livres, configure o Assistente com IA no menu.")
             .setPositiveButton("Entendi",null).setNeutralButton("Minhas frases",(d,w)->activity.startActivity(new Intent(activity,VoicePhrasesActivity.class))).show();
     }
     static String result(int code,Intent data){

@@ -29,7 +29,7 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f'Onda Música {version_name} — Continuar de onde parou\n\nRecupera fila local, música e posição ao reabrir, sempre pausado. Toque Reproduzir para continuar. Salva em mudanças e a cada 15 segundos enquanto toca; encerramento abrupto pode perder os últimos segundos. Arquivos ausentes são ignorados. Filas online não são restauradas.\n\nMantidos playlists, som, DJ, voz e vídeos. Mesmo pacote e assinatura para atualizar sobre 0.17.0 sem desinstalar.\n\nVídeos: LibVLC 3.7.7 © VideoLAN e colaboradores, LGPL 2.1 ou posterior. Licença inclusa. Fonte: https://code.videolan.org/videolan/libvlcjni .\nPacote: `{package_name}`. Certificado de teste fixado do projeto.\n')
+(output / 'notes.md').write_text(f'Onda Música {version_name} — Janela flutuante e playlists por voz\n\nVídeos: Menu → Janela flutuante para continuar assistindo em outros aplicativos. Controles de pausa e reprodução. Depende do suporte e permissão do Android.\n\nVoz: diga “toque minha playlist Viagem”. Nomes semelhantes oferecem escolha; arquivos ausentes são ignorados. Atalhos personalizados também aceitam Tocar playlist. Sem API paga.\n\nMesmo pacote e assinatura para atualizar sobre 0.18.0 sem desinstalar.\n\nVídeos: LibVLC 3.7.7 © VideoLAN e colaboradores, LGPL 2.1 ou posterior. Licença inclusa. Fonte: https://code.videolan.org/videolan/libvlcjni .\nPacote: `{package_name}`. Certificado de teste fixado do projeto.\n')
 
 with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
     file.write(f'tag={tag}\nversion={version_name}\n')

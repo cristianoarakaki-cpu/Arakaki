@@ -103,6 +103,12 @@ capture('18-playlists')
 tap('Tocar playlist');time.sleep(1)
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.7)
 assert 'size=2' in shell('dumpsys','media_session').decode(),'Playlist did not create two-item queue'
+# Same recognized-phrase handler as the microphone; playlist lookup runs locally.
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque minha playlist TesteOndaEditada');time.sleep(1)
+shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','pause');time.sleep(.5)
+assert 'size=2' in shell('dumpsys','media_session').decode(),'Voice playlist command failed'
+(OUTPUT/'playlist-voice-tests.json').write_text(json.dumps({'playNamedPlaylist':True}))
+
 # Seek while paused, terminate the process, then verify the recovered queue and position.
 seek=locate('Posição na música');bounds=[int(x) for x in re.findall(r'\d+',seek.attrib['bounds'])]
 shell('input','tap',bounds[0]+(bounds[2]-bounds[0])//3,(bounds[1]+bounds[3])//2);time.sleep(.7)
@@ -294,6 +300,23 @@ try:
  shell('input','tap',*fresh_pause);time.sleep(.5)
  assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
  assert locate('Reproduzir vídeo') is not None
+ # Learn menu coordinates while paused: active playback prevents idle UI dumps.
+ anchor=point(locate('Menu de vídeos'));shell('input','tap',*anchor);time.sleep(.4)
+ floating=next(n for n in nodes() if n.attrib.get('text')=='Janela flutuante');floating_point=point(floating)
+ shell('input','keyevent','4');time.sleep(.3)
+ adb('logcat','-c');shell('input','tap',*fresh_pause);time.sleep(1)
+ shell('input','tap',*anchor);time.sleep(.4);shell('input','tap',*floating_point);time.sleep(1.5)
+ pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+ assert 'pip true' in pip_log,'Picture in picture did not start: '+pip_log
+ assert 'paused at' not in pip_log.split('pip true',1)[-1],'PiP paused unexpectedly'
+ capture('20-janela-flutuante')
+ # Expand using Android's own activity intent, then return to a paused state.
+ shell('am','start','-W','-n',PACKAGE+'/br.com.onda.VideoActivity');time.sleep(1)
+ shell('input','tap',*fresh_pause);time.sleep(.5)
+ pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+ assert 'pip false' in pip_log,'Picture in picture did not expand'
+ assert locate('Reproduzir vídeo') is not None
+ (OUTPUT/'pip-tests.json').write_text(json.dumps({'entered':True,'continuedPlaying':True,'expanded':True}))
  (OUTPUT/'video-controls-tests.json').write_text(json.dumps({'externalSrtSelected':True,'gestures':True,'resumeAfterReopen':True,'restart':True},indent=2)+'\n')
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension

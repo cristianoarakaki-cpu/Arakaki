@@ -9,6 +9,8 @@ import androidx.media3.session.*;
 @androidx.media3.common.util.UnstableApi
 final class VoiceControl {
     static boolean execute(Activity activity,MediaController player,VoiceCommand command){
+        PlaylistVoice.cancel();
+        if(command.action==VoiceCommand.Action.PLAY_PLAYLIST){PlaylistVoice.play(activity,player,command.query);return true;}
         if(command.action==VoiceCommand.Action.SEARCH||command.action==VoiceCommand.Action.PLAY_QUERY||command.action==VoiceCommand.Action.FAVORITES||command.action==VoiceCommand.Action.FAVORITE_ADD||command.action==VoiceCommand.Action.FAVORITE_REMOVE)return false;
         if(command.action==VoiceCommand.Action.HELP){VoiceSearch.help(activity);return true;}
         if(player==null){say(activity,"O tocador está iniciando. Tente novamente.");return true;}
