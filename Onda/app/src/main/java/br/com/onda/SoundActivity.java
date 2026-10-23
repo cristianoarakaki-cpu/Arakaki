@@ -1,0 +1,38 @@
+package br.com.onda;
+
+import android.app.*;
+import android.content.*;
+import android.os.*;
+import android.view.*;
+import android.widget.*;
+import androidx.media3.common.Player;
+import androidx.media3.session.*;
+import com.google.common.util.concurrent.ListenableFuture;
+
+@androidx.media3.common.util.UnstableApi
+public class SoundActivity extends Activity {
+    private SoundProfile profile;private MediaController player;private ListenableFuture<MediaController> connection;
+    private Switch enabled;private Button presets;private final SeekBar[] bands=new SeekBar[5];private final TextView[] labels=new TextView[5];private SeekBar bass;private TextView bassLabel,status;private boolean rendering;
+    private final Handler handler=new Handler(Looper.getMainLooper());private int generation;
+    @Override public void onCreate(Bundle saved){super.onCreate(saved);profile=SoundSettings.read(this);
+        LinearLayout root=column();Ui.background(root);root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(Ui.dp(this,20),Ui.dp(this,12)+i.getSystemWindowInsetTop(),Ui.dp(this,20),Ui.dp(this,12)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
+        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);Button back=Ui.button(this,"‹",v->finish());back.setContentDescription("Voltar");Ui.ghost(back);header.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));TextView title=Ui.text(this,"Estúdio de som",25,Ui.TEXT);Ui.bold(title);header.addView(title);root.addView(header);
+        ScrollView scroll=new ScrollView(this);LinearLayout content=column();scroll.addView(content);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        TextView intro=Ui.text(this,"Ajuste suas músicas e o áudio online. Os efeitos disponíveis dependem do aparelho. Vídeos usam um tocador separado.",14,Ui.MUTED);intro.setPadding(0,Ui.dp(this,12),0,Ui.dp(this,16));content.addView(intro);
+        enabled=new Switch(this);enabled.setText("Ajustes de som");enabled.setTextColor(Ui.TEXT);enabled.setContentDescription("Ativar ajustes de som");enabled.setMinHeight(Ui.dp(this,48));content.addView(enabled);enabled.setOnCheckedChangeListener((b,value)->{if(!rendering){profile=profile.enabled(value);save();}});
+        presets=Ui.button(this,"",v->new AlertDialog.Builder(this).setTitle("Preset de som").setItems(SoundProfile.PRESETS,(d,i)->{profile=SoundProfile.preset(i,profile.enabled);save();}).setNegativeButton("Cancelar",null).show());presets.setContentDescription("Escolher preset de som");content.addView(presets,new LinearLayout.LayoutParams(-1,Ui.dp(this,48)));
+        for(int i=0;i<5;i++){final int index=i;labels[i]=Ui.text(this,"",14,Ui.TEXT);labels[i].setPadding(0,Ui.dp(this,14),0,0);content.addView(labels[i]);bands[i]=new SeekBar(this);bands[i].setMax(12);bands[i].setContentDescription("Equalizador "+frequency(i));content.addView(bands[i],new LinearLayout.LayoutParams(-1,Ui.dp(this,42)));bands[i].setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int progress,boolean user){if(user){profile=profile.gain(index,progress-6);labels[index].setText(frequency(index)+"   "+gain(profile.gain(index)));presets.setText("Preset: "+profile.presetName());}}public void onStopTrackingTouch(SeekBar b){save();}});}
+        bassLabel=Ui.text(this,"",14,Ui.TEXT);bassLabel.setPadding(0,Ui.dp(this,14),0,0);content.addView(bassLabel);bass=new SeekBar(this);bass.setMax(100);bass.setContentDescription("Reforço de graves");content.addView(bass,new LinearLayout.LayoutParams(-1,Ui.dp(this,42)));bass.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int progress,boolean user){if(user){profile=profile.bass(progress);bassLabel.setText("Reforço de graves   "+profile.bass+"%");presets.setText("Preset: "+profile.presetName());}}public void onStopTrackingTouch(SeekBar b){save();}});
+        status=Ui.text(this,"Conectando ao tocador…",13,Ui.CYAN);status.setContentDescription("Estado dos efeitos de som");status.setPadding(0,Ui.dp(this,14),0,Ui.dp(this,12));content.addView(status);
+        TextView note=Ui.text(this,"Compensação automática de ganho para reduzir o risco de distorção. O volume pode diminuir com reforços. Sem animações ou análise contínua; efeitos desativados durante a pausa.",12,Ui.MUTED);content.addView(note);
+        Button reset=Ui.button(this,"Restaurar som original",v->{profile=SoundProfile.preset(0,false);save();});LinearLayout.LayoutParams resetParams=new LinearLayout.LayoutParams(-1,Ui.dp(this,48));resetParams.topMargin=Ui.dp(this,16);content.addView(reset,resetParams);render();
+        connection=new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();connection.addListener(()->{try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onIsPlayingChanged(boolean value){requestStatus(false);}@Override public void onAudioSessionIdChanged(int id){requestStatus(false);}});requestStatus(false);}catch(Exception e){status.setText("Não foi possível conectar. Volte à biblioteca e tente novamente.");}},handler::post);
+    }
+    private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
+    private String frequency(int i){return new String[]{"60 Hz","230 Hz","910 Hz","3,6 kHz","14 kHz"}[i];}
+    private String gain(int n){return (n>0?"+":"")+n+" dB";}
+    private void render(){rendering=true;enabled.setChecked(profile.enabled);presets.setText("Preset: "+profile.presetName());for(int i=0;i<5;i++){bands[i].setProgress(profile.gain(i)+6);bands[i].setEnabled(profile.enabled);labels[i].setText(frequency(i)+"   "+gain(profile.gain(i)));}bass.setProgress(profile.bass);bass.setEnabled(profile.enabled);bassLabel.setText("Reforço de graves   "+profile.bass+"%");rendering=false;}
+    private void save(){SoundSettings.save(this,profile);render();requestStatus(true);}
+    private void requestStatus(boolean apply){if(player==null){status.setText("Configuração salva. Conectando ao tocador…");return;}int request=++generation;ListenableFuture<SessionResult> future=player.sendCustomCommand(new SessionCommand(apply?"sound":"sound_status",Bundle.EMPTY),Bundle.EMPTY);future.addListener(()->{if(request!=generation||isDestroyed())return;try{SessionResult result=future.get();if(result.resultCode!=SessionResult.RESULT_SUCCESS){status.setText("Efeitos indisponíveis nesta sessão.");return;}Bundle b=result.extras;String state=b.getString("status","");if(state.equals("disabled")){status.setText("Som original • efeitos desligados");return;}if(state.equals("waiting")){status.setText("Configuração salva. Toque uma música para verificar os efeitos.");return;}String eq=b.getBoolean("equalizer")?"Equalizador disponível":"Equalizador indisponível";String low=b.getBoolean("bass")?"graves disponíveis":"reforço de graves indisponível";status.setText(eq+" • "+low+"\n"+(b.getBoolean("playing")?"Aplicado à reprodução":"Preparado para reproduzir • efeitos pausados"));bass.setEnabled(profile.enabled&&b.getBoolean("bass"));for(SeekBar band:bands)band.setEnabled(profile.enabled&&b.getBoolean("equalizer"));}catch(Exception e){status.setText("Não foi possível verificar os efeitos. Suas configurações continuam salvas.");}},handler::post);}
+    @Override public void onDestroy(){generation++;handler.removeCallbacksAndMessages(null);if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
+}

@@ -72,6 +72,40 @@ def voice(phrase):
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase',phrase);time.sleep(.7)
 voice('toque Onda Sessions');voice('pause')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
+# Validate real session effects, readback, persistence and pause/release behavior.
+def sound_state():
+ log=adb('logcat','-d','-s','OndaSound:D').decode(errors='replace')
+ values=re.findall(r'OndaSound.*?(\{[^\n]+\})',log)
+ assert values,'No sound engine status received'
+ return json.loads(values[-1])
+menu_action('Menu da biblioteca','Estúdio de som')
+tap('Ativar ajustes de som');tap('Escolher preset de som');tap_text('Rock');time.sleep(.5)
+assert locate('Escolher preset de som').attrib.get('text')=='Preset: Rock'
+sound=sound_state();assert sound['enabled'] is True
+if sound['equalizer']:
+ assert len(sound['levels'])==len(sound['frequencies'])>0
+ def expected_level(hz):
+  frequencies=[60,230,910,3600,14000];gains=[4,2,-1,2,4]
+  if hz<=60:return 400
+  for i in range(1,5):
+   if hz<=frequencies[i]:return round(100*(gains[i-1]+math.log(hz/frequencies[i-1])/math.log(frequencies[i]/frequencies[i-1])*(gains[i]-gains[i-1])))
+  return 400
+ for frequency,level in zip(sound['frequencies'],sound['levels']):assert abs(level-expected_level(frequency))<=2,'Equalizer readback differs from preset'
+ assert sound['eq_enabled'] is False,'Paused equalizer still processing'
+assert 0<sound['headroom']<=1
+capture('10-estudio-som')
+tap('Voltar');voice('toque Onda Sessions');time.sleep(.5)
+playing_sound=sound_state();assert playing_sound['playing'] is True
+if playing_sound['equalizer']:assert playing_sound['eq_enabled'] is True
+voice('pause');paused_sound=sound_state()
+if paused_sound['equalizer']:assert paused_sound['eq_enabled'] is False
+menu_action('Menu da biblioteca','Estúdio de som')
+assert locate('Escolher preset de som').attrib.get('text')=='Preset: Rock','Sound preset was not persisted'
+for _ in range(2):shell('input','swipe',540,1500,540,500,250)
+tap_text('Restaurar som original');time.sleep(.5)
+assert sound_state()['enabled'] is False
+(OUTPUT/'sound-tests.json').write_text(json.dumps({'configured':sound,'playing':playing_sound,'paused':paused_sound,'reset':sound_state()},indent=2)+'\n')
+tap('Voltar')
 voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
 voice('Onda, toque minhas músicas favoritas, por favor')
