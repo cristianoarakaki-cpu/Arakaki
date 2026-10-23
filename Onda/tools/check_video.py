@@ -46,6 +46,8 @@ for extension,vcodec,acodec,mime in formats:
     remote='/sdcard/Movies/OndaDemo/'+filename;adb('push',str(local),remote)
     shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote)
     time.sleep(.3)
+subtitle=Path('/tmp/Onda-Captions.srt');subtitle.write_text('1\n00:00:00,000 --> 00:00:19,000\nONDA LEGENDAS\n',encoding='utf-8')
+shell('mkdir','-p','/sdcard/Download/OndaSubtitles');adb('push',str(subtitle),'/sdcard/Download/OndaSubtitles/Onda-Captions.srt')
 # Independent integration test: no dependency on the music UI capture script.
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(2)
 # Verify the simplified navigation and relocated actions on the actual Android UI.
@@ -222,6 +224,46 @@ try:
     shell('input','tap',*pause_point);time.sleep(.5)
     assert locate('Reproduzir vídeo') is not None,'Video did not pause'
     results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
+ # Gestures on the paused surface do not change global device settings.
+ gesture=locate('Área de gestos do vídeo');bounds=[int(v) for v in re.findall(r'\d+',gesture.attrib['bounds'])]
+ left,top,right,bottom=bounds;height=bottom-top;adb('logcat','-c')
+ shell('input','swipe',left+(right-left)//4,top+height*3//4,left+(right-left)//4,top+height//4,400)
+ shell('input','swipe',left+(right-left)*3//4,top+height//4,left+(right-left)*3//4,top+height*3//4,400)
+ gesture_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+ assert 'gesture brightness' in gesture_log and 'gesture volume' in gesture_log,'Video gestures were not applied'
+ # Real document picker grants access to the external SRT.
+ tap('Legendas do vídeo');tap_text('Abrir legenda');time.sleep(.5)
+ tree=nodes();folder=next((n for n in tree if n.attrib.get('text')=='OndaSubtitles'),None)
+ if folder is not None:shell('input','tap',*point(folder));time.sleep(.3)
+ document=next((n for n in nodes() if n.attrib.get('text')=='Onda-Captions.srt'),None)
+ assert document is not None,'SRT fixture not visible in document picker'
+ shell('input','tap',*point(document));time.sleep(1)
+ resumed_pause=point(locate('Reproduzir vídeo'));adb('logcat','-c');shell('input','tap',*resumed_pause)
+ for _ in range(20):
+    subtitle_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+    if 'subtitle attached Onda-Captions.srt' in subtitle_log and 'subtitle-selected' in subtitle_log:break
+    time.sleep(.3)
+ else:raise AssertionError('External SRT was not selected by decoder: '+subtitle_log)
+ time.sleep(5);capture('16-legenda-video');shell('input','tap',*resumed_pause);time.sleep(.5)
+ # Re-selecting asks to continue, and continuing actually seeks in the decoder.
+ tap('Assistir Onda-Video.ts')
+ assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes())
+ capture('17-continuar-video');adb('logcat','-c');tap_text('Continuar');time.sleep(.8)
+ resume_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
+ assert re.search(r'resumed [3-9][0-9]{3,}',resume_log),'Resume position not applied: '+resume_log
+ shell('input','tap',*resumed_pause);time.sleep(.3)
+ # Finish the activity and reopen: the bookmark must survive the native player instance.
+ tap('Voltar à música');tap('Abrir biblioteca de vídeos')
+ tap('Buscar vídeos por nome');shell('input','text','ts');shell('input','keyevent','4');time.sleep(.3)
+ tap('Assistir Onda-Video.ts')
+ assert any(n.attrib.get('text')=='Continuar vídeo?' for n in nodes()),'Bookmark lost after activity recreation'
+ adb('logcat','-c');tap_text('Recomeçar');time.sleep(.8)
+ fresh_pause=point(locate('Área de gestos do vídeo')) if False else resumed_pause
+ # Transport coordinates are stable in portrait; avoid idle dumps during playback.
+ shell('input','tap',*fresh_pause);time.sleep(.5)
+ assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
+ assert locate('Reproduzir vídeo') is not None
+ (OUTPUT/'video-controls-tests.json').write_text(json.dumps({'externalSrtSelected':True,'gestures':True,'resumeAfterReopen':True,'restart':True},indent=2)+'\n')
  tap('Tela cheia do vídeo');time.sleep(1)
  # Android shows its own immersive-mode tutorial on the first fullscreen entry.
  prompt=next((n for n in nodes() if n.attrib.get('text','').upper() in ('GOT IT','ENTENDI')),None)

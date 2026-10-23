@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'br.com.onda'
     compileSdk 36
-    defaultConfig { applicationId 'br.com.onda.musica'; minSdk 26; targetSdk 35; versionCode 18; versionName '0.15.0'; ndk { abiFilters.addAll(project.hasProperty('ondaEmulator') ? ['x86_64'] : ['arm64-v8a', 'armeabi-v7a']) } }
+    defaultConfig { applicationId 'br.com.onda.musica'; minSdk 26; targetSdk 35; versionCode 19; versionName '0.16.0'; ndk { abiFilters.addAll(project.hasProperty('ondaEmulator') ? ['x86_64'] : ['arm64-v8a', 'armeabi-v7a']) } }
     signingConfigs {
         debug {
             storeFile file('../.signing/debug.keystore')
