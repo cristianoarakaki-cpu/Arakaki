@@ -21,12 +21,21 @@ shared('https://youtube.com.evil.test/watch?v=aqz-KE-bpKQ');tap('Analisar link')
 assert any('Cole um link HTTPS' in n.get('text','') for n in nodes().iter('node'));capture('01-invalid-link')
 shared('https://www.youtube.com/watch?v=aqz-KE-bpKQ');tap('Analisar link')
 result='timeout'
-for _ in range(50):
- time.sleep(4);texts=[n.get('text','') for n in nodes().iter('node')]
- if any('Áudio M4A' in t or 'Vídeo MP4' in t for t in texts):result='formats-found';break
- if any('Não foi possível analisar' in t for t in texts):result='provider-unavailable';break
-capture('02-youtube-result')
+end=time.monotonic()+115
+while time.monotonic()<end:
+ time.sleep(2)
+ try:
+  xml=ET.fromstring(adb('shell','run-as',package,'cat','shared_prefs/downloads.xml'))
+  status=next((n.text or '' for n in xml if n.get('name')=='status'),'')
+ except (subprocess.CalledProcessError,ET.ParseError):continue
+ if 'Escolha um formato para baixar' in status:result='formats-found';break
+ if 'Não foi possível analisar' in status:result='provider-unavailable';break
+ if not adb('shell','pidof',package).strip():result='app-crashed';break
+time.sleep(1)
+nodes();capture('02-youtube-result')
+logs=adb('logcat','-d','-s','OndaDownload:I','AndroidRuntime:E','*:S').decode(errors='replace')
+(out/'download-logcat.txt').write_text(logs)
+print(logs)
 (out/'live-result.json').write_text(json.dumps({'video':'Blender Big Buck Bunny (CC BY)','result':result,'note':'Live provider availability is separate from native mux and UI assertions.'},indent=2))
-assert result!='timeout','Extractor did not finish within time budget'
-adb('logcat','-d','-s','OndaDownload:I','*:S')
+assert result not in ('timeout','app-crashed'),'Extractor did not finish: '+result
 print('Native download UI passed; live provider:',result)
