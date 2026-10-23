@@ -42,16 +42,13 @@ with wave.open(str(audio),'wb') as wav:
  wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000)
  second=b''.join(struct.pack('<h',int(1000*math.sin(2*math.pi*220*i/8000))) for i in range(8000))
  for _ in range(60):wav.writeframesraw(second)
-adb('push',str(audio),'/sdcard/Music/OndaDemo/Onda-Audio.wav')
-shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Music/OndaDemo/Onda-Audio.wav')
-time.sleep(1)
-shell('content','update','--uri','content://media/external/audio/media','--bind','artist:s:Onda Sessions','--where',"_display_name='Onda-Audio.wav'")
-# A small diverse local library for real DJ queue checks.
-for index in range(2,5):
- name=f'DJ-{index}.wav';remote='/sdcard/Music/OndaDemo/'+name
- adb('push',str(audio),remote)
- shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote);time.sleep(.4)
- shell('content','update','--uri','content://media/external/audio/media','--bind',f'artist:s:DJ Artist {index}','--where',f"_display_name='{name}'")
+# Embed real metadata instead of racing MediaScanner with database-only overrides.
+for title,artist in [('Onda-Audio','Onda Sessions')]+[(f'DJ-{i}',f'DJ Artist {i}') for i in range(2,5)]:
+ name=title+'.mp3';tagged=Path('/tmp')/name;remote='/sdcard/Music/OndaDemo/'+name
+ subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(audio),'-ar','44100','-c:a','libmp3lame','-b:a','64k','-id3v2_version','3','-metadata','title='+title,'-metadata','artist='+artist,str(tagged)],check=True,timeout=60)
+ adb('push',str(tagged),remote)
+ shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file://'+remote)
+ time.sleep(.4)
 shell('mkdir','-p','/sdcard/Movies/OndaDemo')
 for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension;local=Path('/tmp')/filename
