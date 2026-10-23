@@ -1,8 +1,8 @@
 {
   "packageName": "com.folha.pdf",
-  "versionCode": 3,
-  "versionName": "1.1.1",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/folha-v1.1.1/Folha-PDF.apk",
-  "sha256": "9f2170299fe055ca916782c98640817382bf574117e1cfcec2ed6f99c43d754c",
-  "notes": "Girar páginas, PDF para JPG, nome personalizado, compartilhamento e verificação automática de atualizações pelo GitHub. Leitura de PDFs com avaliação dinâmica de código desativada."
+  "versionCode": 4,
+  "versionName": "1.2.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/folha-v1.2.0/Folha-PDF.apk",
+  "sha256": "065d8f0fde361c28fded116f77e8a30871b13e511b83f225be017f73eda98895",
+  "notes": "Novo seletor de tema: Claro, Escuro ou Seguir o sistema. Sua preferência fica salva no celular. Tema aplicado à interface e aos diálogos do app, sem alterar a aparência dos PDFs."
 }

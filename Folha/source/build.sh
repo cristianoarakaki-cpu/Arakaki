@@ -22,5 +22,5 @@ PY
 if [ ! -f build/folha-test.jks ]; then
  /usr/lib/jvm/java-21-openjdk-amd64/bin/keytool -genkeypair -keystore build/folha-test.jks -storepass android -keypass android -alias folha -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Folha PDF, O=Local, C=BR'
 fi
-"$BT/apksigner" sign --ks build/folha-test.jks --ks-key-alias folha --ks-pass pass:android --key-pass pass:android --out /workspace/Folha-PDF-1.1.1.apk build/aligned.apk
-"$BT/apksigner" verify --verbose /workspace/Folha-PDF-1.1.1.apk
+"$BT/apksigner" sign --ks build/folha-test.jks --ks-key-alias folha --ks-pass pass:android --key-pass pass:android --out /workspace/Folha-PDF-1.2.0.apk build/aligned.apk
+"$BT/apksigner" verify --verbose /workspace/Folha-PDF-1.2.0.apk
