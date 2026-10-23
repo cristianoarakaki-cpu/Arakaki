@@ -1,3 +1,7 @@
+## Correção 0.21.1
+
+Preserva nomes de listas e metadados formados apenas por emojis ou símbolos, sem combinar nomes diferentes durante a restauração.
+
 ## Novidades 0.21 — Backup e playlists por voz
 
 Menu → Backup e restauração: exporte playlists, favoritas e frases de voz em JSON usando o seletor de arquivos do Android. O arquivo não contém músicas nem histórico, posição/fila, vídeos ou ajustes de som; copie seus áudios separadamente. Backups não são criptografados. Limite de 8 MB e 20.000 faixas referenciadas; permanecem os limites de 100 listas, 2.000 músicas por lista e 100 frases.
