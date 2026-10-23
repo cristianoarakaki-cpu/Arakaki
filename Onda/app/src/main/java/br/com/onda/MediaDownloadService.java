@@ -19,7 +19,7 @@ public class MediaDownloadService extends Service {
   if(intent==null){stopSelf();return START_NOT_STICKY;}
   if("cancel".equals(intent.getAction())){cancel();return START_NOT_STICKY;}
   if(running)return START_NOT_STICKY;
-  running=true;activeDownload=true;cancelled=false;startedAt=System.currentTimeMillis();
+  running=true;activeDownload=true;cancelled=false;total=0;lastNotice=0;startedAt=System.currentTimeMillis();
   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(CHANNEL,"Downloads do Onda",NotificationManager.IMPORTANCE_LOW));
   startForeground(901,notice("Iniciando download…"));update("Baixando…",true);
   worker.execute(()->download(intent));return START_NOT_STICKY;

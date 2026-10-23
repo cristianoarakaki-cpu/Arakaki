@@ -24,12 +24,12 @@ final class DownloadMux {
     if(chosen<0&&file==second)throw new IOException("Faixa de áudio incompatível");
    }
    if(!audio||(!audioOnly&&!video))throw new IOException("Arquivo sem áudio/vídeo AAC/H.264 compatível");
-   mux.start();started=true;ByteBuffer buffer=ByteBuffer.allocateDirect(8*1024*1024);MediaCodec.BufferInfo info=new MediaCodec.BufferInfo();
+   cancel.check();mux.start();started=true;ByteBuffer buffer=ByteBuffer.allocateDirect(8*1024*1024);MediaCodec.BufferInfo info=new MediaCodec.BufferInfo();
    for(int reader=0;reader<readers.size();reader++){
     MediaExtractor ex=readers.get(reader);Map<Integer,Integer> mapping=maps.get(reader);
     while(true){cancel.check();buffer.clear();int size=ex.readSampleData(buffer,0);if(size<0)break;Integer target=mapping.get(ex.getSampleTrackIndex());if(target==null)throw new IOException("Faixa inesperada");info.set(0,size,Math.max(0,ex.getSampleTime()),(ex.getSampleFlags()&MediaExtractor.SAMPLE_FLAG_SYNC)!=0?MediaCodec.BUFFER_FLAG_KEY_FRAME:0);mux.writeSampleData(target,buffer,info);ex.advance();}
    }
    mux.stop();started=false;
-  }catch(RuntimeException e){throw new IOException("Não foi possível montar o arquivo MP4/M4A.",e);}finally{for(MediaExtractor ex:readers)ex.release();if(mux!=null){if(started)try{mux.stop();}catch(Exception ignored){}mux.release();}}
+  }catch(RuntimeException e){throw new IOException("Não foi possível montar o arquivo MP4/M4A.",e);}finally{for(MediaExtractor ex:readers)ex.release();if(mux!=null){if(started)try{mux.stop();}catch(Exception ignored){}try{mux.release();}catch(RuntimeException ignored){}}}
  }
 }
