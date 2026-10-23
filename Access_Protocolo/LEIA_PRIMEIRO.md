@@ -25,3 +25,19 @@ A tabela tem Matrícula, Nome do Servidor, Cargo e Semestre. Cada linha tem uma 
 Nenhuma referência adicional ao DAO/ADO precisa ser marcada: os objetos são criados por late binding. O módulo usa os componentes padrão do Access/Windows (ADODB.Stream e Scripting.FileSystemObject), sem API específica de 32/64 bits. Não é um arquivo VBS.
 
 Não foi fornecido o banco ACCDB/MDB: o módulo e o procedimento estão preparados para importação, mas o botão ainda precisa ser associado no Access. A execução VBA e o RecordsetClone com o filtro real precisam ser conferidos no Access/Windows. O HTML foi validado no navegador com registros fictícios, caracteres especiais e impressão dos semestres selecionados.
+
+## Atualização R2 — título e recebido
+
+O título inicial é PROTOCOLO_ESTAGIO PROBATORIO_ENFERMAGEM. Na barra superior do HTML, altere o campo Titulo para usar outro texto; o cabeçalho e o título do navegador acompanham a edição e o PDF utiliza o texto escolhido. A alteração vale para aquela página aberta. Para definir outro título inicial na chamada do Access:
+
+```vb
+GerarProtocoloHTML Me, "", "OUTRO TITULO"
+```
+
+Se informar o controle da grade, mantenha seu nome no segundo argumento. A chamada antiga `GerarProtocoloHTML Me` continua funcionando.
+
+O quadro RECEBIDO aparece ao final do documento, depois da tabela, com Data ____/_____/ANO ATUAL e linha de Recebido por. O ano usa a data do computador no Access e é atualizado pelo navegador ao abrir e imprimir. O quadro é mantido inteiro na impressão, sem ficar sobreposto às linhas da tabela; em listas longas aparece ao final, na última página.
+
+Para atualizar uma instalação que já tem o módulo anterior: no editor VBA, remova somente o módulo modProtocoloHTML antigo (guarde uma cópia se desejar) e importe o novo arquivo BAS. Não importe os dois módulos simultaneamente, pois as funções públicas teriam nomes duplicados. O evento do botão pode continuar com a mesma chamada. Gere um novo HTML para receber as alterações.
+
+Verificação R2: edição do título, escape de caracteres, retorno ao título inicial quando vazio, semestre independente por servidor e quadro recebido na impressão foram verificados no Chromium. A validação de execução do VBA continua dependendo do Access/Windows.
