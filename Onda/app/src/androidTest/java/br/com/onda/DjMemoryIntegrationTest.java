@@ -34,5 +34,8 @@ public class DjMemoryIntegrationTest {
    SharedPreferences resume=c.getSharedPreferences("music_resume",0);long deadline=System.currentTimeMillis()+10000;while(System.currentTimeMillis()<deadline&&(!MusicResume.decode(resume.getString("queue","[]")).contains(downloadId)||resume.getLong("position",0)!=12000))Thread.sleep(100);
    assertEquals(Arrays.asList(first.mediaId,downloadId),MusicResume.decode(resume.getString("queue","[]")));assertEquals(1,resume.getInt("index",-1));assertEquals(12000,resume.getLong("position",0));assertEquals("Preferência salva no teste",DjMemory.decode(resume.getString("dj_context","{}")).get(downloadId).reason);
   }finally{ins.runOnMainSync(()->MediaController.releaseFuture(connection[0]));}
+  ins.waitForIdleSync();Thread.sleep(300);SharedPreferences finalState=c.getSharedPreferences("music_resume",0);
+  assertEquals("Controller release changed the persisted queue",Arrays.asList(first.mediaId,downloadId),MusicResume.decode(finalState.getString("queue","[]")));
+  assertEquals(12000,finalState.getLong("position",0));assertTrue(finalState.edit().putBoolean("ci_flushed",true).commit());
  }
 }

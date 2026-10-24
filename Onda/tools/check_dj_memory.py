@@ -8,12 +8,14 @@ assert any(shell('getprop',p).strip()==b'1' for p in ('ro.kernel.qemu','ro.boot.
 def prefs(name):
  root=ET.fromstring(shell('run-as',PACKAGE,'cat','shared_prefs/'+name+'.xml'));return {n.get('name'):(n.text or '') if n.tag=='string' else n.get('value') for n in root}
 fixture=prefs('ci_dj_memory');expected=[fixture['local_id'],fixture['download_id']]
+initial=prefs('music_resume');out=Path('Onda/ui-preview');out.mkdir(exist_ok=True,parents=True);(out/'dj-memory-before-stop.json').write_text(json.dumps(initial,indent=2));assert json.loads(initial['queue'])==expected,('Queue changed before process restart',initial)
 time.sleep(1);shell('am','force-stop',PACKAGE);adb('logcat','-c');shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity')
 for _ in range(40):
  log=adb('logcat','-d','-s','OndaResume:D').decode(errors='replace')
  if 'restored count=2 index=1 position=12000' in log:break
  time.sleep(.25)
-else:raise AssertionError('Mixed queue was not restored: '+log)
+else:
+ (out/'dj-memory-after-failure.json').write_text(json.dumps(prefs('music_resume'),indent=2));(out/'dj-memory-failure-logcat.txt').write_bytes(adb('logcat','-d'));(out/'dj-memory-failure.png').write_bytes(adb('exec-out','screencap','-p'));raise AssertionError('Mixed queue was not restored: '+log)
 def nodes():
  shell('uiautomator','dump','/sdcard/onda-memory.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-memory.xml')).iter('node'))
 def tap_node(node):
