@@ -17,6 +17,7 @@ public class PlaybackService extends MediaSessionService {
     private boolean restoring=true,destroyed;
     private String savedQueue="[]";
     private final Runnable checkpoint=new Runnable(){public void run(){saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
+    private DjSession personalDj;private long historyDuration;private boolean completed;
     private ExoPlayer player;private MediaSession session;private SoundEffects sound;
     private final Handler timer=new Handler(Looper.getMainLooper());
     private final Runnable stop=()->{if(player!=null)player.pause();};
@@ -32,10 +33,11 @@ public class PlaybackService extends MediaSessionService {
             @Override public void onAudioSessionIdChanged(int id){applySound();}
             @Override public void onMediaItemTransition(MediaItem item,int reason){
                 boolean smooth=outgoing&&(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT);cancelFade(false);incoming=smooth&&item!=null&&!item.mediaId.startsWith("catalog:");player.setVolume(incoming?0:baseVolume);
-                resetHistory(item);String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;player.setWakeMode("https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
+                if(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)finishListening();resetHistory(item);String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;player.setWakeMode("https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
             }
             @Override public void onEvents(Player p,Player.Events e){
                 if(e.size()==1&&e.contains(Player.EVENT_VOLUME_CHANGED))return;
+                if(e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)&&p.getPlaybackState()==Player.STATE_ENDED)finishListening();
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
@@ -48,9 +50,11 @@ public class PlaybackService extends MediaSessionService {
                 scheduleFade();
             }
         });
+        personalDj=new DjSession(this,player);
         session=new MediaSession.Builder(this,player).setSessionActivity(PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT)).setCallback(new MediaSession.Callback(){
-            @Override public MediaSession.ConnectionResult onConnect(MediaSession s,MediaSession.ControllerInfo c){return new MediaSession.ConnectionResult.AcceptedResultBuilder(s).setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(new SessionCommand("sleep",Bundle.EMPTY)).add(new SessionCommand("fade",Bundle.EMPTY)).add(new SessionCommand("sound",Bundle.EMPTY)).add(new SessionCommand("sound_status",Bundle.EMPTY)).build()).build();}
+            @Override public MediaSession.ConnectionResult onConnect(MediaSession s,MediaSession.ControllerInfo c){return new MediaSession.ConnectionResult.AcceptedResultBuilder(s).setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(new SessionCommand("sleep",Bundle.EMPTY)).add(new SessionCommand("fade",Bundle.EMPTY)).add(new SessionCommand("sound",Bundle.EMPTY)).add(new SessionCommand("sound_status",Bundle.EMPTY)).add(new SessionCommand(DjSession.COMMAND,Bundle.EMPTY)).build()).build();}
             @Override public ListenableFuture<SessionResult> onCustomCommand(MediaSession s,MediaSession.ControllerInfo c,SessionCommand command,Bundle args){
+                if(command.customAction.equals(DjSession.COMMAND))return personalDj.request(args);
                 if(command.customAction.equals("sound")||command.customAction.equals("sound_status")){if(command.customAction.equals("sound"))applySound();return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS,sound.status()));}
                 if(command.customAction.equals("sleep")){timer.removeCallbacks(stop);int minutes=Math.max(0,Math.min(120,args.getInt("minutes",0)));if(minutes>0)timer.postDelayed(stop,minutes*60000L);}
                 else if(command.customAction.equals("fade")){fadeMs=Math.max(0,Math.min(3000,getSharedPreferences("audio",0).getInt("fade_ms",2000)));cancelFade(true);scheduleFade();}
@@ -76,11 +80,12 @@ public class PlaybackService extends MediaSessionService {
     private void scheduleFade(){timer.removeCallbacks(startFade);if(!player.isPlaying()||outgoing||!eligible()||(!player.hasNextMediaItem()&&player.getRepeatMode()==Player.REPEAT_MODE_OFF))return;long delay=FadeMath.delay(player.getDuration(),player.getCurrentPosition(),player.getPlaybackParameters().speed,fadeMs);if(delay>=0)timer.postDelayed(startFade,delay);}
     private void ramp(float from,float to,long duration){timer.removeCallbacks(rampStep);rampFrom=from;rampTo=to;rampDuration=duration;rampStart=SystemClock.elapsedRealtime();ramping=true;player.setVolume(from);timer.post(rampStep);}
     private void cancelFade(boolean restore){timer.removeCallbacks(startFade);timer.removeCallbacks(rampStep);ramping=false;outgoing=false;if(restore){incoming=false;player.setVolume(baseVolume);}}
-    private void resetHistory(MediaItem item){updateElapsed();timer.removeCallbacks(countListen);heardId=LibraryStore.isLocal(item)?item.mediaId:"";heardMs=0;playingSince=0;counted=false;}
+    private void resetHistory(MediaItem item){updateElapsed();timer.removeCallbacks(countListen);heardId=DjSession.deviceAudio(item)?item.mediaId:"";heardMs=0;playingSince=0;counted=false;completed=false;historyDuration=0;}
     private void updateElapsed(){if(playingSince>0){heardMs+=SystemClock.elapsedRealtime()-playingSince;playingSince=0;}}
     private long listenThreshold(){long duration=player.getDuration();return duration>0?Math.min(30000,Math.max(5000,duration/2)):30000;}
-    private void updateListening(){updateElapsed();timer.removeCallbacks(countListen);if(counted||heardId.isEmpty())return;if(player.isPlaying()){playingSince=SystemClock.elapsedRealtime();timer.postDelayed(countListen,Math.max(0,listenThreshold()-heardMs));}}
-    private void recordListening(){updateElapsed();if(!counted&&!heardId.isEmpty()&&heardMs>=listenThreshold()){LibraryStore.heard(this,heardId);counted=true;}else updateListening();}
+    private void updateListening(){updateElapsed();timer.removeCallbacks(countListen);if(heardId.isEmpty())return;if(player.getDuration()>0)historyDuration=player.getDuration();if(player.isPlaying()){playingSince=SystemClock.elapsedRealtime();if(!counted)timer.postDelayed(countListen,Math.max(0,listenThreshold()-heardMs));}}
+    private void recordListening(){updateElapsed();if(!counted&&!heardId.isEmpty()&&heardMs>=listenThreshold()){LibraryStore.heard(this,heardId);counted=true;}updateListening();}
+    private void finishListening(){updateElapsed();if(!completed&&!heardId.isEmpty()&&ListeningMilestones.reachedEnd(heardMs,historyDuration)){SharedPreferences p=getSharedPreferences("listening",0);String key="complete:"+heardId;p.edit().putInt(key,Math.min(1000000,p.getInt(key,0)+1)).apply();completed=true;}}
     @Override public MediaSession onGetSession(MediaSession.ControllerInfo info){return session;}
-    @Override public void onDestroy(){saveResume(false);destroyed=true;resumeWorker.shutdownNow();timer.removeCallbacksAndMessages(null);if(session!=null)session.release();if(sound!=null)sound.release();if(player!=null)player.release();super.onDestroy();}
+    @Override public void onDestroy(){saveResume(false);destroyed=true;if(personalDj!=null)personalDj.close();resumeWorker.shutdownNow();timer.removeCallbacksAndMessages(null);if(session!=null)session.release();if(sound!=null)sound.release();if(player!=null)player.release();super.onDestroy();}
 }

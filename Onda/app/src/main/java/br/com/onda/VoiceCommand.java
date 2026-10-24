@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -27,6 +27,14 @@ final class VoiceCommand {
         String q=SearchText.normalize(clean);
         // Explicit searches must not execute commands, even for titles such as Favoritas.
         if(q.matches("(?:busque|buscar|pesquise|pesquisar|procure|procurar) .+"))return new VoiceCommand(Action.SEARCH,SearchText.spokenQuery(clean),0);
+        if(q.matches("(?:inicie|iniciar|ative|ativar|abra|abrir) (?:o )?(?:onda )?dj(?: pessoal)?|(?:monte|montar|crie|criar) (?:uma |minha )?sessao(?: personalizada)?"))return of(Action.DJ_PERSONAL);
+        if(q.matches("(?:monte|montar|crie|criar|prepare|preparar) (?:a )?minha viagem|modo viagem"))return of(Action.DJ_TRAVEL);
+        if(q.matches("(?:misture|misturar) (?:os )?meus downloads com (?:as )?musicas antigas|downloads e redescobertas"))return of(Action.DJ_DOWNLOADS);
+        if(q.matches("(?:quero |coloque |traga )?mais variedade(?: nas proximas)?"))return of(Action.DJ_VARIETY);
+        if(q.matches("(?:quero |toque |coloque )?mais (?:desse|deste|do mesmo) artista(?: nas proximas)?"))return of(Action.DJ_ARTIST);
+        if(q.matches("(?:toque |tocar |reproduza |ouvir )?(?:as )?(?:minhas )?(?:musicas )?favoritas sem repetir (?:o )?artista"))return of(Action.DJ_FAVORITES_UNIQUE);
+        if(q.matches("(?:nao repetir|nao repita|sem repetir|evite repetir|evitar repetir) (?:o )?artista(?: nas proximas)?"))return of(Action.DJ_UNIQUE);
+        if(q.matches("por que (?:esta|essa) musica|(?:explique|explicar) (?:esta|essa) (?:escolha|musica)"))return of(Action.DJ_EXPLAIN);
         Matcher add=Pattern.compile("(?iu)^(?:adicione|adicionar|inclua|incluir|salve|salvar|coloque|colocar)\\s+(?:(?:esta|essa|a)\\s+)?(?:m[úu]sica|faixa)\\s+(?:na|em|[àa])\\s+(?:(?:minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);
         if(add.matches())return new VoiceCommand(Action.ADD_PLAYLIST,add.group(1).trim(),0);
         Matcher playlist=Pattern.compile("(?iu)^(?:toque|toca|tocar|reproduza|reproduzir|ouvir|coloque|colocar)\\s+(?:(?:a|minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);

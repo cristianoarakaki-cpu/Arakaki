@@ -1,4 +1,16 @@
-# Onda Música 0.25.1
+# Onda Música 0.26.0 — DJ Pessoal
+
+Menu → DJ Pessoal: prévia com motivo de cada escolha, modos Para você, Só favoritas, Redescobrir, Minha viagem e Downloads e redescobertas. Filas locais de até 60 faixas, sem arquivos repetidos. Downloads podem participar mesmo sem duração indexada pelo Android.
+
+Menu → Ajustar sessão: mais variedade, priorizar o artista atual e evitar repetir artistas identificados nas próximas faixas. Esses ajustes preservam a música atual, sua posição e o estado pausado ou tocando. A fila futura é recalculada somente quando você pede. Favoritas sem repetir artista pode gerar uma fila menor; arquivos sem artista identificado não são tratados como um mesmo artista.
+
+Voz: “inicie o DJ Pessoal”, “monte minha viagem”, “mais variedade”, “mais desse artista”, “não repita artista”, “toque minhas favoritas sem repetir artista”, “misture meus downloads com músicas antigas” e “por que esta música?”. Também podem ser associados a atalhos em Minhas frases. O reconhecimento de fala depende do serviço Android; a interpretação e a seleção são locais, sem API de IA paga. Não há microfone sempre ligado.
+
+Aprendizado: usa favoritas, escutas registradas no Onda e, a partir desta versão, reproduções que chegaram naturalmente ao fim após ouvir pelo menos 80% da duração. Avançar diretamente ao fim não gera uma escuta completa. O histórico anterior não é inventado. “Redescobertas” significa tempo sem ouvir no Onda, não o ano de lançamento da música. Não analisa humor, áudio, BPM ou preferências de outros aplicativos.
+
+Pacote e certificado mantidos para atualizar sem desinstalar. A correção das favoritas dos downloads da versão 0.25.1 continua incluída.
+
+## Histórico — 0.25.1
 
 Corrige favoritas de áudios abertos pelos Downloads: documentos baixados entram na biblioteca do Onda mesmo sem indexação do Android. Recupera o último áudio de versões anteriores preservando a marcação existente. Os novos downloads de áudio são registrados após conclusão, inclusive em playlists.
 

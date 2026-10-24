@@ -203,7 +203,7 @@ tap_text('Restaurar som original');tap('Voltar');tap('Voltar dos fones')
 voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
 # The preview is local and finite; playing must publish the exact generated queue.
-menu_action('Menu da biblioteca','DJ automático')
+menu_action('Menu da biblioteca','DJ Pessoal')
 assert locate('Modo do DJ') is not None
 preview=nodes();dj_rows=[n for n in preview if n.attrib.get('content-desc','').startswith('Ouvir seleção a partir de ')]
 assert len(dj_rows)==4,'DJ did not include the local library'
@@ -222,6 +222,18 @@ assert 'PlaybackState {state=3,' in dj_session,'DJ queue did not start playing'
 assert re.search(r'queue[^\n]*size=4',dj_session,re.I),'DJ did not publish four queue entries: '+dj_session
 voice('pause')
 (OUTPUT/'dj-tests.json').write_text(json.dumps({'queueEntries':4,'favoriteEntries':1,'preview':dj_titles,'played':True},indent=2)+'\n')
+
+# New commands use the same native voice dispatcher as spoken requests.
+menu_action('Menu da biblioteca','Ajustar sessão');tap_text('Por que esta música?')
+assert any('favorit' in n.attrib.get('text','').lower() or 'escuta' in n.attrib.get('text','').lower() or 'variar' in n.attrib.get('text','').lower() for n in nodes()),'DJ did not explain its choice'
+tap_text('Entendi')
+voice('monte minha viagem');time.sleep(.8)
+assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Travel voice session did not start'
+voice('pause')
+voice('toque minhas favoritas sem repetir artista');time.sleep(.8)
+assert re.search(r'queue[^\n]*size=1',shell('dumpsys','media_session').decode(),re.I),'Strict favorites voice session included nonfavorites'
+voice('pause')
+(OUTPUT/'personal-dj-tests.json').write_text(json.dumps({'explanation':True,'travelByVoice':True,'strictFavoritesByVoice':True},indent=2)+'\n')
 
 voice('Onda, toque minhas músicas favoritas, por favor')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'
@@ -254,7 +266,7 @@ voice('pause');voice('remova dos favoritos')
 assert locate('Adicionar aos favoritos') is not None
 voice('toque as favoritas')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode(),'Empty favorites unexpectedly started playback'
-menu_action('Menu da biblioteca','DJ automático');tap('Modo do DJ');tap_text('Só favoritas');time.sleep(.3)
+menu_action('Menu da biblioteca','DJ Pessoal');tap('Modo do DJ');tap_text('Só favoritas');time.sleep(.3)
 assert locate('Tocar seleção do DJ').attrib.get('enabled')=='false','Empty favorites DJ must not play'
 assert any('Nenhuma favorita disponível' in n.attrib.get('text','') for n in nodes())
 tap('Voltar')

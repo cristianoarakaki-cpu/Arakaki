@@ -28,6 +28,8 @@ jobs:
           java -cp /tmp/onda-tests br.com.onda.LrcTest
           javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/SearchText.java Onda/tests/SearchTextTest.java
           java -cp /tmp/onda-tests br.com.onda.SearchTextTest
+          javac -d /tmp/onda-tests Onda/app/src/main/java/br/com/onda/{SearchText,DjPlanner,VoiceCommand,ListeningMilestones}.java Onda/tests/PersonalDjTest.java
+          java -cp /tmp/onda-tests br.com.onda.PersonalDjTest
       - name: Verificar streaming do Internet Archive
         continue-on-error: true
         run: python Onda/tests/check_archive.py
@@ -133,7 +135,7 @@ jobs:
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
-            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (11 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (13 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_downloads.py
       - name: Salvar capturas das telas
         if: always()
