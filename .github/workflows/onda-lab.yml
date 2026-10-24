@@ -94,7 +94,7 @@ jobs:
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w br.com.onda.musica.lab.test/androidx.test.runner.AndroidJUnitRunner > /tmp/lab-tests.txt
             cat /tmp/lab-tests.txt
-            python -c 's=open("/tmp/lab-tests.txt").read(); assert "OK (8 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/lab-tests.txt").read(); assert "OK (9 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_downloads.py
       - name: Salvar evidências
         if: always()
@@ -120,5 +120,5 @@ jobs:
           curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip
           curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/lab-out/LAME-Fontes.zip
           sha256sum Onda/lab-out/Onda-Lab.apk > Onda/lab-out/SHA256SUMS.txt
-          TAG="onda-lab-0.23.0-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" Onda/lab-out/Onda-Lab.apk Onda/lab-out/Onda-Lab-Fontes.zip Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip Onda/lab-out/LAME-Fontes.zip Onda/lab-out/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Onda Lab 0.23.0 • playlists e MP3" --prerelease --latest=false --notes-file Onda/lab-out/notes.md
+          TAG="onda-lab-0.24.0-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" Onda/lab-out/Onda-Lab.apk Onda/lab-out/Onda-Lab-Fontes.zip Onda/lab-out/NewPipeExtractor-v0.26.5-Fontes.zip Onda/lab-out/LAME-Fontes.zip Onda/lab-out/SHA256SUMS.txt --target "$GITHUB_SHA" --title "Onda Lab 0.24.0 • seleção visual de vídeos" --prerelease --latest=false --notes-file Onda/lab-out/notes.md

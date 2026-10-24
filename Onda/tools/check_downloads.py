@@ -52,9 +52,22 @@ while time.monotonic()<end:
 nodes();capture('03-playlist-result')
 assert playlist not in ('timeout','app-crashed'),playlist
 if playlist=='items-found':
- assert any('Baixar seleção em MP3' in n.get('text','') for n in nodes().iter('node'))
- tap('Limpar seleção');tap('Baixar seleção em MP3');time.sleep(.5)
- assert any('Selecione pelo menos um vídeo' in n.get('text','') for n in nodes().iter('node'))
+ assert any(n.get('text')=='Baixar (0)' and n.get('enabled')=='false' for n in nodes().iter('node'))
+ tap('Selecionar tudo');time.sleep(1)
+ tree=nodes();button=next(n.get('text') for n in tree.iter('node') if n.get('text','').startswith('Baixar ('))
+ assert button!='Baixar (0)'
+ tap(button);time.sleep(.5);nodes();capture('04-format-picker')
+ tap('MP3 • áudio a 192 kbps');time.sleep(.5)
+ assert any(n.get('text')=='Escolher pasta' for n in nodes().iter('node'))
+ tap('Cancelar')
+ tap('Limpar');time.sleep(.5)
+ assert any(n.get('text')=='Baixar (0)' and n.get('enabled')=='false' for n in nodes().iter('node'))
+ import re
+ first=next(n for n in nodes().iter('node') if n.get('content-desc','').startswith('Selecionar vídeo 1:'))
+ x1,y1,x2,y2=map(int,re.findall(r'\d+',first.get('bounds')))
+ adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(.5)
+ assert any(n.get('text')=='Baixar (1)' for n in nodes().iter('node'))
+ nodes();capture('05-one-video-selected')
 logs=adb('logcat','-d','-s','OndaDownload:I','AndroidRuntime:E','*:S').decode(errors='replace');(out/'download-logcat.txt').write_text(logs);print(logs)
 (out/'live-result.json').write_text(json.dumps({'video':'Blender Big Buck Bunny (CC BY)','result':result,'playlist':playlist,'note':'Live provider availability is separate from native mux and UI assertions.'},indent=2))
 assert result not in ('timeout','app-crashed'),'Extractor did not finish: '+result

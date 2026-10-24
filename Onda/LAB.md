@@ -1,4 +1,4 @@
-# Onda Lab 0.23.0 — experimento de downloads
+# Onda Lab 0.24.0 — experimento de downloads
 
 Esta edição é instalada como `br.com.onda.musica.lab`, com nome Onda Lab. Não substitui o Onda Música, não compartilha preferências e não publica manifesto no canal estável. Para voltar, abra o Onda Música; para levar playlists, use exportação/importação de backup. Não desinstale o Onda Música.
 
@@ -11,3 +11,11 @@ A extração depende de NewPipe Extractor v0.26.5 e pode falhar por bloqueio de 
 Modificado em 23/10/2026. Esta edição experimental do aplicativo Onda é distribuída como software livre sob GNU GPL versão 3 ou posterior, sem garantia, para cumprir a licença de NewPipe Extractor. A cópia integral está em `app/src/main/assets/COPYING`, acessível pela tela de Downloads → Licença e código-fonte. Dependências preservam suas respectivas licenças (Media3/AndroidX Apache-2.0, LibVLC LGPL-2.1-or-later, NewPipe Extractor GPL-3.0-or-later, LAME GNU Library GPL-2.0-or-later e seus componentes). Não altera licenças nem código de Folha ou de outros diretórios independentes.
 
 Fonte desta edição: https://github.com/cristianoarakaki-cpu/Arakaki/tree/onda-lab-downloads/Onda ; cada release aponta para o commit testado e inclui o arquivo de fontes correspondente. O arquivo de fontes não contém chave privada; uma chave de teste própria pode ser gerada no caminho `Onda/.signing/debug.keystore`, alias androiddebugkey, senhas android. Android SDK36, Java17, Gradle8.11.1; `gradle -p Onda assembleDebug`. Emulador: `-PondaEmulator=true`. NDK 27.2.12479018 e CMake 3.22.1; CMake baixa LAME no commit imutável `1f5cc9487284d5950343aa5d4f70de433468070a` para a compilação, sem alterações em seus fontes; JNI e configuração de compilação estão em `app/src/main/cpp`. A release inclui LAME-Fontes.zip, a licença está no APK como LAME-COPYING e na tela Licença e código-fonte. A conversão usa CPU e mantém apenas blocos PCM limitados na memória; um wake lock com tempo limite existe somente durante uma operação explícita e é liberado ao terminar/cancelar. NewPipe: https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.26.5 ; dependências resolvidas com versões explícitas no Gradle e no POM do extrator.
+
+## Seleção visual (0.24.0)
+
+A playlist abre uma tela própria com miniatura, duração quando informada pelo YouTube, título, marcação individual, selecionar tudo, limpar e botão fixo Baixar (quantidade). A seleção começa vazia e é preservada ao rolar e recriar a tela; o formato é escolhido depois. A fila mantém a ordem original dos vídeos.
+
+Miniaturas HTTPS apenas nos domínios públicos ytimg.com/googleusercontent.com: dois trabalhadores, fila limitada, imagens até 512 KiB, decodificação reduzida, cache em memória de até 8 MiB. Ao sair da tela, o carregamento de imagens é interrompido. Se uma imagem não estiver disponível, a marcação do vídeo continua funcionando.
+
+O relatório agora informa a etapa e o motivo das falhas, inclusive de downloads individuais, com opção de copiar. URLs temporárias e endereços de documentos privados são removidos do diagnóstico. Isso ajuda a investigar o MP3 que não concluiu no celular; não representa uma confirmação de que a causa desse caso específico foi corrigida.
