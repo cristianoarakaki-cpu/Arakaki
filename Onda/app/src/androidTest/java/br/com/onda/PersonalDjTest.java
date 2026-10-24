@@ -24,6 +24,14 @@ public class PersonalDjTest {
    ins.runOnMainSync(()->{assertEquals(current,player[0].getCurrentMediaItem().mediaId);assertEquals(past,player[0].getMediaItemAt(0).mediaId);assertEquals(1234,player[0].getCurrentPosition());assertFalse(player[0].getPlayWhenReady());Set<String> ids=new HashSet<>();for(int i=0;i<player[0].getMediaItemCount();i++)assertTrue(ids.add(player[0].getMediaItemAt(i).mediaId));assertFalse(DjSession.reason(player[0].getMediaItemAt(2)).isEmpty());});
    SessionResult strict=request(session[0],"unique").get(20,TimeUnit.SECONDS);assertTrue(strict.extras.getString("message","").contains("ajustadas"));
    ins.runOnMainSync(()->{Set<String> artists=new HashSet<>();for(int i=0;i<player[0].getMediaItemCount();i++){String key=SearchText.normalize(player[0].getMediaItemAt(i).mediaMetadata.artist);assertTrue(artists.add(key));}assertEquals(current,player[0].getCurrentMediaItem().mediaId);assertEquals(1234,player[0].getCurrentPosition());});
+   ins.runOnMainSync(()->{MediaItem currentItem=player[0].getCurrentMediaItem();player[0].setMediaItem(currentItem.buildUpon().setMediaMetadata(currentItem.mediaMetadata.buildUpon().setArtist("Artista sem outras faixas no teste").build()).build(),1234);});
+   SessionResult noArtist=request(session[0],"artist").get(20,TimeUnit.SECONDS);assertTrue(noArtist.extras.getString("message","").contains("Não há outra música"));
+   ins.runOnMainSync(()->{assertEquals(1,player[0].getMediaItemCount());assertEquals(1234,player[0].getCurrentPosition());assertFalse(player[0].getPlayWhenReady());});
+   // This favorite is the only available artist; strict mode must not leave repeats queued.
+   SharedPreferences prefs=c.getSharedPreferences("library",0);Set<String> saved=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));
+   try{prefs.edit().putStringSet("favorites",Collections.singleton(current)).commit();ins.runOnMainSync(()->{MediaItem item=library.get(1);MediaItem marked=DjSession.explain(item,"Teste",DjPlanner.Mode.FAVORITES);player[0].setMediaItems(Arrays.asList(marked,marked),0,1234);});
+    SessionResult exhausted=request(session[0],"unique").get(20,TimeUnit.SECONDS);assertTrue(exhausted.extras.getString("message","").contains("termina após"));ins.runOnMainSync(()->{assertEquals(1,player[0].getMediaItemCount());assertEquals(1234,player[0].getCurrentPosition());});
+   }finally{prefs.edit().putStringSet("favorites",saved).commit();}
   }finally{ins.runOnMainSync(()->{if(session[0]!=null)session[0].close();if(player[0]!=null)player[0].release();});}
  }
  @Test public void travelExplainsChoicesAndEmptyFavoritesKeepTheQueue()throws Exception{

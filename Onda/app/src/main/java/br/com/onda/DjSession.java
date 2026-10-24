@@ -48,10 +48,12 @@ final class DjSession {
             List<DjPlanner.Song> source=describe(context,library);
             // In strict mode the artist of the playing track is already used.
             if(adjust&&action.equals("unique")&&!priorArtists.isEmpty())source.removeIf(s->priorArtists.contains(s.artistKey()));
+            if(action.equals("artist")&&source.stream().noneMatch(song->!excluded.contains(song.id)&&song.artistKey().equals(artist))){main.post(()->{if(!closed&&ticket==generation)response.set(result("Não há outra música disponível desse artista na biblioteca. A fila foi mantida."));});return;}
             long now=System.currentTimeMillis();List<DjPlanner.Song> chosen=DjPlanner.build(source,mode,limit,SystemClock.elapsedRealtimeNanos(),now,excluded,action.equals("unique")||action.equals("favorites_unique"),action.equals("variety"),action.equals("artist")?artist:"");
             List<MediaItem> next=new ArrayList<>();for(DjPlanner.Song song:chosen){String why=action.equals("artist")&&song.artistKey().equals(artist)?"Artista priorizado por você":DjPlanner.explain(song,mode,now);next.add(explain(items.get(song.id),why,mode));}
             main.post(()->{if(closed||ticket!=generation)return;
                 if(!before.equals(queueIds())||index!=player.getCurrentMediaItemIndex()){response.set(result("A fila mudou enquanto a seleção era montada. Faça o pedido novamente."));return;}
+                if(next.isEmpty()&&adjust&&action.equals("unique")){player.setShuffleModeEnabled(false);player.setRepeatMode(Player.REPEAT_MODE_OFF);player.replaceMediaItems(index+1,player.getMediaItemCount(),Collections.emptyList());response.set(result("Não há outros artistas disponíveis. A sessão termina após a música atual."));return;}
                 if(next.isEmpty()){response.set(result("Não há músicas disponíveis para esse pedido. A fila atual foi mantida."));return;}
                 player.setShuffleModeEnabled(false);player.setRepeatMode(Player.REPEAT_MODE_OFF);
                 if(adjust){player.replaceMediaItems(index+1,player.getMediaItemCount(),next);response.set(result(next.size()+" próximas músicas ajustadas. A música atual continua."));}
