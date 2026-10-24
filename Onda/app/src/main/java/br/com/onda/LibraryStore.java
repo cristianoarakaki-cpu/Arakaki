@@ -20,6 +20,7 @@ final class LibraryStore {
                 songs.add(new MediaItem.Builder().setMediaId(id).setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,c.getLong(0))).setMediaMetadata(new MediaMetadata.Builder().setTitle(name==null?"Sem título":name).setArtist(author==null||author.equals("<unknown>")?"Artista desconhecido":author).setAlbumTitle(album).setExtras(extras).build()).build());
             }
         }
+        DownloadedAudio.merge(context,songs);
         return songs;
     }
     static long number(MediaItem item,String key){Bundle extras=item.mediaMetadata.extras;return extras==null?0:extras.getLong(key,0);}

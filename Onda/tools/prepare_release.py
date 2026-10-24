@@ -29,9 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Downloads, playlists e MP3
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Correção das favoritas de downloads
 
-Atualização do Onda principal, com os avanços que foram testados no Onda Lab. Instale sobre o Onda Música atual, sem desinstalar. Mesmo pacote e certificado: preserva os dados do Onda principal. O Lab é outro aplicativo; para trazer suas listas e frases dele, use Backup e restauração. O backup não inclui os áudios.
+Corrige áudios marcados como favoritos em Abrir último arquivo que não apareciam na lista. Downloads de áudio passam a integrar a biblioteca do Onda mesmo quando a pasta escolhida não foi indexada pelo Android. Recupera o último áudio de versões anteriores e preserva sua marcação. Instale sobre o Onda Música atual, sem desinstalar. Mesmo pacote e certificado: preserva os dados do Onda principal. O Lab é outro aplicativo; para trazer suas listas e frases dele, use Backup e restauração. O backup não inclui os áudios.
 
 Menu → Downloads: links individuais, playlists públicas e Mixes do YouTube; tela de marcação com miniaturas, duração e botão fixo Baixar (quantidade). MP3 real a 192 kbps, M4A e MP4; conversão local sem API paga. Filas de até 100 vídeos, até 50 para Mixes, com MP4 até 720p. Até duas reconexões para quedas transitórias, continuação validada quando aceita pelo servidor, cancelamento preservando os arquivos concluídos e relatório copiável. A disponibilidade dos vídeos depende do YouTube; não há login nem suporte a DRM.
 

@@ -43,6 +43,7 @@ public class MediaDownloadService extends Service {
   try{a=File.createTempFile("onda-download-",".part",getCacheDir());result=File.createTempFile("onda-download-",".out",getCacheDir());fetch(first,a);if(second!=null&&!second.isEmpty()){b=File.createTempFile("onda-download-",".part",getCacheDir());fetch(second,b);}
    if("mp3".equals(format)){stage="Conversão para MP3";update(prefix+"Convertendo para MP3 • 192 kbps…",true);try{Mp3Converter.convert(a,result,192,this::check);}catch(LinkageError e){throw new IOException("O conversor MP3 não pôde ser carregado neste aparelho",e);}}else{stage="Montagem de "+format.toUpperCase(Locale.ROOT);update(prefix+"Montando "+format.toUpperCase(Locale.ROOT)+"…",true);DownloadMux.merge(a,b,result,"m4a".equals(format),this::check);}check();stage="Gravação do arquivo";update(prefix+"Salvando…",true);
    try(InputStream in=new FileInputStream(result);OutputStream out=getContentResolver().openOutputStream(destination,"wt")){if(out==null)throw new IOException("Destino indisponível");byte[] bytes=new byte[65536];int n;while((n=in.read(bytes))!=-1){check();out.write(bytes,0,n);}}check();complete=true;
+   DownloadedAudio.remember(this,destination.toString(),title,mime(format));
    getSharedPreferences("downloads",0).edit().putString("last_uri",destination.toString()).putString("last_title",title).putString("last_mime",mime(format)).apply();
   }finally{for(File f:new File[]{a,b,result})if(f!=null)f.delete();if(!complete)try{DocumentsContract.deleteDocument(getContentResolver(),destination);}catch(Exception ignored){}}
  }

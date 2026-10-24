@@ -133,7 +133,7 @@ jobs:
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
-            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (9 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (11 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_downloads.py
       - name: Salvar capturas das telas
         if: always()

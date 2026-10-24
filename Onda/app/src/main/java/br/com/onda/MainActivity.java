@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
         try{found.addAll(LibraryStore.scan(this));}catch(Exception e){error="Não foi possível ler a biblioteca. Verifique a permissão e tente atualizar.";}
         String message=error;runOnUiThread(()->{if(isDestroyed())return;songs.clear();songs.addAll(found);libraryReady=true;render();if(pendingVoice!=null&&player!=null){String phrase=pendingVoice;pendingVoice=null;handleVoice(phrase);}if(message!=null)status.setText(message);});});}
     private void render(){
-        if(rows==null)return;searchFilter.setText(new String[]{"Filtrar","Música","Artista","Álbum"}[searchScope]);Ui.chip(searchFilter,searchScope!=0);rows.removeAllViews();rowViews.clear();activeRowId="";Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
+        if(rows==null)return;DownloadedAudio.merge(this,songs);searchFilter.setText(new String[]{"Filtrar","Música","Artista","Álbum"}[searchScope]);Ui.chip(searchFilter,searchScope!=0);rows.removeAllViews();rowViews.clear();activeRowId="";Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
         ArrayList<MediaItem> visible=new ArrayList<>();
         for(MediaItem item:songs){
             MediaMetadata m=item.mediaMetadata;
@@ -151,7 +151,7 @@ public class MainActivity extends Activity {
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
     private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted&&!keyboardVisible)handler.post(progress);}
-    @Override protected void onStart(){super.onStart();screenStarted=true;Set<String> latest=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));boolean changed=!latest.equals(favorites);favorites=latest;if(changed)render();refresh();restartProgress();}
+    @Override protected void onStart(){super.onStart();screenStarted=true;Set<String> latest=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));boolean changed=!latest.equals(favorites);favorites=latest;render();refresh();restartProgress();}
     @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
     @Override public void onDestroy(){handler.removeCallbacksAndMessages(null);scanner.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

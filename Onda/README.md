@@ -1,4 +1,6 @@
-# Onda Música 0.25.0
+# Onda Música 0.25.1
+
+Corrige favoritas de áudios abertos pelos Downloads: documentos baixados entram na biblioteca do Onda mesmo sem indexação do Android. Recupera o último áudio de versões anteriores preservando a marcação existente. Os novos downloads de áudio são registrados após conclusão, inclusive em playlists.
 
 Atualização do Onda principal (`br.com.onda.musica`), com os avanços validados no Onda Lab 0.24.1. Mantém o pacote e o certificado para instalar sobre o Onda 0.21.1 sem remover dados. O Onda Lab continua sendo outro aplicativo; dados privados do Lab podem ser transferidos por Backup e restauração, sem copiar automaticamente arquivos de áudio.
 
