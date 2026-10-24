@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Temporizador por músicas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Fila de reprodução
+
+Nova tela Fila de reprodução pelo menu: destaque da faixa atual, próximas músicas, ouvir agora, colocar como próxima, mover para cima/baixo e remover. Segure uma música na biblioteca para adicioná-la como próxima ou no fim sem iniciar o áudio. Alterar a ordem desativa o aleatório. Remover próximas mantém a música atual e desativa a repetição para encerrar depois dela. As alterações são validadas no serviço para evitar comandos desatualizados.
 
 Temporizador: parar ao terminar a música atual ou após 3 ou 5 músicas concluídas, pelo menu. Por voz: “pare ao terminar esta música” e “pare após três músicas”; aceita de 1 a 20. Pular faixas não consome a contagem. Cancelar ou selecionar minutos substitui o temporizador anterior. O temporizador por faixas vale para a sessão atual e não sobrevive ao encerramento do processo. Se a fila terminar antes da contagem, a reprodução termina normalmente.
 

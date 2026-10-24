@@ -20,6 +20,7 @@
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>
         <activity android:name=".BackupActivity" android:exported="false" />
+        <activity android:name=".QueueActivity" android:exported="false" />
         <activity android:name=".PlaylistsActivity" android:exported="false" />
         <activity android:name=".DjActivity" android:exported="false" />
         <activity android:name=".AudioOutputActivity" android:exported="false" />

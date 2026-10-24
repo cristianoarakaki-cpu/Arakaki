@@ -1,4 +1,6 @@
-# Onda Música 0.28.0 — Temporizador por músicas
+# Onda Música 0.29.0 — Fila de reprodução
+
+Nova fila pelo menu: veja a música atual e as próximas, escolha uma faixa para ouvir agora, reorganize ou remova as próximas. Segure uma música na biblioteca para colocá-la como próxima ou no fim da fila, sem iniciar a reprodução. Reorganizar desativa o aleatório; remover todas as próximas também desativa a repetição. Comandos com uma fila desatualizada são recusados pelo serviço.
 
 Menu → Temporizador: ao terminar esta música, após 3 músicas ou após 5 músicas, além dos minutos existentes. Voz: “pare ao terminar esta música” ou “pare após três músicas”. A voz aceita de 1 a 20 faixas. Somente finais naturais contam; pular faixas não consome a contagem. Cancelar ou trocar para minutos substitui o anterior. A fila termina normalmente se tiver menos músicas que o pedido. O temporizador não inicia som e vale somente para o processo atual. Vídeos usam o tocador separado e não são controlados por esse temporizador de áudio. Fechar e abrir o aplicativo mantém a retomada pausada, sem restaurar o temporizador.
 
