@@ -38,8 +38,8 @@ final class DjSession {
             MediaItem current=player.getCurrentMediaItem();if(!deviceAudio(current))return Futures.immediateFuture(result("Escolha uma música do celular ou um download primeiro."));
             Set<String> avoided=avoided(context);if(avoided.size()>=1000&&!avoided.contains(current.mediaId))return Futures.immediateFuture(result("Limite de 1.000 músicas evitadas. Reautorize músicas pelo menu do DJ."));
             generation++;if(pending!=null)pending.cancel(true);if(reply!=null&&!reply.isDone())reply.set(result("Pedido anterior cancelado pela nova preferência."));
-            avoided.add(current.mediaId);Set<String> files=avoidedFiles(context);files.add(DjFiles.key(context,current));context.getSharedPreferences("dj_preferences",0).edit().putStringSet("avoided",avoided).putStringSet("avoided_files",files).apply();
-            for(int i=player.getMediaItemCount()-1;i>player.getCurrentMediaItemIndex();i--)if(!reason(current).isEmpty()&&player.getMediaItemAt(i).mediaId.equals(current.mediaId))player.removeMediaItem(i);
+            avoided.add(current.mediaId);Set<String> files=avoidedFiles(context);String file= DjFiles.key(context,current);files.add(file);context.getSharedPreferences("dj_preferences",0).edit().putStringSet("avoided",avoided).putStringSet("avoided_files",files).apply();
+            for(int i=player.getMediaItemCount()-1;i>player.getCurrentMediaItemIndex();i--)if(!reason(current).isEmpty()&&(player.getMediaItemAt(i).mediaId.equals(current.mediaId)||file.equals(DjFiles.key(context,player.getMediaItemAt(i)))))player.removeMediaItem(i);
             return Futures.immediateFuture(result("Esta música será evitada nas próximas sessões do DJ. A música atual continua e o arquivo fica na biblioteca."));
         }
         if(action.equals("explain")){String reason=reason(player.getCurrentMediaItem());return Futures.immediateFuture(result(reason.isEmpty()?"Não há uma escolha do DJ salva para esta faixa. Inicie uma sessão para ver os motivos.":reason));}
