@@ -339,12 +339,16 @@ capture('08-assistente-ia')
 tap_text('Ativar')
 voice('coloca aquelas musicas que eu mais gosto')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
+# Exercise the video layout with the larger Android font seen in user reports.
+original_font=shell('settings','get','system','font_scale').decode().strip()
+shell('settings','put','system','font_scale','1.5');time.sleep(2)
 entry=point(locate('Abrir biblioteca de vídeos'))
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase','toque Onda Sessions');time.sleep(1)
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Music fixture not playing before video'
 shell('input','tap',*entry);time.sleep(2)
 assert locate('Buscar vídeos por nome') is not None
-pause_point=point(locate('Reproduzir vídeo'))
+assert not any(n.attrib.get('content-desc')=='Reproduzir vídeo' for n in nodes()),'Empty library still reserves playback controls'
+assert locate('Abrir arquivo de vídeo') is not None
 capture('11-biblioteca-videos')
 tap('Menu de vídeos');capture('06-menu-videos');shell('input','keyevent','4');time.sleep(.3)
 results=[]
@@ -356,8 +360,20 @@ try:
     if 'frames Onda-Video.mp4' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
     time.sleep(.3)
  else:raise AssertionError('Initial video did not render')
- shell('input','tap',*pause_point);time.sleep(.5)
- assert locate('Reproduzir vídeo') is not None
+ # Backgrounding must pause playback; inspect the new controls after returning.
+ shell('input','keyevent','3');time.sleep(.5)
+ shell('am','start','-W','-n',PACKAGE+'/br.com.onda.VideoActivity');time.sleep(.7)
+ pause_point=point(locate('Reproduzir vídeo'))
+ capture('30-video-controles-fonte-grande')
+ # Check that each control is fully inside the screen and does not overlap its neighbors.
+ controls=[locate(d) for d in ('Reproduzir vídeo','Tela cheia do vídeo','Legendas do vídeo')]
+ rects=[[int(v) for v in re.findall(r'\d+',n.attrib['bounds'])] for n in controls]
+ screen=adb('shell','wm','size').decode();screen_width,screen_height=map(int,re.findall(r'(\d+)x(\d+)',screen)[-1])
+ for left,top,right,bottom in rects:assert 0<=left<right<=screen_width and 0<=top<bottom<=screen_height,(left,top,right,bottom)
+ assert rects[0][2]<=rects[1][0] and rects[1][2]<=rects[2][0],'Playback buttons overlap'
+ search_bounds=[int(v) for v in re.findall(r'\d+',locate('Buscar vídeos por nome').attrib['bounds'])]
+ assert max(r[3] for r in rects)<=search_bounds[1],'Playback controls overlap search'
+ (OUTPUT/'video-layout-tests.json').write_text(json.dumps({'fontScale':1.5,'emptyLibraryHidesPlayer':True,'openFileShortcut':True,'controlsInsideScreen':True,'controlsDoNotOverlap':True,'searchBelowControls':True},indent=2)+'\n')
  # Gestures on the paused surface do not change global device settings.
  gesture=locate('Área de gestos do vídeo');bounds=[int(v) for v in re.findall(r'\d+',gesture.attrib['bounds'])]
  left,top,right,bottom=bounds;height=bottom-top;adb('logcat','-c')
@@ -471,3 +487,4 @@ finally:
  (OUTPUT/'video-tests.json').write_text(json.dumps(results,indent=2)+'\n')
  (OUTPUT/'video-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
  (OUTPUT/'video-last-screen.png').write_bytes(adb('exec-out','screencap','-p'))
+ shell('settings','put','system','font_scale',original_font if original_font not in ('','null') else '1.0')

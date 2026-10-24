@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Fila de reprodução
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Nova tela de vídeos
+
+Tela de vídeos redesenhada: biblioteca com mais espaço antes de abrir um vídeo, atalho Abrir arquivo, controles por ícones e tempo em uma linha separada. Painel de vídeo com altura adaptável à tela. Botões e busca acomodam fontes maiores do Android. Mantém tela cheia, janela flutuante, legendas, gestos e retomada de posição.
 
 Nova tela Fila de reprodução pelo menu: destaque da faixa atual, próximas músicas, ouvir agora, colocar como próxima, mover para cima/baixo e remover. Segure uma música na biblioteca para adicioná-la como próxima ou no fim sem iniciar o áudio. Alterar a ordem desativa o aleatório. Remover próximas mantém a música atual e desativa a repetição para encerrar depois dela. As alterações são validadas no serviço para evitar comandos desatualizados.
 

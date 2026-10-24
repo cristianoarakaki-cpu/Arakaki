@@ -1,4 +1,6 @@
-# Onda Música 0.29.0 — Fila de reprodução
+# Onda Música 0.30.0 — Nova tela de vídeos
+
+Tela de vídeos reorganizada: sem área preta nem controles inativos antes de escolher um arquivo; atalho Abrir, painel adaptável, tempo separado dos botões e reprodução por ícone. Busca e botões acomodam fontes maiores do Android. Mantidos tela cheia, PiP, legendas, gestos e retomada.
 
 Nova fila pelo menu: veja a música atual e as próximas, escolha uma faixa para ouvir agora, reorganize ou remova as próximas. Segure uma música na biblioteca para colocá-la como próxima ou no fim da fila, sem iniciar a reprodução. Reorganizar desativa o aleatório; remover todas as próximas também desativa a repetição. Comandos com uma fila desatualizada são recusados pelo serviço.
 
