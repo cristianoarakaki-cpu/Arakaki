@@ -19,7 +19,7 @@ final class VoiceCommand {
         boolean search=action==Action.SEARCH||action==Action.PLAY_QUERY||action==Action.PLAY_PLAYLIST||action==Action.ADD_PLAYLIST;
         if(search&&(query.isEmpty()||query.length()>160))throw new IllegalArgumentException("Informe uma música ou artista de até 160 caracteres.");
         if(!search&&!query.isEmpty())throw new IllegalArgumentException("Essa ação não usa busca.");
-        if(action==Action.SLEEP_TRACKS?(minutes<1||minutes>20):(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0)))throw new IllegalArgumentException("Use de 0 a 120 minutos; 0 cancela o temporizador.");
+        if(action==Action.SLEEP_TRACKS?(minutes<1||minutes>20):(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0)))throw new IllegalArgumentException(action==Action.SLEEP_TRACKS?"Use de 1 a 20 músicas.":"Use de 0 a 120 minutos; 0 cancela o temporizador.");
         return new VoiceCommand(action,query,minutes);
     }
     static VoiceCommand parse(String phrase){
