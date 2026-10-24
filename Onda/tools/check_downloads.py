@@ -58,7 +58,8 @@ if playlist=='items-found':
  assert button!='Baixar (0)'
  tap(button);time.sleep(.5);nodes();capture('04-format-picker')
  tap('MP3 • áudio a 192 kbps');time.sleep(.5)
- assert any(n.get('text')=='Escolher pasta' for n in nodes().iter('node'))
+ tree=nodes();capture('04b-folder-confirmation')
+ assert any(n.get('text','').casefold()=='escolher pasta' for n in tree.iter('node'))
  tap('Cancelar')
  tap('Limpar');time.sleep(.5)
  assert any(n.get('text')=='Baixar (0)' and n.get('enabled')=='false' for n in nodes().iter('node'))
