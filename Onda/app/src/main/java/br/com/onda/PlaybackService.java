@@ -18,6 +18,7 @@ public class PlaybackService extends MediaSessionService {
     private String savedQueue="[]";
     private final Runnable checkpoint=new Runnable(){public void run(){saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
     private DjSession personalDj;private long historyDuration;private boolean completed;
+    private final TrackSleep trackSleep=new TrackSleep();
     private ExoPlayer player;private MediaSession session;private SoundEffects sound;
     private final Handler timer=new Handler(Looper.getMainLooper());
     private final Runnable stop=()->{if(player!=null)player.pause();};
@@ -30,6 +31,7 @@ public class PlaybackService extends MediaSessionService {
     @Override public void onCreate(){super.onCreate();sound=new SoundEffects();fadeMs=getSharedPreferences("audio",0).getInt("fade_ms",2000);
         player=new ExoPlayer.Builder(this).build();player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);
         player.addListener(new Player.Listener(){
+            @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
             @Override public void onAudioSessionIdChanged(int id){applySound();}
             @Override public void onMediaItemTransition(MediaItem item,int reason){
                 boolean smooth=outgoing&&(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT);cancelFade(false);incoming=smooth&&item!=null&&!item.mediaId.startsWith("catalog:");player.setVolume(incoming?0:baseVolume);
@@ -37,7 +39,7 @@ public class PlaybackService extends MediaSessionService {
             }
             @Override public void onEvents(Player p,Player.Events e){
                 if(e.size()==1&&e.contains(Player.EVENT_VOLUME_CHANGED))return;
-                if(e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)&&p.getPlaybackState()==Player.STATE_ENDED)finishListening();
+                if(e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)&&p.getPlaybackState()==Player.STATE_ENDED){finishListening();if(trackSleep.remaining()>0){trackSleep.arm(0);player.setPauseAtEndOfMediaItems(false);player.pause();}}
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
@@ -56,7 +58,8 @@ public class PlaybackService extends MediaSessionService {
             @Override public ListenableFuture<SessionResult> onCustomCommand(MediaSession s,MediaSession.ControllerInfo c,SessionCommand command,Bundle args){
                 if(command.customAction.equals(DjSession.COMMAND))return personalDj.request(args);
                 if(command.customAction.equals("sound")||command.customAction.equals("sound_status")){if(command.customAction.equals("sound"))applySound();return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS,sound.status()));}
-                if(command.customAction.equals("sleep")){timer.removeCallbacks(stop);int minutes=Math.max(0,Math.min(120,args.getInt("minutes",0)));if(minutes>0)timer.postDelayed(stop,minutes*60000L);}
+                if(command.customAction.equals("sleep")){timer.removeCallbacks(stop);trackSleep.arm(0);player.setPauseAtEndOfMediaItems(false);
+                    int tracks=Math.max(0,Math.min(20,args.getInt("tracks",0)));if(tracks>0){if(player.getMediaItemCount()==0||player.getPlaybackState()==Player.STATE_ENDED)return Futures.immediateFuture(new SessionResult(SessionError.ERROR_BAD_VALUE));trackSleep.arm(tracks);player.setPauseAtEndOfMediaItems(true);return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));}int minutes=Math.max(0,Math.min(120,args.getInt("minutes",0)));if(minutes>0)timer.postDelayed(stop,minutes*60000L);}
                 else if(command.customAction.equals("fade")){fadeMs=Math.max(0,Math.min(3000,getSharedPreferences("audio",0).getInt("fade_ms",2000)));cancelFade(true);scheduleFade();}
                 else return Futures.immediateFuture(new SessionResult(SessionError.ERROR_NOT_SUPPORTED));return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));}
         }).build();

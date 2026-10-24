@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -19,7 +19,7 @@ final class VoiceCommand {
         boolean search=action==Action.SEARCH||action==Action.PLAY_QUERY||action==Action.PLAY_PLAYLIST||action==Action.ADD_PLAYLIST;
         if(search&&(query.isEmpty()||query.length()>160))throw new IllegalArgumentException("Informe uma música ou artista de até 160 caracteres.");
         if(!search&&!query.isEmpty())throw new IllegalArgumentException("Essa ação não usa busca.");
-        if(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0))throw new IllegalArgumentException("Use de 0 a 120 minutos; 0 cancela o temporizador.");
+        if(action==Action.SLEEP_TRACKS?(minutes<1||minutes>20):(minutes<0||minutes>120||(action!=Action.SLEEP&&minutes!=0)))throw new IllegalArgumentException("Use de 0 a 120 minutos; 0 cancela o temporizador.");
         return new VoiceCommand(action,query,minutes);
     }
     static VoiceCommand parse(String phrase){
@@ -36,6 +36,9 @@ final class VoiceCommand {
         if(q.matches("(?:nao repetir|nao repita|sem repetir|evite repetir|evitar repetir) (?:o )?artista(?: nas proximas)?"))return of(Action.DJ_UNIQUE);
         if(q.matches("(?:evite|evitar) (?:esta|essa) musica|nao (?:recomende|recomendar) (?:esta|essa) musica"))return of(Action.DJ_AVOID);
         if(q.matches("por que (?:esta|essa) musica|(?:explique|explicar) (?:esta|essa) (?:escolha|musica)"))return of(Action.DJ_EXPLAIN);
+        if(q.matches("(?:pare|pause|parar|pausar) (?:ao terminar|no fim|depois d[ae]|apos) (?:esta|essa|a) musica"))return new VoiceCommand(Action.SLEEP_TRACKS,"",1);
+        Matcher tracks=Pattern.compile("^(?:pare|pause|parar|pausar) (?:apos|depois de) (\\d+|uma|duas|tres|cinco|dez) musicas?$").matcher(q);
+        if(tracks.matches()){String n=tracks.group(1);Map<String,Integer> words=Map.of("uma",1,"duas",2,"tres",3,"cinco",5,"dez",10);int count;try{count=Integer.parseInt(n);}catch(NumberFormatException e){count=words.getOrDefault(n,0);}return count>=1&&count<=20?new VoiceCommand(Action.SLEEP_TRACKS,"",count):of(Action.INVALID);}
         Matcher add=Pattern.compile("(?iu)^(?:adicione|adicionar|inclua|incluir|salve|salvar|coloque|colocar)\\s+(?:(?:esta|essa|a)\\s+)?(?:m[úu]sica|faixa)\\s+(?:na|em|[àa])\\s+(?:(?:minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);
         if(add.matches())return new VoiceCommand(Action.ADD_PLAYLIST,add.group(1).trim(),0);
         Matcher playlist=Pattern.compile("(?iu)^(?:toque|toca|tocar|reproduza|reproduzir|ouvir|coloque|colocar)\\s+(?:(?:a|minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);

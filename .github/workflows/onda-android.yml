@@ -135,7 +135,7 @@ jobs:
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
-            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (13 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (15 tests)" in s and "FAILURES" not in s'
             adb shell am instrument -w -e class br.com.onda.DjMemoryIntegrationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-memory-tests.txt
             cat /tmp/onda-memory-tests.txt
             python -c 's=open("/tmp/onda-memory-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'

@@ -30,6 +30,9 @@ final class VoiceControl {
             case REPEAT_ONE:case REPEAT_ALL:case REPEAT_OFF:
                 int mode=command.action==VoiceCommand.Action.REPEAT_ONE?Player.REPEAT_MODE_ONE:command.action==VoiceCommand.Action.REPEAT_ALL?Player.REPEAT_MODE_ALL:Player.REPEAT_MODE_OFF;
                 player.setRepeatMode(mode);say(activity,mode==Player.REPEAT_MODE_ONE?"Repetindo a música atual":mode==Player.REPEAT_MODE_ALL?"Repetindo a fila":"Repetição desativada");break;
+            case SLEEP_TRACKS:
+                if(player.getMediaItemCount()==0||player.getPlaybackState()==Player.STATE_ENDED){say(activity,"Escolha uma música primeiro.");break;}
+                Bundle tracks=new Bundle();tracks.putInt("tracks",command.minutes);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),tracks);say(activity,"Vou pausar após "+command.minutes+" música(s) concluída(s)");break;
             case SLEEP:Bundle args=new Bundle();args.putInt("minutes",command.minutes);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),args);say(activity,command.minutes==0?"Temporizador desativado":"A música vai pausar em "+command.minutes+" minutos");break;
             case INVALID:say(activity,"Diga, por exemplo: pare em 30 minutos. O limite é de 120 minutos.");break;
             default:break;

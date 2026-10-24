@@ -1,4 +1,10 @@
-# Onda Música 0.27.0 — Memória do DJ
+# Onda Música 0.28.0 — Temporizador por músicas
+
+Menu → Temporizador: ao terminar esta música, após 3 músicas ou após 5 músicas, além dos minutos existentes. Voz: “pare ao terminar esta música” ou “pare após três músicas”. A voz aceita de 1 a 20 faixas. Somente finais naturais contam; pular faixas não consome a contagem. Cancelar ou trocar para minutos substitui o anterior. A fila termina normalmente se tiver menos músicas que o pedido. O temporizador não inicia som e vale somente para o processo atual. Vídeos usam o tocador separado e não são controlados por esse temporizador de áudio. Fechar e abrir o aplicativo mantém a retomada pausada, sem restaurar o temporizador.
+
+Usa a pausa nativa de fim de item do Media3, sem consultar a posição continuamente. Testes reais no emulador usam áudio de três segundos e verificam finais naturais e saltos manuais.
+
+## Histórico — Onda Música 0.27.0 — Memória do DJ
 
 Filas com músicas locais e downloads voltam após fechar o aplicativo com a mesma ordem, faixa e posição. O app abre pausado; não inicia som sozinho. O modo e os motivos das escolhas do DJ também são guardados. Retoma referências locais, sem guardar URLs temporárias de streaming. Se o Android não disponibilizar mais uma faixa na biblioteca, a seleção de retomada segue as disponíveis; documentos movidos, apagados ou sem permissão podem exigir localizar o arquivo novamente.
 
