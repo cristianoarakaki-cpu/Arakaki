@@ -24,6 +24,11 @@ def tap(desc):shell('input','tap',*point(locate(desc)));time.sleep(.5)
 def tap_text(text):
     node=next(n for n in nodes() if n.attrib.get('text','').casefold()==text.casefold())
     shell('input','tap',*point(node));time.sleep(.5)
+def dialog_action(label):
+    for _ in range(3):
+        if any(n.attrib.get('text','').casefold()==label.casefold() for n in nodes()):break
+        shell('input','swipe',540,1450,540,700,300);time.sleep(.3)
+    tap_text(label)
 def menu_action(description,label):
     tap(description)
     for _ in range(3):
@@ -234,6 +239,18 @@ voice('toque minhas favoritas sem repetir artista');time.sleep(.8)
 assert re.search(r'queue[^\n]*size=1',shell('dumpsys','media_session').decode(),re.I),'Strict favorites voice session included nonfavorites'
 voice('pause')
 (OUTPUT/'personal-dj-tests.json').write_text(json.dumps({'explanation':True,'travelByVoice':True,'strictFavoritesByVoice':True},indent=2)+'\n')
+
+voice('evite esta música')
+assert locate('Remover dos favoritos') is not None,'Avoid removed favorite'
+menu_action('Menu da biblioteca','Ajustar sessão');dialog_action('Reautorizar músicas evitadas')
+assert any(n.attrib.get('text')=='Reautorizar músicas?' for n in nodes())
+capture('27-dj-preferencia');tap_text('Cancelar')
+avoided=ET.fromstring(shell('run-as',PACKAGE,'cat','shared_prefs/dj_preferences.xml')).find("./set[@name='avoided']")
+assert avoided is not None and len(avoided)==1,'Cancel changed avoidance preference'
+menu_action('Menu da biblioteca','Ajustar sessão');dialog_action('Reautorizar músicas evitadas');tap_text('Reautorizar')
+avoided=ET.fromstring(shell('run-as',PACKAGE,'cat','shared_prefs/dj_preferences.xml')).find("./set[@name='avoided']")
+assert avoided is None or len(avoided)==0,'Reauthorize failed'
+(OUTPUT/'dj-feedback-tests.json').write_text(json.dumps({'avoidByVoice':True,'keepsFavorite':True,'cancelKeepsPreference':True,'reauthorize':True},indent=2)+'\n')
 
 voice('Onda, toque minhas músicas favoritas, por favor')
 assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Favorites command did not play'

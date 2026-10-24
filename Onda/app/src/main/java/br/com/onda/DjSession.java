@@ -17,10 +17,13 @@ final class DjSession {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();private Future<?> pending;private SettableFuture<SessionResult> reply;private int generation;private boolean closed;private DjPlanner.Mode activeMode=DjPlanner.Mode.PERSONAL;
     DjSession(Context context,ExoPlayer player){this.context=context;this.player=player;}
     static List<DjPlanner.Song> describe(Context c,List<MediaItem> library){
-        Set<String> favorites=c.getSharedPreferences("library",0).getStringSet("favorites",Collections.emptySet());Map<String,?> history=c.getSharedPreferences("listening",0).getAll();List<DjPlanner.Song> songs=new ArrayList<>();
-        for(MediaItem item:library){songs.add(new DjPlanner.Song(item.mediaId,String.valueOf(item.mediaMetadata.title),String.valueOf(item.mediaMetadata.artist),LibraryStore.number(item,"durationMs"),number(history,"count:"+item.mediaId).intValue(),number(history,"last:"+item.mediaId).longValue(),favorites.contains(item.mediaId),number(history,"complete:"+item.mediaId).intValue()));}
+        Set<String> avoided=avoided(c);Set<String> favorites=c.getSharedPreferences("library",0).getStringSet("favorites",Collections.emptySet());Map<String,?> history=c.getSharedPreferences("listening",0).getAll();List<DjPlanner.Song> songs=new ArrayList<>();
+        for(MediaItem item:library){if(avoided.contains(item.mediaId))continue;songs.add(new DjPlanner.Song(item.mediaId,String.valueOf(item.mediaMetadata.title),String.valueOf(item.mediaMetadata.artist),LibraryStore.number(item,"durationMs"),number(history,"count:"+item.mediaId).intValue(),number(history,"last:"+item.mediaId).longValue(),favorites.contains(item.mediaId),number(history,"complete:"+item.mediaId).intValue()));}
         return songs;
     }
+    static Set<String> avoided(Context c){return new HashSet<>(c.getSharedPreferences("dj_preferences",0).getStringSet("avoided",Collections.emptySet()));}
+    static String remember(List<MediaItem> queue){Map<String,DjMemory.Cue> cues=new HashMap<>();for(MediaItem item:queue){String why=reason(item);if(!why.isEmpty())cues.put(item.mediaId,new DjMemory.Cue(why,item.mediaMetadata.extras.getInt("dj_mode",0)));}return DjMemory.encode(cues);}
+    static MediaItem restore(MediaItem item,Map<String,DjMemory.Cue> cues){DjMemory.Cue cue=cues.get(item.mediaId);return cue==null?item:explain(item,cue.reason,DjPlanner.Mode.values()[cue.mode]);}
     private static Number number(Map<String,?> data,String key){Object value=data.get(key);return value instanceof Number?(Number)value:0;}
     static MediaItem explain(MediaItem item,String reason){return explain(item,reason,DjPlanner.Mode.PERSONAL);}
     static MediaItem explain(MediaItem item,String reason,DjPlanner.Mode mode){Bundle extras=item.mediaMetadata.extras==null?new Bundle():new Bundle(item.mediaMetadata.extras);extras.putString(REASON,reason);extras.putInt("dj_mode",mode.ordinal());return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build();}
@@ -29,6 +32,15 @@ final class DjSession {
     private List<String> queueIds(){List<String> ids=new ArrayList<>();for(int i=0;i<player.getMediaItemCount();i++)ids.add(player.getMediaItemAt(i).mediaId);return ids;}
     ListenableFuture<SessionResult> request(Bundle args){
         String requested=args.getString("action","start");final String action=requested==null?"start":requested;
+        if(action.equals("reset_avoid")){context.getSharedPreferences("dj_preferences",0).edit().remove("avoided").apply();return Futures.immediateFuture(result("As músicas evitadas voltaram a poder participar das novas sessões. A fila atual foi mantida."));}
+        if(action.equals("avoid")){
+            MediaItem current=player.getCurrentMediaItem();if(!deviceAudio(current))return Futures.immediateFuture(result("Escolha uma música do celular ou um download primeiro."));
+            Set<String> avoided=avoided(context);if(avoided.size()>=1000&&!avoided.contains(current.mediaId))return Futures.immediateFuture(result("Limite de 1.000 músicas evitadas. Reautorize músicas pelo menu do DJ."));
+            generation++;if(pending!=null)pending.cancel(true);if(reply!=null&&!reply.isDone())reply.set(result("Pedido anterior cancelado pela nova preferência."));
+            avoided.add(current.mediaId);context.getSharedPreferences("dj_preferences",0).edit().putStringSet("avoided",avoided).apply();
+            for(int i=player.getMediaItemCount()-1;i>player.getCurrentMediaItemIndex();i--)if(!reason(current).isEmpty()&&player.getMediaItemAt(i).mediaId.equals(current.mediaId))player.removeMediaItem(i);
+            return Futures.immediateFuture(result("Esta música será evitada nas próximas sessões do DJ. A música atual continua e o arquivo fica na biblioteca."));
+        }
         if(action.equals("explain")){String reason=reason(player.getCurrentMediaItem());return Futures.immediateFuture(result(reason.isEmpty()?"Não há uma escolha do DJ salva para esta faixa. Inicie uma sessão para ver os motivos.":reason));}
         if(!Arrays.asList("start","travel","favorites","downloads","variety","artist","unique","favorites_unique").contains(action))return Futures.immediateFuture(new SessionResult(SessionError.ERROR_BAD_VALUE));
         boolean adjust=action.equals("variety")||action.equals("artist")||action.equals("unique");MediaItem current=player.getCurrentMediaItem();
@@ -62,6 +74,6 @@ final class DjSession {
         }catch(Exception e){main.post(()->{if(!closed&&ticket==generation)response.set(result("Não foi possível montar a sessão. Confira o acesso às músicas na biblioteca."));});}});
         return response;
     }
-    static boolean deviceAudio(MediaItem item){return item!=null&&(item.mediaId.matches("\\d+")||item.mediaId.matches("download:-?\\d+"));}
+    static boolean deviceAudio(MediaItem item){return item!=null&&MusicResume.deviceId(item.mediaId);}
     void close(){closed=true;generation++;if(pending!=null)pending.cancel(true);worker.shutdownNow();if(reply!=null&&!reply.isDone())reply.set(result("Sessão encerrada."));main.removeCallbacksAndMessages(null);}
 }

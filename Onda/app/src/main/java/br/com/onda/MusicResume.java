@@ -4,8 +4,9 @@ import java.util.*;
 /** Local IDs only: never persist online URLs or temporary access tokens. */
 final class MusicResume {
  static final int LIMIT=10000;
- static List<String> decode(String raw){List<String> ids=new ArrayList<>();try{JSONArray a=new JSONArray(raw);if(a.length()>LIMIT)return ids;for(int i=0;i<a.length();i++){String id=a.optString(i,"");if(!id.matches("\\d+"))return new ArrayList<>();ids.add(id);}}catch(JSONException e){ids.clear();}return ids;}
- static String encode(List<String> ids){if(ids.size()>LIMIT)return "[]";for(String id:ids)if(id==null||!id.matches("\\d+"))return "[]";return new JSONArray(ids).toString();}
+ static boolean deviceId(String id){return id!=null&&id.matches("(?:\\d{1,20}|download:-?\\d{1,10})");}
+ static List<String> decode(String raw){List<String> ids=new ArrayList<>();if(raw==null||raw.length()>1024*1024)return ids;try{JSONArray a=new JSONArray(raw);if(a.length()>LIMIT)return ids;for(int i=0;i<a.length();i++){String id=a.optString(i,"");if(!deviceId(id))return new ArrayList<>();ids.add(id);}}catch(JSONException e){ids.clear();}return ids;}
+ static String encode(List<String> ids){if(ids.size()>LIMIT)return "[]";for(String id:ids)if(id==null||!deviceId(id))return "[]";return new JSONArray(ids).toString();}
  static final class Selection {final List<String> ids;final int index;final long position;Selection(List<String> ids,int index,long position){this.ids=ids;this.index=index;this.position=position;}}
  static Selection select(List<String> saved,int current,long position,Map<String,Long> available){
   List<String> kept=new ArrayList<>();int target=-1,fallback=-1;boolean exact=false;

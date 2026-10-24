@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -34,6 +34,7 @@ final class VoiceCommand {
         if(q.matches("(?:quero |toque |coloque )?mais (?:desse|deste|do mesmo) artista(?: nas proximas)?"))return of(Action.DJ_ARTIST);
         if(q.matches("(?:toque |tocar |reproduza |ouvir )?(?:as )?(?:minhas )?(?:musicas )?favoritas sem repetir (?:o )?artista"))return of(Action.DJ_FAVORITES_UNIQUE);
         if(q.matches("(?:nao repetir|nao repita|sem repetir|evite repetir|evitar repetir) (?:o )?artista(?: nas proximas)?"))return of(Action.DJ_UNIQUE);
+        if(q.matches("(?:evite|evitar) (?:esta|essa) musica|nao (?:recomende|recomendar) (?:esta|essa) musica"))return of(Action.DJ_AVOID);
         if(q.matches("por que (?:esta|essa) musica|(?:explique|explicar) (?:esta|essa) (?:escolha|musica)"))return of(Action.DJ_EXPLAIN);
         Matcher add=Pattern.compile("(?iu)^(?:adicione|adicionar|inclua|incluir|salve|salvar|coloque|colocar)\\s+(?:(?:esta|essa|a)\\s+)?(?:m[úu]sica|faixa)\\s+(?:na|em|[àa])\\s+(?:(?:minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);
         if(add.matches())return new VoiceCommand(Action.ADD_PLAYLIST,add.group(1).trim(),0);

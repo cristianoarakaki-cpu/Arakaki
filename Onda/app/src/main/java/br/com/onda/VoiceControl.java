@@ -16,8 +16,8 @@ final class VoiceControl {
         if(command.action==VoiceCommand.Action.HELP){VoiceSearch.help(activity);return true;}
         if(player==null){say(activity,"O tocador está iniciando. Tente novamente.");return true;}
         switch(command.action){
-            case DJ_PERSONAL:case DJ_TRAVEL:case DJ_DOWNLOADS:case DJ_VARIETY:case DJ_ARTIST:case DJ_UNIQUE:case DJ_FAVORITES_UNIQUE:case DJ_EXPLAIN:
-                String action=command.action==VoiceCommand.Action.DJ_TRAVEL?"travel":command.action==VoiceCommand.Action.DJ_DOWNLOADS?"downloads":command.action==VoiceCommand.Action.DJ_VARIETY?"variety":command.action==VoiceCommand.Action.DJ_ARTIST?"artist":command.action==VoiceCommand.Action.DJ_UNIQUE?"unique":command.action==VoiceCommand.Action.DJ_FAVORITES_UNIQUE?"favorites_unique":command.action==VoiceCommand.Action.DJ_EXPLAIN?"explain":"start";
+            case DJ_PERSONAL:case DJ_TRAVEL:case DJ_DOWNLOADS:case DJ_VARIETY:case DJ_ARTIST:case DJ_UNIQUE:case DJ_FAVORITES_UNIQUE:case DJ_EXPLAIN:case DJ_AVOID:
+                String action=command.action==VoiceCommand.Action.DJ_TRAVEL?"travel":command.action==VoiceCommand.Action.DJ_DOWNLOADS?"downloads":command.action==VoiceCommand.Action.DJ_VARIETY?"variety":command.action==VoiceCommand.Action.DJ_ARTIST?"artist":command.action==VoiceCommand.Action.DJ_UNIQUE?"unique":command.action==VoiceCommand.Action.DJ_FAVORITES_UNIQUE?"favorites_unique":command.action==VoiceCommand.Action.DJ_EXPLAIN?"explain":command.action==VoiceCommand.Action.DJ_AVOID?"avoid":"start";
                 DjControls.send(activity,player,action,null);break;
             case PLAY:
                 if(player.getMediaItemCount()==0){say(activity,"Escolha uma música primeiro.");break;}

@@ -1,4 +1,14 @@
-# Onda Música 0.26.0 — DJ Pessoal
+# Onda Música 0.27.0 — Memória do DJ
+
+Filas com músicas locais e downloads voltam após fechar o aplicativo com a mesma ordem, faixa e posição. O app abre pausado; não inicia som sozinho. O modo e os motivos das escolhas do DJ também são guardados. Retoma referências locais, sem guardar URLs temporárias de streaming. Se o Android não disponibilizar mais uma faixa na biblioteca, a seleção de retomada segue as disponíveis; documentos movidos, apagados ou sem permissão podem exigir localizar o arquivo novamente.
+
+Menu → Ajustar sessão → Evitar esta música no DJ, ou diga “evite esta música”. A preferência vale para novas seleções do DJ, incluindo os modos de favoritas, e não apaga o arquivo nem remove a favorita. A música atual continua. Repetições futuras da mesma faixa em uma fila do DJ são removidas. As buscas e playlists manuais continuam disponíveis. Até 1.000 faixas evitadas; Reautorizar músicas evitadas permite desfazer a lista com confirmação. Preferências locais não são incluídas no backup de listas/favoritas/frases. Minhas frases inclui a nova ação.
+
+Os motivos são guardados por faixa; se houver várias cópias da mesma referência numa fila manual, compartilham o último motivo salvo. Não há gravação de microfone, servidor de recomendações ou análise contínua. Reconhecimento da fala continua dependente do serviço Android.
+
+Validação: testes de filas mistas e dados inválidos, integração com o serviço real, encerramento e recriação do processo no emulador, posição de 12 segundos e explicação restaurada. Mantém pacote e certificado para atualizar sem desinstalar.
+
+## Histórico — Onda Música 0.26.0 — DJ Pessoal
 
 Menu → DJ Pessoal: prévia com motivo de cada escolha, modos Para você, Só favoritas, Redescobrir, Minha viagem e Downloads e redescobertas. Filas locais de até 60 faixas, sem arquivos repetidos. Downloads podem participar mesmo sem duração indexada pelo Android.
 
