@@ -77,7 +77,7 @@ public class VideoActivity extends Activity {
         receiveView(getIntent());permission(false);
     }
     private void buildUi(){
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setFocusableInTouchMode(true);Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,i)->{int pad=fullscreen||isInPictureInPictureMode()?0:Ui.dp(this,16);root.setPadding(pad,fullscreen||isInPictureInPictureMode()?0:pad+i.getSystemWindowInsetTop(),pad,fullscreen||isInPictureInPictureMode()?0:pad+i.getSystemWindowInsetBottom());return i;});setContentView(root);
         root.getViewTreeObserver().addOnGlobalLayoutListener(()->{
             android.graphics.Rect frame=new android.graphics.Rect();root.getWindowVisibleDisplayFrame(frame);
@@ -145,6 +145,7 @@ public class VideoActivity extends Activity {
         }catch(Exception e){abandonFocus();status.setText("Não foi possível abrir o vídeo. O arquivo pode ter sido removido ou o acesso expirou.");Toast.makeText(this,"Tente selecionar o arquivo novamente.",Toast.LENGTH_LONG).show();closeDescriptor();}
     }
     private void choose(VideoStore.Item item){
+        search.clearFocus();root.requestFocus();android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);if(keyboard!=null)keyboard.hideSoftInputFromWindow(search.getWindowToken(),0);
         if(video!=null&&video.isPlaying())pauseVideo();long saved=VideoProgressStore.read(this,item.uri,item.duration);
         if(saved<=0){open(item,false);return;}if(resumeDialog!=null)resumeDialog.dismiss();
         resumeDialog=new AlertDialog.Builder(this).setTitle("Continuar vídeo?").setMessage(item.title+"\nContinuar de "+VideoText.duration(saved)+"?")

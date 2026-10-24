@@ -361,7 +361,11 @@ try:
     time.sleep(.3)
  else:raise AssertionError('Initial video did not render')
  # Backgrounding must pause playback; inspect the new controls after returning.
- shell('input','keyevent','3');time.sleep(.5)
+ adb('logcat','-c');shell('input','keyevent','3')
+ for _ in range(30):
+    if 'paused at' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    time.sleep(.2)
+ else:raise AssertionError('Video did not pause after Home')
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.VideoActivity');time.sleep(.7)
  pause_point=point(locate('Reproduzir vídeo'))
  capture('30-video-controles-fonte-grande')
