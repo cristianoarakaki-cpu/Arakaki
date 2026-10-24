@@ -28,8 +28,8 @@ final class DjSession {
     private static SessionResult result(String text){Bundle b=new Bundle();b.putString("message",text);return new SessionResult(SessionResult.RESULT_SUCCESS,b);}
     private List<String> queueIds(){List<String> ids=new ArrayList<>();for(int i=0;i<player.getMediaItemCount();i++)ids.add(player.getMediaItemAt(i).mediaId);return ids;}
     ListenableFuture<SessionResult> request(Bundle args){
-        String action=args.getString("action","start");
-        if(action.equals("explain")){String reason=reason(player.getCurrentMediaItem());return Futures.immediateFuture(result(reason.isEmpty()?"Esta música foi escolhida fora do DJ Pessoal.":reason));}
+        String requested=args.getString("action","start");final String action=requested==null?"start":requested;
+        if(action.equals("explain")){String reason=reason(player.getCurrentMediaItem());return Futures.immediateFuture(result(reason.isEmpty()?"Não há uma escolha do DJ salva para esta faixa. Inicie uma sessão para ver os motivos.":reason));}
         if(!Arrays.asList("start","travel","favorites","downloads","variety","artist","unique","favorites_unique").contains(action))return Futures.immediateFuture(new SessionResult(SessionError.ERROR_BAD_VALUE));
         boolean adjust=action.equals("variety")||action.equals("artist")||action.equals("unique");MediaItem current=player.getCurrentMediaItem();
         if(adjust&&(current==null||!deviceAudio(current)))return Futures.immediateFuture(result("Toque uma música do celular ou uma sessão do DJ primeiro."));
@@ -39,6 +39,7 @@ final class DjSession {
         int index=player.getCurrentMediaItemIndex();if(adjust)for(int i=0;i<=index;i++){String key=new DjPlanner.Song("","",String.valueOf(player.getMediaItemAt(i).mediaMetadata.artist),0,0,0,false).artistKey();if(!key.isEmpty())priorArtists.add(key);}List<String> before=queueIds();Set<String> excluded=new HashSet<>();if(adjust)for(int i=0;i<=index;i++)excluded.add(before.get(i));
         int limit=adjust?Math.max(0,60-index-1):30;
         if(limit==0)return Futures.immediateFuture(result("Esta sessão chegou ao limite de 60 músicas. Inicie uma nova sessão."));
+        if(adjust)activeMode=DjPlanner.Mode.PERSONAL;
         if(adjust&&current.mediaMetadata.extras!=null){int m=current.mediaMetadata.extras.getInt("dj_mode",0);activeMode=DjPlanner.Mode.values()[Math.max(0,Math.min(DjPlanner.Mode.values().length-1,m))];}
         DjPlanner.Mode mode=action.equals("favorites")||action.equals("favorites_unique")?DjPlanner.Mode.FAVORITES:action.equals("travel")?DjPlanner.Mode.TRAVEL:action.equals("downloads")?DjPlanner.Mode.DOWNLOADS:adjust?activeMode:DjPlanner.Mode.PERSONAL;
         int ticket=++generation;if(pending!=null)pending.cancel(true);if(reply!=null&&!reply.isDone())reply.set(result("Substituído pelo pedido mais recente."));reply=SettableFuture.create();SettableFuture<SessionResult> response=reply;
