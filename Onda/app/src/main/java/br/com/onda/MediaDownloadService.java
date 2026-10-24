@@ -29,10 +29,14 @@ public class MediaDownloadService extends Service {
  private void update(String message,boolean busy){getSharedPreferences("downloads",0).edit().putString("status",message).putBoolean("busy",busy).apply();if(busy&&!cancelled&&(Build.VERSION.SDK_INT<33||checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)==android.content.pm.PackageManager.PERMISSION_GRANTED))((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(901,notice(message));}
  private void check()throws IOException{if(cancelled||Thread.currentThread().isInterrupted())throw new InterruptedIOException("Cancelado");long now=SystemClock.elapsedRealtime();if(now-startedAt>2*60*60*1000L)throw new InterruptedIOException("Tempo total de 2 horas atingido");if(now-itemStarted>30*60*1000L)throw new IOException("Tempo limite de 30 minutos por arquivo");}
  private void fetch(String link,File target)throws IOException{
-  stage="Download";check();URL url=new URL(link);if(!"https".equalsIgnoreCase(url.getProtocol()))throw new IOException("Link inválido");HttpURLConnection c=(HttpURLConnection)url.openConnection();active=c;
-  try{c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setRequestProperty("User-Agent",ExtractorHttp.AGENT);int code=c.getResponseCode();if(code!=200)throw new IOException("Download recusado (HTTP "+code+")");long expected=c.getContentLengthLong(),copied=0;if(expected>LIMIT-total)throw new IOException("Limite de 512 MB por arquivo");
-   try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(target)){byte[] bytes=new byte[65536];int n;while((n=in.read(bytes))!=-1){check();total+=n;copied+=n;if(total>LIMIT||getCacheDir().getUsableSpace()<32L*1024*1024)throw new IOException("Limite de tamanho ou espaço livre atingido");out.write(bytes,0,n);if(SystemClock.elapsedRealtime()-lastNotice>1000){lastNotice=SystemClock.elapsedRealtime();update(prefix+"Baixados "+total/(1024*1024)+" MB",true);}}}if(copied==0||(expected>=0&&copied!=expected))throw new IOException("Download incompleto");
-  }finally{active=null;c.disconnect();}
+  stage="Download";check();long remaining=LIMIT-total;
+  ResilientDownload.fetch(link,target,remaining,ExtractorHttp.AGENT,new ResilientDownload.Control(){
+   public void check()throws IOException{MediaDownloadService.this.check();}
+   public void opened(HttpURLConnection c){active=c;}
+   public void closed(HttpURLConnection c){if(active==c)active=null;}
+   public void bytes(int count,long stored,long expected)throws IOException{total+=count;check();if(total>LIMIT||getCacheDir().getUsableSpace()<32L*1024*1024)throw new IOException("Limite de transferência ou espaço livre atingido");if(SystemClock.elapsedRealtime()-lastNotice>1000){lastNotice=SystemClock.elapsedRealtime();update(prefix+"Transferidos "+total/(1024*1024)+" MB",true);}}
+   public void retry(int number,long stored)throws IOException{check();update(prefix+"Conexão interrompida • reconectando ("+number+"/2), "+stored/(1024*1024)+" MB preservados…",true);}
+  });
  }
  private void transfer(String first,String second,String format,Uri destination,String title)throws Exception{
   File a=null,b=null,result=null;boolean complete=false;total=0;lastNotice=0;itemStarted=SystemClock.elapsedRealtime();
