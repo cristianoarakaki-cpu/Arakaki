@@ -36,7 +36,7 @@ final class VoiceCommand {
         if(q.matches("(?:nao repetir|nao repita|sem repetir|evite repetir|evitar repetir) (?:o )?artista(?: nas proximas)?"))return of(Action.DJ_UNIQUE);
         if(q.matches("(?:evite|evitar) (?:esta|essa) musica|nao (?:recomende|recomendar) (?:esta|essa) musica"))return of(Action.DJ_AVOID);
         if(q.matches("por que (?:esta|essa) musica|(?:explique|explicar) (?:esta|essa) (?:escolha|musica)"))return of(Action.DJ_EXPLAIN);
-        if(q.matches("(?:pare|pause|parar|pausar) (?:ao terminar|no fim|depois d[ae]|apos) (?:esta|essa|a) musica"))return new VoiceCommand(Action.SLEEP_TRACKS,"",1);
+        if(q.matches("(?:pare|pause|parar|pausar) (?:(?:ao terminar|apos) (?:esta|essa|a) musica|no fim (?:da|desta|dessa) musica|depois (?:da|desta|dessa) musica)"))return new VoiceCommand(Action.SLEEP_TRACKS,"",1);
         Matcher tracks=Pattern.compile("^(?:pare|pause|parar|pausar) (?:apos|depois de) (\\d+|uma|duas|tres|cinco|dez) musicas?$").matcher(q);
         if(tracks.matches()){String n=tracks.group(1);Map<String,Integer> words=Map.of("uma",1,"duas",2,"tres",3,"cinco",5,"dez",10);int count;try{count=Integer.parseInt(n);}catch(NumberFormatException e){count=words.getOrDefault(n,0);}return count>=1&&count<=20?new VoiceCommand(Action.SLEEP_TRACKS,"",count):of(Action.INVALID);}
         Matcher add=Pattern.compile("(?iu)^(?:adicione|adicionar|inclua|incluir|salve|salvar|coloque|colocar)\\s+(?:(?:esta|essa|a)\\s+)?(?:m[úu]sica|faixa)\\s+(?:na|em|[àa])\\s+(?:(?:minha|a\\s+minha)\\s+)?(?:playlist|lista)\\s+(.+)$").matcher(clean);

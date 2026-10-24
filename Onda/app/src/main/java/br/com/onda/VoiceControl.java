@@ -34,7 +34,7 @@ final class VoiceControl {
                 if(player.getMediaItemCount()==0||player.getPlaybackState()==Player.STATE_ENDED){say(activity,"Escolha uma música primeiro.");break;}
                 Bundle tracks=new Bundle();tracks.putInt("tracks",command.minutes);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),tracks);say(activity,"Vou pausar após "+command.minutes+" música(s) concluída(s)");break;
             case SLEEP:Bundle args=new Bundle();args.putInt("minutes",command.minutes);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),args);say(activity,command.minutes==0?"Temporizador desativado":"A música vai pausar em "+command.minutes+" minutos");break;
-            case INVALID:say(activity,"Diga, por exemplo: pare em 30 minutos. O limite é de 120 minutos.");break;
+            case INVALID:say(activity,"Use de 1 a 20 músicas ou de 1 a 120 minutos. Ex.: pare após três músicas.");break;
             default:break;
         }
         return true;
