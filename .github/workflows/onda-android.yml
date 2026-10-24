@@ -9,6 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -17,7 +18,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
@@ -45,6 +46,17 @@ jobs:
           fi
           keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
           python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
+      - name: Compilar a versão anterior para conferir atualização
+        run: |
+          git fetch --no-tags origin refs/tags/onda-v0.21.1:refs/tags/onda-v0.21.1
+          ONDA_OLD_SOURCE="$RUNNER_TEMP/onda-upgrade-source"
+          mkdir -p "$ONDA_OLD_SOURCE"
+          git archive onda-v0.21.1 Onda | tar -x -C "$ONDA_OLD_SOURCE"
+          mkdir -p "$ONDA_OLD_SOURCE/Onda/.signing"
+          cp Onda/.signing/debug.keystore "$ONDA_OLD_SOURCE/Onda/.signing/debug.keystore"
+          gradle --no-daemon -p "$ONDA_OLD_SOURCE/Onda" -PondaEmulator=true assembleDebug
+          mkdir -p Onda/upgrade-fixtures
+          cp "$ONDA_OLD_SOURCE/Onda/app/build/outputs/apk/debug/app-debug.apk" Onda/upgrade-fixtures/Onda-0.21.1-x86_64.apk
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest
       - name: Salvar relatórios de falhas
         if: failure()
@@ -57,7 +69,7 @@ jobs:
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
-          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert re.search(r"package: name=.br[.]com[.]onda[.]musica.",s); print("Pacote independente confirmado")'
+          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert "package: name=\x27br.com.onda.musica\x27 " in s; assert "arm64-v8a" in s and "armeabi-v7a" in s and "x86_64" not in s; print("Pacote independente confirmado")'
       - uses: actions/upload-artifact@v4
         with:
           name: Onda-Android-APK
@@ -89,6 +101,20 @@ jobs:
               output.write(str(directory) + "\n")
           PY
           fi
+      - name: Preparar amostras para os testes de MP3
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root=Path("Onda/app/src/androidTest/assets")
+          root.mkdir(parents=True,exist_ok=True)
+          def run(*args): subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",*args],check=True,timeout=90)
+          run("-f","lavfi","-i","color=c=blue:s=320x180:r=15","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","3","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"combined.mp4"))
+          run("-i",str(root/"combined.mp4"),"-an","-c:v","copy",str(root/"video.mp4"))
+          run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
+          run("-i",str(root/"combined.mp4"),"-vn","-ac","2","-ar","48000","-c:a","aac",str(root/"audio-stereo.m4a"))
+          PY
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
       - name: Habilitar aceleração do emulador
         run: sudo chmod 666 /dev/kvm
       - name: Conferir telas no Android
@@ -101,13 +127,24 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
-          script: python Onda/tools/check_video.py
+          script: |
+            python Onda/tools/check_upgrade.py
+            python Onda/tools/check_video.py
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            cat /tmp/onda-native-tests.txt
+            python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (9 tests)" in s and "FAILURES" not in s'
+            python Onda/tools/check_downloads.py
       - name: Salvar capturas das telas
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Onda-Visual-Preview
-          path: Onda/ui-preview/
+          path: |
+            Onda/ui-preview/
+            Onda/download-preview/
+            /tmp/onda-native-tests.txt
+            Onda/app/build/reports/
 
       - name: Preparar publicação da atualização
         id: update_release
@@ -133,5 +170,9 @@ jobs:
           if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
             echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
           else
-            gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json --target "$GITHUB_SHA" --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md
+            git archive --format=zip --output=Onda/release-out/Onda-Fontes.zip HEAD Onda .github/workflows/onda-android.yml
+            curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
+            sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
+            gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$GITHUB_SHA" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md
           fi

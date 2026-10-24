@@ -1,3 +1,15 @@
+# Onda Música 0.25.0
+
+Atualização do Onda principal (`br.com.onda.musica`), com os avanços validados no Onda Lab 0.24.1. Mantém o pacote e o certificado para instalar sobre o Onda 0.21.1 sem remover dados. O Onda Lab continua sendo outro aplicativo; dados privados do Lab podem ser transferidos por Backup e restauração, sem copiar automaticamente arquivos de áudio.
+
+Menu → Downloads: vídeos individuais, playlists públicas e Mixes do YouTube; seleção com miniaturas, duração, marcação individual e botão fixo Baixar (quantidade). MP3 real a 192 kbps, M4A e MP4; até 100 vídeos por seleção, 50 para Mixes, e MP4 da fila até 720p. Recuperação limitada de quedas, relatório copiável e cancelamento mantendo arquivos concluídos. A disponibilidade dos conteúdos continua sujeita ao YouTube.
+
+Menu → Atualizações consulta o canal do Onda principal e instala mediante confirmação do Android. O APK, manifesto de atualização e fontes são publicados juntos após compilação, testes de atualização de dados, regressão do player e testes dos downloads.
+
+Os detalhes, limites e licenças dos downloads estão em [DOWNLOADS.md](DOWNLOADS.md). Esta edição do aplicativo é software livre sob GNU GPL v3 ou posterior, sem garantia; veja [LICENSE](LICENSE). As dependências mantêm suas respectivas licenças.
+
+## Histórico anterior
+
 ## Correção 0.21.1
 
 Preserva nomes de listas e metadados formados apenas por emojis ou símbolos, sem combinar nomes diferentes durante a restauração.

@@ -1,0 +1,10 @@
+package br.com.onda;
+import org.junit.Test;
+import static org.junit.Assert.*;
+import java.util.*;
+public class DownloadPlaylistTest {
+ @Test public void acceptsMixAndVideoWithPlaylist(){assertEquals("https://www.youtube.com/playlist?list=RDqHZiIxprsrs",DownloadLinks.resolve("https://youtube.com/playlist?list=RDqHZiIxprsrs&playnext=1&si=xyz"));assertTrue(DownloadLinks.isPlaylist(DownloadLinks.resolve("https://www.youtube.com/watch?v=qHZiIxprsrs&list=RDqHZiIxprsrs")));assertFalse(DownloadLinks.isPlaylist(DownloadLinks.resolve("https://youtu.be/qHZiIxprsrs")));}
+ @Test public void rejectsSpoofedHost(){for(String u:new String[]{"https://youtube.com.evil.test/playlist?list=RDqHZiIxprsrs","https://youtube.com@evil.test/playlist?list=RDqHZiIxprsrs","file:///playlist?list=RDqHZiIxprsrs","https://youtube.com/playlist?list=RDqHZiIxprsrs&list=RDqHZiIxprsrs"})try{DownloadLinks.resolve(u);fail(u);}catch(IllegalArgumentException expected){}}
+ @Test public void validatesQueue()throws Exception{List<YoutubeDownloads.Entry> entries=Arrays.asList(new YoutubeDownloads.Entry("A","https://youtu.be/aqz-KE-bpKQ"),new YoutubeDownloads.Entry("B","https://youtu.be/qHZiIxprsrs"));assertEquals(2,DownloadQueue.validate(DownloadQueue.encode(entries)).length());try{DownloadQueue.encode(Arrays.asList(entries.get(0),entries.get(0)));fail();}catch(Exception expected){}try{DownloadQueue.validate("[]");fail();}catch(Exception expected){}}
+ @Test public void batchSelectsMp3AndVideoUpTo720()throws Exception{YoutubeDownloads.Option a=new YoutubeDownloads.Option("Áudio MP3 • 192 kbps","a",null,"mp3","audio/mpeg"),v1=new YoutubeDownloads.Option("Vídeo MP4 • 1080p","v","a","mp4","video/mp4"),v2=new YoutubeDownloads.Option("Vídeo MP4 • 720p","v","a","mp4","video/mp4"),v3=new YoutubeDownloads.Option("Vídeo MP4 • 360p","v",null,"mp4","video/mp4");YoutubeDownloads.Result r=new YoutubeDownloads.Result("Title",Arrays.asList(a,v1,v2,v3));assertSame(a,YoutubeDownloads.choose(r,"mp3"));assertSame(v2,YoutubeDownloads.choose(r,"mp4"));}
+}
