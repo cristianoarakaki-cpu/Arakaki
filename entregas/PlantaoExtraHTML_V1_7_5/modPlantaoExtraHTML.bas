@@ -1,0 +1,2465 @@
+Attribute VB_Name = "modPlantaoExtraHTML"
+Option Compare Database
+Option Explicit
+
+' =====================================================================
+' modPlantaoExtraHTML - V1.7.5
+' Modelo oficial - seleção de servidores aptos por MESMO SETOR + MESMA DATA.
+'
+' Correções desta versão:
+' 1) busca Nome, Matrícula e Cargo de forma mais robusta;
+' 2) Carga horária semanal lida por servidor; usa 40 apenas como fallback se não houver campo disponível;
+' 3) layout fiel ao formulário oficial enviado, com complementos solicitados;
+' 4) borda externa envolvendo frequência + declaração + assinaturas;
+' 5) tabela de justificativa separada como no modelo oficial;
+' 6) continua usando somente o registro atual.
+' 7) Matrícula alinhada à esquerda e Cartão de Ponto centralizado;
+' 8) acrescentado Horário Realizado (Início/Término), em branco para preenchimento;
+' 9) acrescentada Rubrica do Servidor com área ampliada;
+' 10) coluna Nome passa a absorver o espaço disponível sem comprometer a rubrica.
+' 11) painel HTML para selecionar servidores aptos do mesmo Setor + Data;
+' 12) servidor atual vem marcado por padrão;
+' 13) seleção não altera nem grava dados no Access; apenas controla a composição da impressão;
+' 14) justificativa permanece individual para cada servidor selecionado.
+' 15) Central de Impressão: pesquisa registros de outras datas/setores;
+' 16) permite selecionar registros adicionais sem alterar o banco;
+' 17) agrupa automaticamente a impressão por SETOR + DATA;
+' 18) cada grupo gera uma folha própria no mesmo HTML/PDF;
+' 19) mantém o modo simples da V1.5 intacto como comportamento padrão.
+' 20) V1.6.3: Central passa a usar RecordsetClone do formulário;
+' 21) lista exatamente os registros atualmente carregados/exibidos na grade;
+' 22) evita perda de registros causada por RecordSource parametrizado/filtrado.
+' 23) V1.6.4: tenta usar frm_def_aj quando aberto;
+' 24) fallback por DAO localiza automaticamente a tabela real de extras;
+' 25) Central deixa de depender do subformulário de lançamento (1 registro).
+' 26) V1.6.5: removida qualquer dependência de frm_def_aj ou outro formulário;
+' 27) Central consulta exclusivamente a base Access via DAO/SQL;
+' 28) tabela de extras é identificada pela estrutura dos campos e consultada diretamente.
+' 29) V1.6.6: Central carrega somente os Extras do mês da extra atual;
+' 30) filtro mensal é aplicado diretamente na SQL/DAO antes de abrir o recordset;
+' 31) reduz tempo de abertura e quantidade de dados enviados ao HTML.
+' 32) V1.7.0: nova Central Geral independente de registro em lançamento;
+' 33) botão pode abrir Registro Atual, Data Específica ou Intervalo de Datas;
+' 34) modos Data/Intervalo consultam exclusivamente SQL/DAO;
+' 35) HTML em modo Central não exibe folha principal vazia;
+' 36) período é limitado na SQL antes de enviar dados ao navegador.
+' 37) V1.7.1: filtro Nome/CP aceita múltiplos termos separados por vírgula;
+' 38) aceita mistura de CPs e nomes na mesma busca;
+' 39) ignora espaços e vírgulas vazias, mantendo busca parcial por termo.
+' 40) V1.7.2: filtro Setor também aceita múltiplos termos por vírgula;
+' 41) setor continua aceitando busca parcial e ignora espaços extras;
+' 42) filtros de Data + Setor múltiplo + Nome/CP múltiplo permanecem combinados.
+' 43) V1.7.3: corrigido botão Imprimir no modo Central Geral;
+' 44) renderPlanilha passa a aceitar ausência do painel de registro atual;
+' 45) impressão não é interrompida por elementos HTML inexistentes.
+' 46) V1.7.4: identificação da Diretoria/Sigla configurável no próprio HTML;
+' 47) valor padrão DCE, alterável antes da impressão;
+' 48) cabeçalho exibe Setor + ' / ' + identificação configurada;
+' 49) alteração é aplicada à folha atual e a todas as folhas adicionais.
+' 50) V1.7.5: datas inicial/final do HTML preenchidas conforme a chamada;
+' 51) data específica preenche ambos os campos; intervalo preserva os dois limites;
+' 52) registro atual usa a data da extra; filtro HTML compara intervalo inclusivo.
+' =====================================================================
+#If VBA7 Then
+
+    Private Declare PtrSafe Function ShellExecute Lib "shell32.dll" _
+        Alias "ShellExecuteA" ( _
+        ByVal hwnd As LongPtr, _
+        ByVal lpOperation As String, _
+        ByVal lpFile As String, _
+        ByVal lpParameters As String, _
+        ByVal lpDirectory As String, _
+        ByVal nShowCmd As Long) As LongPtr
+
+#Else
+
+    Private Declare Function ShellExecute Lib "shell32.dll" _
+        Alias "ShellExecuteA" ( _
+        ByVal hwnd As Long, _
+        ByVal lpOperation As String, _
+        ByVal lpFile As String, _
+        ByVal lpParameters As String, _
+        ByVal lpDirectory As String, _
+        ByVal nShowCmd As Long) As Long
+
+#End If
+Private Const PASTA_BRASAO As String = "\\Coord-enf03\bd20232\SYSDENF\LogoExtra"
+Private Const NOME_BASE_BRASAO As String = "BrasaoEstado"
+Private Const PASTA_TEMP_NOME As String = "DCE_PlantaoExtra"
+Private Const CARGA_HORARIA_PADRAO As String = "40"
+
+Public Sub AbrirCentralImpressao(ByVal frm As Access.Form)
+
+    On Error GoTo TrataErro
+
+    Dim opcao As String
+    Dim sData As String
+    Dim sInicio As String
+    Dim sFim As String
+    Dim dataInicio As Date
+    Dim dataFim As Date
+
+    opcao = Trim$(InputBox( _
+        "Como deseja gerar a Planilha de Plantão Extra?" & vbCrLf & vbCrLf & _
+        "1 - Data específica" & vbCrLf & _
+        "2 - Intervalo de datas" & vbCrLf & vbCrLf & _
+        "Digite 1 ou 2.", _
+        "Central de Impressão de Plantões Extras", _
+        "1"))
+
+    If Len(opcao) = 0 Then Exit Sub
+
+    Select Case opcao
+
+        Case "1"
+
+            sData = Trim$(InputBox( _
+                    "Informe a data que deseja consultar." & vbCrLf & _
+                    "Formato: dd/mm/aaaa", _
+                    "Data específica", _
+                    Format$(Date, "dd/mm/yyyy")))
+
+            If Len(sData) = 0 Then Exit Sub
+
+            If Not TentarConverterDataBR(sData, dataInicio) Then
+
+                MsgBox "Data inválida. Informe no formato dd/mm/aaaa.", _
+                       vbExclamation, _
+                       "Central de Impressão"
+
+                Exit Sub
+
+            End If
+
+            dataFim = dataInicio
+
+            GerarCentralPorPeriodo frm, dataInicio, dataFim
+
+
+        Case "2"
+
+            sInicio = Trim$(InputBox( _
+                      "Informe a DATA INICIAL." & vbCrLf & _
+                      "Formato: dd/mm/aaaa", _
+                      "Intervalo de datas", _
+                      Format$(Date, "dd/mm/yyyy")))
+
+            If Len(sInicio) = 0 Then Exit Sub
+
+            If Not TentarConverterDataBR(sInicio, dataInicio) Then
+
+                MsgBox "Data inicial inválida. Informe no formato dd/mm/aaaa.", _
+                       vbExclamation, _
+                       "Central de Impressão"
+
+                Exit Sub
+
+            End If
+
+
+            sFim = Trim$(InputBox( _
+                   "Informe a DATA FINAL." & vbCrLf & _
+                   "Formato: dd/mm/aaaa", _
+                   "Intervalo de datas", _
+                   Format$(dataInicio, "dd/mm/yyyy")))
+
+            If Len(sFim) = 0 Then Exit Sub
+
+            If Not TentarConverterDataBR(sFim, dataFim) Then
+
+                MsgBox "Data final inválida. Informe no formato dd/mm/aaaa.", _
+                       vbExclamation, _
+                       "Central de Impressão"
+
+                Exit Sub
+
+            End If
+
+
+            If dataFim < dataInicio Then
+
+                MsgBox "A data final não pode ser anterior à data inicial.", _
+                       vbExclamation, _
+                       "Central de Impressão"
+
+                Exit Sub
+
+            End If
+
+
+            If DateDiff("d", dataInicio, dataFim) > 92 Then
+
+                If MsgBox( _
+                    "O período possui mais de 92 dias." & vbCrLf & vbCrLf & _
+                    "Isso pode aumentar o tempo de carregamento." & vbCrLf & _
+                    "Deseja continuar mesmo assim?", _
+                    vbQuestion + vbYesNo + vbDefaultButton2, _
+                    "Central de Impressão") <> vbYes Then
+
+                    Exit Sub
+
+                End If
+
+            End If
+
+
+            GerarCentralPorPeriodo frm, dataInicio, dataFim
+
+
+        Case Else
+
+            MsgBox "Opção inválida. Digite 1 ou 2.", _
+                   vbExclamation, _
+                   "Central de Impressão"
+
+    End Select
+
+    Exit Sub
+
+
+TrataErro:
+
+    MsgBox "Não foi possível abrir a Central de Impressão." & vbCrLf & vbCrLf & _
+           Err.Number & " - " & Err.Description, _
+           vbCritical, _
+           "Central de Impressão"
+
+End Sub
+Public Sub GerarCentralPorPeriodo( _
+    ByVal frm As Access.Form, _
+    ByVal dataInicio As Date, _
+    ByVal dataFim As Date _
+)
+    On Error GoTo TrataErro
+
+    Dim pastaSaida As String
+    Dim CaminhoHTML As String
+    Dim caminhoBrasaoLocal As String
+    Dim html As String
+
+    pastaSaida = PrepararPastaTemporaria()
+    caminhoBrasaoLocal = CopiarBrasaoParaPasta(pastaSaida)
+
+    html = MontarHtmlComSelecao( _
+           frm, _
+           Null, _
+           caminhoBrasaoLocal, _
+           True, _
+           dataInicio, _
+           dataFim)
+
+    CaminhoHTML = pastaSaida & "\CentralPlantaoExtra_"
+    CaminhoHTML = CaminhoHTML & Format$(dataInicio, "yyyymmdd")
+
+    If dataFim <> dataInicio Then
+        CaminhoHTML = CaminhoHTML & "_a_" & Format$(dataFim, "yyyymmdd")
+    End If
+
+    CaminhoHTML = CaminhoHTML & "_" & Format$(Now(), "hhnnss") & ".html"
+
+    GravarTextoUtf8 CaminhoHTML, html
+    AbrirArquivo CaminhoHTML
+
+    Exit Sub
+
+TrataErro:
+    MsgBox "Não foi possível gerar a Central de Impressão." & vbCrLf & vbCrLf & _
+           Err.Number & " - " & Err.Description, _
+           vbCritical, "Central de Impressão"
+End Sub
+
+Private Function TentarConverterDataBR( _
+    ByVal texto As String, _
+    ByRef Resultado As Date _
+) As Boolean
+
+    On Error GoTo Falha
+
+    Dim p() As String
+    Dim d As Long
+    Dim m As Long
+    Dim a As Long
+    Dim Teste As Date
+
+    texto = Trim$(texto)
+    p = Split(texto, "/")
+
+    If UBound(p) <> 2 Then Exit Function
+
+    d = CLng(p(0))
+    m = CLng(p(1))
+    a = CLng(p(2))
+
+    If a < 100 Then a = 2000 + a
+
+    Teste = DateSerial(a, m, d)
+
+    If day(Teste) <> d Or Month(Teste) <> m Or Year(Teste) <> a Then
+        Exit Function
+    End If
+
+    Resultado = Teste
+    TentarConverterDataBR = True
+    Exit Function
+
+Falha:
+    TentarConverterDataBR = False
+End Function
+
+Public Sub GerarDoFormulario(ByVal frm As Access.Form)
+    On Error GoTo TrataErro
+
+    Dim codigoServidor As Variant
+    Dim pastaSaida As String
+    Dim CaminhoHTML As String
+    Dim caminhoBrasaoLocal As String
+    Dim html As String
+
+    If frm Is Nothing Then
+        Err.Raise vbObjectError + 7300, "modPlantaoExtraHTML", _
+                  "O formulário de origem não foi informado."
+    End If
+
+    codigoServidor = ValorControle(frm, "Codigo do Servidor", Null)
+
+    If IsNull(codigoServidor) Then
+        MsgBox "Não há registro na tela para impressão.", vbExclamation, "Plantão Extra"
+        Exit Sub
+    End If
+
+    If Len(Trim$(Nz(codigoServidor, ""))) = 0 Then
+        MsgBox "Código do servidor inválido ou ausente.", vbExclamation, "Plantão Extra"
+        Exit Sub
+    End If
+
+    pastaSaida = PrepararPastaTemporaria()
+    caminhoBrasaoLocal = CopiarBrasaoParaPasta(pastaSaida)
+
+    html = MontarHtmlComSelecao(frm, codigoServidor, caminhoBrasaoLocal)
+
+    CaminhoHTML = pastaSaida & "\PlantaoExtra_"
+    CaminhoHTML = CaminhoHTML & NomeArquivoSeguro(CStr(codigoServidor))
+    CaminhoHTML = CaminhoHTML & "_" & Format$(Now(), "yyyymmdd_hhnnss") & ".html"
+
+    GravarTextoUtf8 CaminhoHTML, html
+    AbrirArquivo CaminhoHTML
+
+    Exit Sub
+
+TrataErro:
+    MsgBox "Não foi possível gerar o formulário de Plantão Extra." & vbCrLf & vbCrLf & _
+           Err.Number & " - " & Err.Description, vbCritical, "Plantão Extra - HTML"
+End Sub
+
+Private Function MontarHtmlComSelecao( _
+    ByVal frm As Access.Form, _
+    ByVal codigoServidor As Variant, _
+    ByVal caminhoBrasaoLocal As String, _
+    Optional ByVal somenteCentral As Boolean = False, _
+    Optional ByVal dataInicioCentral As Variant, _
+    Optional ByVal dataFimCentral As Variant _
+) As String
+
+    On Error GoTo TrataErro
+
+    Dim Setor As String
+    Dim dataExtra As Variant
+    Dim mesNome As String
+    Dim anoTexto As String
+    Dim diaTexto As String
+    Dim dataExtenso As String
+    Dim dadosJson As String
+    Dim dadosCentralJson As String
+    Dim dataFiltroInicio As String
+    Dim dataFiltroFim As String
+    Dim html As String
+
+    If Not somenteCentral Then
+
+        Setor = PrimeiroTextoNaoVazio( _
+                TextoPorCandidatos(frm, Array("Setor da Extra")), _
+                TextoPorCandidatos(frm, Array("Setor", "Setor do Servidor")))
+
+        dataExtra = ValorControle(frm, "Data da Extra", Null)
+
+        If IsDate(dataExtra) Then
+            mesNome = UCase$(NomeMesPT(Month(CDate(dataExtra))))
+            anoTexto = Format$(CDate(dataExtra), "yyyy")
+            diaTexto = Format$(CDate(dataExtra), "dd/mm/yy")
+            dataExtenso = Format$(CDate(dataExtra), "dd")
+            dataExtenso = dataExtenso & " " & LCase$(NomeMesPT(Month(CDate(dataExtra))))
+            dataExtenso = dataExtenso & " " & Format$(CDate(dataExtra), "yyyy")
+        Else
+            mesNome = ""
+            anoTexto = ""
+            diaTexto = ""
+            dataExtenso = ""
+        End If
+
+        dadosJson = "[" & JsonServidorAtual(frm, codigoServidor, True) & "]"
+        dadosCentralJson = "[]"
+
+    Else
+
+        Setor = ""
+        dataExtra = Null
+        mesNome = ""
+        anoTexto = ""
+        diaTexto = ""
+        dataExtenso = ""
+        dadosJson = "[]"
+
+        dadosCentralJson = MontarJsonCentralPeriodo( _
+                           dataInicioCentral, dataFimCentral)
+
+    End If
+
+    ' Campos type=date exigem ISO (aaaa-mm-dd), independentemente do formato exibido.
+    ' Mesma data nos dois limites representa a chamada por data especifica.
+    If somenteCentral Then
+        If IsDate(dataInicioCentral) Then
+            dataFiltroInicio = Format$(CDate(dataInicioCentral), "yyyy-mm-dd")
+        End If
+        If IsDate(dataFimCentral) Then
+            dataFiltroFim = Format$(CDate(dataFimCentral), "yyyy-mm-dd")
+        End If
+    ElseIf IsDate(dataExtra) Then
+        dataFiltroInicio = Format$(CDate(dataExtra), "yyyy-mm-dd")
+        dataFiltroFim = dataFiltroInicio
+    End If
+
+    html = "<!DOCTYPE html>" & vbCrLf
+    html = html & "<html lang=""pt-BR"">" & vbCrLf
+    html = html & "<head>" & vbCrLf
+    html = html & "<meta charset=""utf-8"">" & vbCrLf
+    html = html & "<meta name=""viewport"" content=""width=device-width,initial-scale=1"">" & vbCrLf
+    html = html & "<title>Planilha de Frequência no Plantão Extra</title>" & vbCrLf
+    html = html & CssDocumento() & vbCrLf
+    html = html & "</head>" & vbCrLf
+    html = html & "<body>" & vbCrLf
+
+    html = html & "<div class=""toolbar no-print"">"
+    html = html & "<div class=""config-diretoria"">"
+    html = html & "<label for=""configDiretoria"">Identificação após Setor:</label>"
+    html = html & "<input id=""configDiretoria"" type=""text"" value=""DCE"" maxlength=""80"" "
+    html = html & "placeholder=""Ex.: DCE ou Diretoria Clínica de Enfermagem"" "
+    html = html & "oninput=""atualizarDiretoria()"">"
+    html = html & "</div>"
+    html = html & "<button onclick=""imprimirPlanilha()"">Imprimir / Salvar em PDF</button>"
+    html = html & "<button onclick=""window.close()"">Fechar</button>"
+    html = html & "</div>" & vbCrLf
+
+    ' Painel de seleção: fica fora da área impressa.
+    If Not somenteCentral Then
+    html = html & "<section class=""painel-selecao no-print"">"
+    html = html & "<div class=""painel-titulo"">Servidores aptos para esta planilha</div>"
+    html = html & "<div class=""painel-contexto""><b>Setor:</b> " & HtmlEncode(Setor)
+    html = html & "&nbsp;&nbsp;&nbsp; <b>Data:</b> " & HtmlEncode(diaTexto) & "</div>"
+    html = html & "<div class=""painel-ajuda"">Somente registros com o mesmo setor e a mesma data são apresentados. "
+    html = html & "Marque os servidores que deverão constar na planilha.</div>"
+    html = html & "<div class=""painel-acoes"">"
+    html = html & "<button type=""button"" onclick=""marcarTodos(true)"">Selecionar todos</button>"
+    html = html & "<button type=""button"" class=""secundario"" onclick=""marcarTodos(false)"">Limpar seleção</button>"
+    html = html & "<span class=""contador""><b id=""qtdSelecionados"">0</b> selecionado(s)</span>"
+    html = html & "</div>"
+    html = html & "<div id=""listaServidores"" class=""lista-servidores""></div>"
+    html = html & "</section>" & vbCrLf
+
+    End If
+
+    ' Central de impressão: permite incluir registros de outros setores/datas.
+    html = html & "<section class=""central-impressao no-print"">"
+    html = html & "<div class=""central-cabecalho"">"
+    html = html & "<div>"
+    If somenteCentral Then
+        html = html & "<div class=""painel-titulo"">Central Geral de Impressão de Plantões Extras</div>"
+    Else
+        html = html & "<div class=""painel-titulo"">Central de impressão de outros plantões</div>"
+    End If
+    html = html & "<div class=""painel-ajuda"">Pesquise e selecione outros registros já cadastrados. "
+    html = html & "Na impressão, os registros serão separados automaticamente por Setor + Data.</div>"
+    If somenteCentral Then
+        html = html & "<div class=""painel-contexto""><b>Período carregado:</b> "
+        html = html & HtmlEncode(Format$(CDate(dataInicioCentral), "dd/mm/yyyy"))
+        html = html & " até "
+        html = html & HtmlEncode(Format$(CDate(dataFimCentral), "dd/mm/yyyy"))
+        html = html & "</div>"
+    End If
+    html = html & "</div>"
+    html = html & "<button type=""button"" class=""btn-expandir"" onclick=""alternarCentral()"">Mostrar / ocultar</button>"
+    html = html & "</div>"
+
+    If somenteCentral Then
+        html = html & "<div id=""conteudoCentral"" class=""conteudo-central"" style=""display:block"">"
+    Else
+        html = html & "<div id=""conteudoCentral"" class=""conteudo-central"" style=""display:none"">"
+    End If
+    html = html & "<div class=""filtros-central"">"
+    html = html & "<label class=""filtro-data-central"" for=""filtroDataInicio"">Data inicial"
+    html = html & "<input id=""filtroDataInicio"" type=""date"" value=""" & HtmlEncode(dataFiltroInicio) & """ oninput=""filtrarCentral()"" title=""Data inicial""></label>"
+    html = html & "<label class=""filtro-data-central"" for=""filtroDataFim"">Data final"
+    html = html & "<input id=""filtroDataFim"" type=""date"" value=""" & HtmlEncode(dataFiltroFim) & """ oninput=""filtrarCentral()"" title=""Data final""></label>"
+    html = html & "<input id=""filtroSetor"" type=""text"" placeholder=""Setor (vários: separe por vírgula)"" oninput=""filtrarCentral()"">"
+    html = html & "<input id=""filtroNome"" type=""text"" placeholder=""Nome ou CP (vários: separe por vírgula)"" oninput=""filtrarCentral()"">"
+    html = html & "<button type=""button"" onclick=""limparFiltrosCentral()"">Limpar filtros</button>"
+    html = html & "</div>"
+    html = html & "<div class=""central-acoes"">"
+    html = html & "<button type=""button"" onclick=""selecionarVisiveisCentral(true)"">Marcar visíveis</button>"
+    html = html & "<button type=""button"" class=""secundario"" onclick=""selecionarVisiveisCentral(false)"">Desmarcar visíveis</button>"
+    html = html & "<span class=""contador""><b id=""qtdCentralSelecionados"">0</b> registro(s) adicional(is)</span>"
+    html = html & "</div>"
+    html = html & "<div class=""tabela-central-wrap"">"
+    html = html & "<table class=""tabela-central"">"
+    html = html & "<thead><tr>"
+    html = html & "<th></th><th>Data</th><th>Setor</th><th>CP</th><th>Nome</th><th>Cargo</th><th>Horário</th>"
+    html = html & "</tr></thead>"
+    html = html & "<tbody id=""corpoCentral""></tbody>"
+    html = html & "</table>"
+    html = html & "</div>"
+    html = html & "<div class=""resumo-grupos"" id=""resumoGrupos""></div>"
+    html = html & "</div>"
+    html = html & "</section>" & vbCrLf
+
+    html = html & "<div id=""areaImpressao"">" & vbCrLf
+    If somenteCentral Then
+        html = html & "<main class=""folha folha-principal"" data-grupo=""principal"" style=""display:none"">" & vbCrLf
+    Else
+        html = html & "<main class=""folha folha-principal"" data-grupo=""principal"">" & vbCrLf
+    End If
+
+    html = html & "<div class=""anexo"">ANEXO II AO DECRETO Nº 12.755, DE 22 DE MAIO DE 2009.</div>" & vbCrLf
+
+    html = html & "<table class=""cabecalho-oficial"">"
+    html = html & "<tr>"
+    html = html & "<td class=""logo-oficial"">"
+    If Len(caminhoBrasaoLocal) > 0 Then
+        html = html & "<img src=""brasao.png"" alt=""Brasão do Estado"">"
+    End If
+    html = html & "</td>"
+    html = html & "<td class=""estado-oficial"">Estado de Mato Grosso do Sul</td>"
+    html = html & "<td class=""titulo-oficial"">PLANILHA DE FREQUÊNCIA NO PLANTÃO EXTRA</td>"
+    html = html & "</tr>"
+    html = html & "</table>" & vbCrLf
+
+    html = html & "<table class=""identificacao-oficial"">"
+    html = html & "<tr>"
+    html = html & "<td colspan=""6""><b>Órgão ou Entidade:</b>&nbsp; FUNDAÇÃO SERVIÇOS DE SAÚDE</td>"
+    html = html & "</tr>"
+    html = html & "<tr>"
+    html = html & "<td colspan=""4""><b>Unidade:</b>&nbsp; HOSPITAL REGIONAL DE MATO GROSSO DO SUL</td>"
+    html = html & "<td colspan=""2""><b>Setor:</b>&nbsp; "
+    html = html & "<span id=""setorPrincipalCabecalho"" data-setor=""" & HtmlEncode(Setor) & """>"
+    html = html & HtmlEncode(Setor)
+    html = html & IIf(Len(Trim$(Setor)) > 0, " / DCE", "DCE")
+    html = html & "</span></td>"
+    html = html & "</tr>"
+    html = html & "<tr>"
+    html = html & "<td colspan=""2""><b>Mês:</b>&nbsp; " & HtmlEncode(mesNome) & "</td>"
+    html = html & "<td colspan=""2""><b>Ano:</b>&nbsp; " & HtmlEncode(anoTexto) & "</td>"
+    html = html & "<td colspan=""2""><b>Dia:</b>&nbsp; " & HtmlEncode(diaTexto) & "</td>"
+    html = html & "</tr>"
+    html = html & "</table>" & vbCrLf
+
+    html = html & "<div class=""bloco-central"">" & vbCrLf
+
+    html = html & "<table class=""frequencia"">"
+    html = html & "<colgroup>"
+    html = html & "<col class=""c-matricula"">"
+    html = html & "<col class=""c-cp"">"
+    html = html & "<col class=""c-nome"">"
+    html = html & "<col class=""c-carga"">"
+    html = html & "<col class=""c-cargo"">"
+    html = html & "<col class=""c-inicio"">"
+    html = html & "<col class=""c-termino"">"
+    html = html & "<col class=""c-real-inicio"">"
+    html = html & "<col class=""c-real-termino"">"
+    html = html & "<col class=""c-rubrica"">"
+    html = html & "</colgroup>"
+
+    html = html & "<thead>"
+    html = html & "<tr>"
+    html = html & "<th class=""h-matricula"" rowspan=""2"">Matrícula</th>"
+    html = html & "<th class=""h-cp"" rowspan=""2"">Cartão<br>de<br>Ponto</th>"
+    html = html & "<th rowspan=""2"">Nome dos Servidores</th>"
+    html = html & "<th rowspan=""2"">Carga<br>horária<br>semanal</th>"
+    html = html & "<th rowspan=""2"">Cargo/Função</th>"
+    html = html & "<th colspan=""2"">Horário Plantão</th>"
+    html = html & "<th colspan=""2"">Horário Realizado</th>"
+    html = html & "<th rowspan=""2"">Rubrica do<br>Servidor</th>"
+    html = html & "</tr>"
+    html = html & "<tr>"
+    html = html & "<th>Início</th>"
+    html = html & "<th>Término</th>"
+    html = html & "<th>Início</th>"
+    html = html & "<th>Término</th>"
+    html = html & "</tr>"
+    html = html & "</thead>"
+    html = html & "<tbody id=""corpoFrequencia""></tbody>"
+    html = html & "</table>" & vbCrLf
+
+    html = html & "<div class=""declaracao"">"
+    html = html & "Assumimos inteira responsabilidade sobre a veracidade das informações aqui expressas, sob as penas da lei."
+    html = html & "</div>" & vbCrLf
+
+    html = html & "<div class=""data-local"">"
+    html = html & "Campo Grande&nbsp;&nbsp;&nbsp;&nbsp;"
+    html = html & HtmlEncode(dataExtenso)
+    html = html & "</div>" & vbCrLf
+
+    html = html & "<div class=""area-assinaturas"">"
+    html = html & "<div class=""assinatura esquerda"">"
+    html = html & "<div class=""linha-assinatura""></div>"
+    html = html & "<div>Responsável pela Unidade</div>"
+    html = html & "</div>"
+    html = html & "<div class=""assinatura direita"">"
+    html = html & "<div class=""linha-assinatura""></div>"
+    html = html & "<div>Chefia Imediata</div>"
+    html = html & "</div>"
+    html = html & "</div>" & vbCrLf
+
+    html = html & "</div>" & vbCrLf
+
+    html = html & "<table class=""justificativa-oficial"">"
+    html = html & "<colgroup><col class=""c-just-cp""><col class=""c-just-texto""></colgroup>"
+    html = html & "<thead><tr>"
+    html = html & "<th>CP</th>"
+    html = html & "<th>JUSTIFICATIVA</th>"
+    html = html & "</tr></thead>"
+    html = html & "<tbody id=""corpoJustificativa""></tbody>"
+    html = html & "</table>" & vbCrLf
+
+    html = html & "</main>" & vbCrLf
+    html = html & "<div id=""folhasAdicionais""></div>" & vbCrLf
+    html = html & "</div>" & vbCrLf
+
+
+    ' Dados e comportamento são locais/offline. Nenhuma informação é enviada para a internet.
+    html = html & "<script>" & vbCrLf
+    html = html & "const servidores=" & dadosJson & ";" & vbCrLf
+    html = html & "const registrosCentral=" & dadosCentralJson & ";" & vbCrLf
+    html = html & "function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/""/g,'&quot;').replace(/'/g,'&#39;');}" & vbCrLf
+    html = html & "function valorDiretoria(){" & vbCrLf
+    html = html & "  const el=document.getElementById('configDiretoria');" & vbCrLf
+    html = html & "  return el?String(el.value||'').trim():'DCE';" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function setorComDiretoria(setor){" & vbCrLf
+    html = html & "  const s=String(setor||'').trim();" & vbCrLf
+    html = html & "  const d=valorDiretoria();" & vbCrLf
+    html = html & "  if(!d) return s;" & vbCrLf
+    html = html & "  if(!s) return d;" & vbCrLf
+    html = html & "  return s+' / '+d;" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function atualizarDiretoria(){" & vbCrLf
+    html = html & "  const p=document.getElementById('setorPrincipalCabecalho');" & vbCrLf
+    html = html & "  if(p) p.textContent=setorComDiretoria(p.dataset.setor||'');" & vbCrLf
+    html = html & "  renderFolhasAdicionais();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function selecionados(){return servidores.filter((s,i)=>{const c=document.getElementById('srv_'+i);return c&&c.checked;});}" & vbCrLf
+    html = html & "function renderLista(){" & vbCrLf
+    html = html & "  const l=document.getElementById('listaServidores');" & vbCrLf
+    html = html & "  l.innerHTML='';" & vbCrLf
+    html = html & "  servidores.forEach((s,i)=>{" & vbCrLf
+    html = html & "    const d=document.createElement('label');" & vbCrLf
+    html = html & "    d.className='item-servidor';" & vbCrLf
+    html = html & "    d.innerHTML='<input type=""checkbox"" id=""srv_'+i+'"" '+(s.selecionado?'checked':'')+' onchange=""renderPlanilha()"">'" & vbCrLf
+    html = html & "      +'<span class=""item-nome"">'+esc(s.nome)+'</span>'" & vbCrLf
+    html = html & "      +'<span>CP '+esc(s.cp)+'</span>'" & vbCrLf
+    html = html & "      +'<span>'+esc(s.entrada)+'–'+esc(s.saida)+'</span>';" & vbCrLf
+    html = html & "    l.appendChild(d);" & vbCrLf
+    html = html & "  });" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function renderPlanilha(){" & vbCrLf
+    html = html & "  const a=selecionados();" & vbCrLf
+    html = html & "  const qtd=document.getElementById('qtdSelecionados');" & vbCrLf
+    html = html & "  const corpoFreq=document.getElementById('corpoFrequencia');" & vbCrLf
+    html = html & "  const corpoJust=document.getElementById('corpoJustificativa');" & vbCrLf
+    html = html & "  if(qtd) qtd.textContent=a.length;" & vbCrLf
+    html = html & "  if(!corpoFreq||!corpoJust) return;" & vbCrLf
+    html = html & "  corpoFreq.innerHTML=a.map(s=>" & vbCrLf
+    html = html & "    '<tr class=""linha-servidor"">'" & vbCrLf
+    html = html & "    +'<td class=""matricula-servidor"">'+esc(s.matricula)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""cp-servidor"">'+esc(s.cp)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""nome-servidor"">'+esc(s.nome)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.carga)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro cargo-servidor"">'+esc(s.cargo)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.entrada)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.saida)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro horario-realizado"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro horario-realizado"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'<td class=""rubrica-servidor"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'</tr>'" & vbCrLf
+    html = html & "  ).join('');" & vbCrLf
+    html = html & "  corpoJust.innerHTML=a.map(s=>" & vbCrLf
+    html = html & "    '<tr><td>'+esc(s.cp)+'</td><td>'+esc(s.justificativa)+'</td></tr>'" & vbCrLf
+    html = html & "  ).join('');" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function marcarTodos(v){" & vbCrLf
+    html = html & "  document.querySelectorAll('#listaServidores input[type=checkbox]').forEach(c=>c.checked=v);" & vbCrLf
+    html = html & "  renderPlanilha();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function imprimirPlanilha(){" & vbCrLf
+    html = html & "  const atuais=selecionados();" & vbCrLf
+    html = html & "  const adicionais=centralSelecionados();" & vbCrLf
+    html = html & "  if(atuais.length===0 && adicionais.length===0){" & vbCrLf
+    html = html & "    alert('Selecione pelo menos um servidor para gerar a planilha.');" & vbCrLf
+    html = html & "    return;" & vbCrLf
+    html = html & "  }" & vbCrLf
+    html = html & "  if(document.getElementById('corpoFrequencia')) renderPlanilha();" & vbCrLf
+    html = html & "  renderFolhasAdicionais();" & vbCrLf
+    html = html & "  setTimeout(()=>window.print(),50);" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function alternarCentral(){" & vbCrLf
+    html = html & "  const c=document.getElementById('conteudoCentral');" & vbCrLf
+    html = html & "  c.style.display=(c.style.display==='none'?'block':'none');" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function normaliza(v){return String(v==null?'':v).toLocaleLowerCase('pt-BR');}" & vbCrLf
+    html = html & "function centralFiltrados(){" & vbCrLf
+    html = html & "  const fi=document.getElementById('filtroDataInicio').value;" & vbCrLf
+    html = html & "  const ff=document.getElementById('filtroDataFim').value;" & vbCrLf
+    html = html & "  const brutoSetor=document.getElementById('filtroSetor').value;" & vbCrLf
+    html = html & "  const setores=brutoSetor.split(',').map(t=>normaliza(t).trim()).filter(t=>t.length>0);" & vbCrLf
+    html = html & "  const bruto=document.getElementById('filtroNome').value;" & vbCrLf
+    html = html & "  const termos=bruto.split(',').map(t=>normaliza(t).trim()).filter(t=>t.length>0);" & vbCrLf
+    html = html & "  return registrosCentral.map((r,i)=>({...r,_i:i})).filter(r=>{" & vbCrLf
+    html = html & "    const nome=normaliza(r.nome);" & vbCrLf
+    html = html & "    const cp=normaliza(r.cp);" & vbCrLf
+    html = html & "    const setor=normaliza(r.setor);" & vbCrLf
+    html = html & "    const atendeSetor=(setores.length===0)||setores.some(t=>setor.includes(t));" & vbCrLf
+    html = html & "    const atendeNomeCp=(termos.length===0)||termos.some(t=>nome.includes(t)||cp.includes(t));" & vbCrLf
+    html = html & "    const dataRegistro=String(r.dataIso||'');" & vbCrLf
+    html = html & "    return (!fi||(dataRegistro!==''&&dataRegistro>=fi)) &&" & vbCrLf
+    html = html & "           (!ff||(dataRegistro!==''&&dataRegistro<=ff)) &&" & vbCrLf
+    html = html & "           atendeSetor &&" & vbCrLf
+    html = html & "           atendeNomeCp;" & vbCrLf
+    html = html & "  });" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function renderCentral(){" & vbCrLf
+    html = html & "  const tb=document.getElementById('corpoCentral');" & vbCrLf
+    html = html & "  const lista=centralFiltrados();" & vbCrLf
+    html = html & "  tb.innerHTML=lista.map(r=>" & vbCrLf
+    html = html & "    '<tr data-i=""'+r._i+'"">'" & vbCrLf
+    html = html & "    +'<td><input type=""checkbox"" id=""cen_'+r._i+'"" '+(r.adicionado?'checked':'')+' onchange=""toggleCentral('+r._i+',this.checked)""></td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.data)+'</td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.setor)+'</td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.cp)+'</td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.nome)+'</td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.cargo)+'</td>'" & vbCrLf
+    html = html & "    +'<td>'+esc(r.entrada)+'–'+esc(r.saida)+'</td>'" & vbCrLf
+    html = html & "    +'</tr>'" & vbCrLf
+    html = html & "  ).join('');" & vbCrLf
+    html = html & "  atualizaResumoCentral();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function filtrarCentral(){renderCentral();}" & vbCrLf
+    html = html & "function limparFiltrosCentral(){" & vbCrLf
+    html = html & "  document.getElementById('filtroDataInicio').value='';" & vbCrLf
+    html = html & "  document.getElementById('filtroDataFim').value='';" & vbCrLf
+    html = html & "  document.getElementById('filtroSetor').value='';" & vbCrLf
+    html = html & "  document.getElementById('filtroNome').value='';" & vbCrLf
+    html = html & "  renderCentral();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function toggleCentral(i,v){" & vbCrLf
+    html = html & "  registrosCentral[i].adicionado=v;" & vbCrLf
+    html = html & "  atualizaResumoCentral();" & vbCrLf
+    html = html & "  renderFolhasAdicionais();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function selecionarVisiveisCentral(v){" & vbCrLf
+    html = html & "  centralFiltrados().forEach(r=>registrosCentral[r._i].adicionado=v);" & vbCrLf
+    html = html & "  renderCentral();" & vbCrLf
+    html = html & "  renderFolhasAdicionais();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function centralSelecionados(){return registrosCentral.filter(r=>r.adicionado);}" & vbCrLf
+    html = html & "function chaveGrupo(r){return r.dataIso+'|'+r.setor;}" & vbCrLf
+    html = html & "function gruposAdicionais(){" & vbCrLf
+    html = html & "  const m=new Map();" & vbCrLf
+    html = html & "  centralSelecionados().forEach(r=>{" & vbCrLf
+    html = html & "    const k=chaveGrupo(r);" & vbCrLf
+    html = html & "    if(!m.has(k)){" & vbCrLf
+    html = html & "      m.set(k,{" & vbCrLf
+    html = html & "        data:r.data," & vbCrLf
+    html = html & "        dataIso:r.dataIso," & vbCrLf
+    html = html & "        dataExtenso:r.dataExtenso," & vbCrLf
+    html = html & "        mes:r.mes," & vbCrLf
+    html = html & "        ano:r.ano," & vbCrLf
+    html = html & "        setor:r.setor," & vbCrLf
+    html = html & "        itens:[]" & vbCrLf
+    html = html & "      });" & vbCrLf
+    html = html & "    }" & vbCrLf
+    html = html & "    m.get(k).itens.push(r);" & vbCrLf
+    html = html & "  });" & vbCrLf
+    html = html & "  return [...m.values()].sort((a,b)=>(a.dataIso+a.setor).localeCompare(b.dataIso+b.setor));" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function atualizaResumoCentral(){" & vbCrLf
+    html = html & "  const sel=centralSelecionados();" & vbCrLf
+    html = html & "  document.getElementById('qtdCentralSelecionados').textContent=sel.length;" & vbCrLf
+    html = html & "  const gs=gruposAdicionais();" & vbCrLf
+    html = html & "  document.getElementById('resumoGrupos').innerHTML=gs.length" & vbCrLf
+    html = html & "    ? '<b>Planilhas adicionais:</b> '+gs.map(g=>esc(g.data)+' — '+esc(g.setor)+' ('+g.itens.length+')').join(' &nbsp; | &nbsp; ')" & vbCrLf
+    html = html & "    : '<span class=""muted"">Nenhuma planilha adicional selecionada.</span>';" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function folhaHtml(g){" & vbCrLf
+    html = html & "  const linhas=g.itens.map(s=>" & vbCrLf
+    html = html & "    '<tr class=""linha-servidor"">'" & vbCrLf
+    html = html & "    +'<td class=""matricula-servidor"">'+esc(s.matricula)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""cp-servidor"">'+esc(s.cp)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""nome-servidor"">'+esc(s.nome)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.carga)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro cargo-servidor"">'+esc(s.cargo)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.entrada)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro"">'+esc(s.saida)+'</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro horario-realizado"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'<td class=""centro horario-realizado"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'<td class=""rubrica-servidor"">&nbsp;</td>'" & vbCrLf
+    html = html & "    +'</tr>'" & vbCrLf
+    html = html & "  ).join('');" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  const just=g.itens.map(s=>" & vbCrLf
+    html = html & "    '<tr><td>'+esc(s.cp)+'</td><td>'+esc(s.justificativa)+'</td></tr>'" & vbCrLf
+    html = html & "  ).join('');" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  let h='';" & vbCrLf
+    html = html & "  h+='<main class=""folha folha-adicional page-break"">';" & vbCrLf
+    html = html & "  h+='<div class=""anexo"">ANEXO II AO DECRETO Nº 12.755, DE 22 DE MAIO DE 2009.</div>';" & vbCrLf
+    html = html & "  h+='<table class=""cabecalho-oficial""><tr>';" & vbCrLf
+    html = html & "  h+='<td class=""logo-oficial""><img src=""brasao.png"" alt=""Brasão do Estado""></td>';" & vbCrLf
+    html = html & "  h+='<td class=""estado-oficial"">Estado de Mato Grosso do Sul</td>';" & vbCrLf
+    html = html & "  h+='<td class=""titulo-oficial"">PLANILHA DE FREQUÊNCIA NO PLANTÃO EXTRA</td>';" & vbCrLf
+    html = html & "  h+='</tr></table>';" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  h+='<table class=""identificacao-oficial"">';" & vbCrLf
+    html = html & "  h+='<tr><td colspan=""6""><b>Órgão ou Entidade:</b>&nbsp; FUNDAÇÃO SERVIÇOS DE SAÚDE</td></tr>';" & vbCrLf
+    html = html & "  h+='<tr><td colspan=""4""><b>Unidade:</b>&nbsp; HOSPITAL REGIONAL DE MATO GROSSO DO SUL</td>';" & vbCrLf
+    html = html & "  h+='<td colspan=""2""><b>Setor:</b>&nbsp; '+esc(setorComDiretoria(g.setor))+'</td></tr>';" & vbCrLf
+    html = html & "  h+='<tr><td colspan=""2""><b>Mês:</b>&nbsp; '+esc(g.mes)+'</td>';" & vbCrLf
+    html = html & "  h+='<td colspan=""2""><b>Ano:</b>&nbsp; '+esc(g.ano)+'</td>';" & vbCrLf
+    html = html & "  h+='<td colspan=""2""><b>Dia:</b>&nbsp; '+esc(g.data)+'</td></tr>';" & vbCrLf
+    html = html & "  h+='</table>';" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  h+='<div class=""bloco-central"">';" & vbCrLf
+    html = html & "  h+='<table class=""frequencia"">';" & vbCrLf
+    html = html & "  h+='<colgroup>'" & vbCrLf
+    html = html & "    +'<col class=""c-matricula""><col class=""c-cp""><col class=""c-nome""><col class=""c-carga""><col class=""c-cargo"">'" & vbCrLf
+    html = html & "    +'<col class=""c-inicio""><col class=""c-termino""><col class=""c-real-inicio""><col class=""c-real-termino""><col class=""c-rubrica"">'" & vbCrLf
+    html = html & "    +'</colgroup>';" & vbCrLf
+    html = html & "  h+='<thead><tr>'" & vbCrLf
+    html = html & "    +'<th class=""h-matricula"" rowspan=""2"">Matrícula</th>'" & vbCrLf
+    html = html & "    +'<th class=""h-cp"" rowspan=""2"">Cartão<br>de<br>Ponto</th>'" & vbCrLf
+    html = html & "    +'<th rowspan=""2"">Nome dos Servidores</th>'" & vbCrLf
+    html = html & "    +'<th rowspan=""2"">Carga<br>horária<br>semanal</th>'" & vbCrLf
+    html = html & "    +'<th rowspan=""2"">Cargo/Função</th>'" & vbCrLf
+    html = html & "    +'<th colspan=""2"">Horário Plantão</th>'" & vbCrLf
+    html = html & "    +'<th colspan=""2"">Horário Realizado</th>'" & vbCrLf
+    html = html & "    +'<th rowspan=""2"">Rubrica do<br>Servidor</th>'" & vbCrLf
+    html = html & "    +'</tr><tr><th>Início</th><th>Término</th><th>Início</th><th>Término</th></tr></thead>';" & vbCrLf
+    html = html & "  h+='<tbody>'+linhas+'</tbody></table>';" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  h+='<div class=""declaracao"">Assumimos inteira responsabilidade sobre a veracidade das informações aqui expressas, sob as penas da lei.</div>';" & vbCrLf
+    html = html & "  h+='<div class=""data-local"">Campo Grande&nbsp;&nbsp;&nbsp;&nbsp;'+esc(g.dataExtenso)+'</div>';" & vbCrLf
+    html = html & "  h+='<div class=""area-assinaturas"">';" & vbCrLf
+    html = html & "  h+='<div class=""assinatura esquerda""><div class=""linha-assinatura""></div><div>Responsável pela Unidade</div></div>';" & vbCrLf
+    html = html & "  h+='<div class=""assinatura direita""><div class=""linha-assinatura""></div><div>Chefia Imediata</div></div>';" & vbCrLf
+    html = html & "  h+='</div></div>';" & vbCrLf
+    html = html & "" & vbCrLf
+    html = html & "  h+='<table class=""justificativa-oficial"">';" & vbCrLf
+    html = html & "  h+='<colgroup><col class=""c-just-cp""><col class=""c-just-texto""></colgroup>';" & vbCrLf
+    html = html & "  h+='<thead><tr><th>CP</th><th>JUSTIFICATIVA</th></tr></thead>';" & vbCrLf
+    html = html & "  h+='<tbody>'+just+'</tbody></table>';" & vbCrLf
+    html = html & "  h+='</main>';" & vbCrLf
+    html = html & "  return h;" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "function renderFolhasAdicionais(){" & vbCrLf
+    html = html & "  const gs=gruposAdicionais();" & vbCrLf
+    html = html & "  document.getElementById('folhasAdicionais').innerHTML=gs.map(g=>folhaHtml(g)).join('');" & vbCrLf
+    html = html & "  atualizaResumoCentral();" & vbCrLf
+    html = html & "}" & vbCrLf
+    html = html & "document.addEventListener('DOMContentLoaded',()=>{" & vbCrLf
+    html = html & "  renderLista();" & vbCrLf
+    html = html & "  renderPlanilha();" & vbCrLf
+    html = html & "  renderCentral();" & vbCrLf
+    html = html & "  renderFolhasAdicionais();" & vbCrLf
+    html = html & "  atualizarDiretoria();" & vbCrLf
+    html = html & "});" & vbCrLf
+    html = html & "</script>" & vbCrLf
+
+    html = html & "</body>" & vbCrLf
+    html = html & "</html>"
+
+    MontarHtmlComSelecao = html
+    Exit Function
+
+TrataErro:
+    Err.Raise Err.Number, "MontarHtmlComSelecao", Err.Description
+End Function
+
+Private Function CssDocumento() As String
+    Dim s As String
+
+    s = "<style>" & vbCrLf
+    s = s & "*{box-sizing:border-box}" & vbCrLf
+    s = s & "html,body{margin:0;padding:0;background:#e9e9e9;color:#111;font-family:Arial,Helvetica,sans-serif}" & vbCrLf
+    s = s & "body{padding:18px}" & vbCrLf
+
+    s = s & ".toolbar{width:1100px;margin:0 auto 10px;display:flex;align-items:center;justify-content:flex-end;gap:8px}" & vbCrLf
+    s = s & ".config-diretoria{margin-right:auto;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #b7c4cf;border-radius:5px;padding:6px 9px}" & vbCrLf
+    s = s & ".config-diretoria label{font-size:11px;font-weight:bold;color:#173f60;white-space:nowrap}" & vbCrLf
+    s = s & ".config-diretoria input{width:260px;border:1px solid #c6d0d8;border-radius:4px;padding:6px 8px;font-size:11px}" & vbCrLf
+    s = s & ".toolbar button{background:#173f60;color:#fff;border:0;border-radius:4px;padding:9px 15px;font-weight:bold;cursor:pointer}" & vbCrLf
+    s = s & ".painel-selecao{width:1100px;margin:0 auto 12px;background:#fff;border:1px solid #b7c4cf;border-radius:6px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}" & vbCrLf
+    s = s & ".painel-titulo{font-size:15px;font-weight:bold;color:#173f60;margin-bottom:5px}" & vbCrLf
+    s = s & ".painel-contexto{font-size:12px;margin-bottom:4px}" & vbCrLf
+    s = s & ".painel-ajuda{font-size:11px;color:#555;margin-bottom:9px}" & vbCrLf
+    s = s & ".painel-acoes{display:flex;align-items:center;gap:7px;margin-bottom:8px}" & vbCrLf
+    s = s & ".painel-acoes button{border:0;border-radius:4px;background:#173f60;color:#fff;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer}" & vbCrLf
+    s = s & ".painel-acoes button.secundario{background:#687785}" & vbCrLf
+    s = s & ".contador{margin-left:auto;font-size:11px;color:#333}" & vbCrLf
+    s = s & ".lista-servidores{display:grid;grid-template-columns:1fr 1fr;gap:5px 8px;max-height:180px;overflow:auto}" & vbCrLf
+    s = s & ".item-servidor{display:grid;grid-template-columns:22px 1fr auto auto;align-items:center;gap:8px;border:1px solid #d9e0e5;border-radius:4px;padding:6px 8px;font-size:11px;cursor:pointer}" & vbCrLf
+    s = s & ".item-servidor:hover{background:#f5f8fa}" & vbCrLf
+    s = s & ".item-servidor input{margin:0}" & vbCrLf
+    s = s & ".item-nome{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" & vbCrLf
+    s = s & ".central-impressao{width:1100px;margin:0 auto 12px;background:#fff;border:1px solid #b7c4cf;border-radius:6px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}" & vbCrLf
+    s = s & ".central-cabecalho{display:flex;align-items:center;justify-content:space-between;gap:15px}" & vbCrLf
+    s = s & ".btn-expandir{border:0;border-radius:4px;background:#173f60;color:#fff;padding:7px 11px;font-weight:bold;cursor:pointer;white-space:nowrap}" & vbCrLf
+    s = s & ".conteudo-central{margin-top:10px}" & vbCrLf
+    s = s & ".filtros-central{display:grid;grid-template-columns:150px 150px 1fr 1fr auto;gap:7px;margin-bottom:8px;align-items:end}" & vbCrLf
+    s = s & ".filtro-data-central{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11px;color:#334a5d}" & vbCrLf
+    s = s & ".filtro-data-central input{min-width:0;width:100%;box-sizing:border-box}" & vbCrLf
+    s = s & ".filtros-central input{border:1px solid #c6d0d8;border-radius:4px;padding:7px 8px;font-size:11px}" & vbCrLf
+    s = s & ".filtros-central button,.central-acoes button{border:0;border-radius:4px;background:#173f60;color:#fff;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer}" & vbCrLf
+    s = s & ".central-acoes{display:flex;align-items:center;gap:7px;margin-bottom:7px}" & vbCrLf
+    s = s & ".central-acoes button.secundario{background:#687785}" & vbCrLf
+    s = s & ".tabela-central-wrap{max-height:260px;overflow:auto;border:1px solid #d9e0e5}" & vbCrLf
+    s = s & ".tabela-central{width:100%;border-collapse:collapse;font-size:10.5px}" & vbCrLf
+    s = s & ".tabela-central th,.tabela-central td{border-bottom:1px solid #e4e9ed;padding:5px 6px;text-align:left}" & vbCrLf
+    s = s & ".tabela-central th{position:sticky;top:0;background:#eef3f6;z-index:1}" & vbCrLf
+    s = s & ".resumo-grupos{margin-top:8px;font-size:10.5px;line-height:1.5}" & vbCrLf
+    s = s & ".muted{color:#6b7780}" & vbCrLf
+    s = s & ".page-break{break-before:page;page-break-before:always;margin-top:14px}" & vbCrLf
+
+    s = s & ".folha{width:1100px;min-height:735px;margin:0 auto;background:#fff;padding:20px 26px 28px;border:1px solid #b0b0b0}" & vbCrLf
+    s = s & ".anexo{font-size:11px;margin:0 0 3px 1px}" & vbCrLf
+
+    s = s & "table{width:100%;border-collapse:collapse;table-layout:fixed}" & vbCrLf
+    s = s & "td,th{border:1px solid #111;padding:2px 4px;vertical-align:middle}" & vbCrLf
+
+    s = s & ".cabecalho-oficial{height:38px;margin-bottom:16px}" & vbCrLf
+    s = s & ".logo-oficial{width:108px;text-align:center;padding:1px 3px}" & vbCrLf
+    s = s & ".logo-oficial img{max-width:76px;max-height:34px;object-fit:contain}" & vbCrLf
+    s = s & ".estado-oficial{width:40%;text-align:center;font-size:17px;font-weight:bold}" & vbCrLf
+    s = s & ".titulo-oficial{text-align:center;font-size:15px;font-weight:bold;white-space:nowrap}" & vbCrLf
+
+    s = s & ".identificacao-oficial{font-size:12px;margin-bottom:8px}" & vbCrLf
+    s = s & ".identificacao-oficial td{height:19px;line-height:1.05}" & vbCrLf
+
+    s = s & ".bloco-central{border:1px solid #111;margin-top:0;min-height:188px}" & vbCrLf
+    s = s & ".frequencia{font-size:11px;margin:-1px -1px 0 -1px;width:calc(100% + 2px)}" & vbCrLf
+    s = s & ".frequencia th{font-weight:bold;text-align:center;line-height:1.02;height:21px}" & vbCrLf
+    s = s & ".frequencia td{height:20px}" & vbCrLf
+
+    ' Larguras: os campos fixos ficam compactos; Nome absorve o espaço remanescente.
+    ' A Rubrica recebe área maior para assinatura manual sem estourar a página A4 paisagem.
+    s = s & ".c-matricula{width:9%}" & vbCrLf
+    s = s & ".c-cp{width:7%}" & vbCrLf
+    s = s & ".c-nome{width:auto}" & vbCrLf
+    s = s & ".c-carga{width:7%}" & vbCrLf
+    s = s & ".c-cargo{width:16%}" & vbCrLf
+    s = s & ".c-inicio{width:5%}" & vbCrLf
+    s = s & ".c-termino{width:5%}" & vbCrLf
+    s = s & ".c-real-inicio{width:5%}" & vbCrLf
+    s = s & ".c-real-termino{width:5%}" & vbCrLf
+    s = s & ".c-rubrica{width:17%}" & vbCrLf
+
+    s = s & ".linha-servidor td{font-size:10.5px;height:32px;overflow:hidden}" & vbCrLf
+    s = s & ".h-matricula{text-align:left!important}" & vbCrLf
+    s = s & ".h-cp{text-align:center!important}" & vbCrLf
+    s = s & ".matricula-servidor{text-align:left;white-space:nowrap}" & vbCrLf
+    s = s & ".cp-servidor{text-align:center;white-space:nowrap}" & vbCrLf
+    s = s & ".nome-servidor{text-align:center;white-space:nowrap;font-size:clamp(8.5px,1vw,10.5px)}" & vbCrLf
+    s = s & ".cargo-servidor{font-size:10px;line-height:1.05}" & vbCrLf
+    s = s & ".horario-realizado{min-width:42px}" & vbCrLf
+    s = s & ".rubrica-servidor{min-width:145px;height:36px}" & vbCrLf
+    s = s & ".centro{text-align:center}" & vbCrLf
+
+    s = s & ".declaracao{text-align:center;font-size:10.5px;margin:3px 8px 0;white-space:nowrap}" & vbCrLf
+    s = s & ".data-local{text-align:center;font-size:12px;margin-top:22px}" & vbCrLf
+
+    s = s & ".area-assinaturas{display:grid;grid-template-columns:1fr 1fr;column-gap:250px;padding:0 45px;margin-top:43px}" & vbCrLf
+    s = s & ".assinatura{text-align:center;font-size:12px}" & vbCrLf
+    s = s & ".linha-assinatura{border-top:1px solid #111;margin-bottom:4px}" & vbCrLf
+
+    s = s & ".justificativa-oficial{font-size:10px;margin-top:35px}" & vbCrLf
+    s = s & ".justificativa-oficial th{height:20px;font-size:12px;font-weight:bold;text-align:center}" & vbCrLf
+    s = s & ".justificativa-oficial th:first-child{text-align:left}" & vbCrLf
+    s = s & ".justificativa-oficial td{height:28px;vertical-align:top;padding-top:4px}" & vbCrLf
+    s = s & ".c-just-cp{width:10.6%}" & vbCrLf
+    s = s & ".c-just-texto{width:89.4%}" & vbCrLf
+
+    s = s & "@page{size:A4 landscape;margin:7mm}" & vbCrLf
+    s = s & "@media print{" & vbCrLf
+    s = s & "html,body{background:#fff;padding:0;margin:0}" & vbCrLf
+    s = s & ".no-print{display:none!important}.page-break{break-before:page;page-break-before:always}.folha-adicional{margin-top:0}" & vbCrLf
+    s = s & ".folha{width:auto;min-height:0;border:0;margin:0;padding:0}" & vbCrLf
+    s = s & ".cabecalho-oficial{margin-bottom:5mm}" & vbCrLf
+    s = s & ".justificativa-oficial{margin-top:10mm}" & vbCrLf
+    s = s & "}" & vbCrLf
+    s = s & "</style>"
+
+    CssDocumento = s
+End Function
+
+ ' =====================================================================
+' SELEÇÃO DE SERVIDORES APTOS - MESMO SETOR + MESMA DATA
+' =====================================================================
+
+Private Function MontarJsonServidoresAptos( _
+    ByVal frm As Access.Form, _
+    ByVal CodigoAtual As Variant, _
+    ByVal dataAtual As Variant, _
+    ByVal setorAtual As String _
+) As String
+
+    On Error GoTo TrataErro
+
+    Dim rs As DAO.Recordset
+    Dim itens As String
+    Dim primeiro As Boolean
+    Dim marcouAtual As Boolean
+    Dim qtd As Long
+
+    Dim vCodigo As Variant
+    Dim vData As Variant
+    Dim vSetor As Variant
+    Dim Matricula As String
+    Dim nome As String
+    Dim Cargo As String
+    Dim carga As String
+    Dim entrada As String
+    Dim Saida As String
+    Dim Justificativa As String
+    Dim selecionado As Boolean
+    Dim chave As String
+    Dim vistos As Object
+
+    primeiro = True
+    marcouAtual = False
+    Set vistos = CreateObject("Scripting.Dictionary")
+    vistos.CompareMode = 1 ' TextCompare
+
+    Set rs = frm.RecordsetClone
+
+    If Not (rs.BOF And rs.EOF) Then
+        rs.MoveFirst
+
+        Do While Not rs.EOF
+
+            vCodigo = ValorCampoRecordset(rs, Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"), Null)
+            vData = ValorCampoRecordset(rs, Array("Data da Extra", "Data Extra", "Data"), Null)
+            vSetor = ValorCampoRecordset(rs, Array("Setor da Extra", "Setor", "Setor do Servidor"), Null)
+
+            If CodigoValido(vCodigo) Then
+                If MesmaData(vData, dataAtual) And MesmoTexto(vSetor, setorAtual) Then
+
+                    entrada = FmtHora(ValorCampoRecordset(rs, Array("HoraEntrada", "Hora Entrada", "Entrada"), Null))
+                    Saida = FmtHora(ValorCampoRecordset(rs, Array("HoraSaída", "HoraSaida", "Hora Saída", "Saída", "Saida"), Null))
+
+                    ' A chave evita repetir exatamente o mesmo servidor/horário na lista.
+                    chave = UCase$(Trim$(CStr(vCodigo))) & "|" & entrada & "|" & Saida
+
+                    If Not vistos.Exists(chave) Then
+                        vistos.Add chave, True
+
+                        Matricula = TextoCampoRecordset(rs, Array("Matricula", "Matrícula", "Matricula do Servidor", "Matrícula do Servidor"))
+                        nome = TextoCampoRecordset(rs, Array("Nome", "Nome Completo", "Nome do Servidor", "Servidor"))
+                        Cargo = TextoCampoRecordset(rs, Array("Cargo", "Cargo/Função", "Cargo/Funcao", "Função", "Funcao"))
+                        carga = TextoCampoRecordset(rs, Array("Carga Horária Semanal", "Carga Horaria Semanal", "Carga Horária", "Carga Horaria", "CargaHoraria", "CH"))
+                        Justificativa = TextoCampoRecordset(rs, Array("Combinação94", "Motivo", "Justificativa", "Justificativa da Extra", "Justificativa Extra"))
+
+                        If Len(Matricula) = 0 Then
+                            Matricula = ProcurarDadoNasTabelas(vCodigo, Array("Matricula", "Matrícula", "Matricula do Servidor", "Matrícula do Servidor"))
+                        End If
+
+                        If Len(nome) = 0 Then
+                            nome = ProcurarDadoNasTabelas(vCodigo, Array("Nome", "Nome Completo", "Nome do Servidor", "Servidor"))
+                        End If
+
+                        If Len(Cargo) = 0 Then
+                            Cargo = ProcurarDadoNasTabelas(vCodigo, Array("Cargo", "Cargo/Função", "Cargo/Funcao", "Função", "Funcao"))
+                        End If
+
+                        If Len(carga) = 0 Then
+                            carga = ProcurarDadoNasTabelas(vCodigo, Array("Carga Horária Semanal", "Carga Horaria Semanal", "Carga Horária", "Carga Horaria", "CargaHoraria", "CH"))
+                        End If
+                        If Len(carga) = 0 Then carga = CARGA_HORARIA_PADRAO
+
+                        selecionado = False
+
+                        If Not marcouAtual Then
+                            If MesmoCodigo(vCodigo, CodigoAtual) Then
+                                selecionado = True
+                                marcouAtual = True
+
+                                ' Para o registro atual, prioriza o texto efetivamente exibido no formulário.
+                                Justificativa = PrimeiroTextoNaoVazio( _
+                                                TextoPorCandidatos(frm, Array("Combinação94")), _
+                                                TextoPorCandidatos(frm, Array("Motivo", "Justificativa")), _
+                                                Justificativa)
+                            End If
+                        End If
+
+                        If Not primeiro Then itens = itens & ","
+
+                        itens = itens & JsonServidor( _
+                                CStr(vCodigo), Matricula, nome, Cargo, _
+                                carga, entrada, Saida, _
+                                Justificativa, selecionado)
+
+                        primeiro = False
+                        qtd = qtd + 1
+                    End If
+                End If
+            End If
+
+            rs.MoveNext
+        Loop
+    End If
+
+    ' Segurança: se o Recordset não permitiu localizar o atual, ele nunca desaparece da planilha.
+    If qtd = 0 Or Not marcouAtual Then
+        If Not primeiro Then itens = itens & ","
+        itens = itens & JsonServidorAtual(frm, CodigoAtual, True)
+        qtd = qtd + 1
+    End If
+
+    MontarJsonServidoresAptos = "[" & itens & "]"
+
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set vistos = Nothing
+    Exit Function
+
+TrataErro:
+    ' Em caso de qualquer incompatibilidade de RecordSource, preserva o comportamento seguro:
+    ' pelo menos o registro atual continua disponível.
+    MontarJsonServidoresAptos = "[" & JsonServidorAtual(frm, CodigoAtual, True) & "]"
+    Resume Saida
+End Function
+
+Private Function JsonServidorAtual( _
+    ByVal frm As Access.Form, _
+    ByVal codigoServidor As Variant, _
+    ByVal selecionado As Boolean _
+) As String
+
+    Dim Matricula As String
+    Dim nome As String
+    Dim Cargo As String
+    Dim carga As String
+    Dim entrada As String
+    Dim Saida As String
+    Dim Justificativa As String
+
+    Matricula = ObterDadoServidor(frm, codigoServidor, _
+                 Array("Matricula", "Matrícula", "Matricula do Servidor", "Matrícula do Servidor"))
+
+    nome = ObterDadoServidor(frm, codigoServidor, _
+           Array("Nome", "Nome Completo", "Nome do Servidor", "Servidor"))
+
+    Cargo = ObterDadoServidor(frm, codigoServidor, _
+            Array("Cargo", "Cargo/Função", "Cargo/Funcao", "Função", "Funcao"))
+
+    carga = ObterDadoServidor(frm, codigoServidor, _
+            Array("Carga Horária Semanal", "Carga Horaria Semanal", "Carga Horária", "Carga Horaria", "CargaHoraria", "CH"))
+    If Len(carga) = 0 Then carga = CARGA_HORARIA_PADRAO
+
+    entrada = FmtHora(ValorControle(frm, "HoraEntrada", Null))
+    Saida = FmtHora(ValorControle(frm, "HoraSaída", Null))
+
+    Justificativa = PrimeiroTextoNaoVazio( _
+                    TextoPorCandidatos(frm, Array("Combinação94")), _
+                    TextoPorCandidatos(frm, Array("Motivo", "Justificativa")))
+
+    JsonServidorAtual = JsonServidor( _
+                        Trim$(Nz(codigoServidor, "")), Matricula, nome, Cargo, _
+                        carga, entrada, Saida, Justificativa, selecionado)
+End Function
+
+Private Function JsonServidor( _
+    ByVal cp As String, _
+    ByVal Matricula As String, _
+    ByVal nome As String, _
+    ByVal Cargo As String, _
+    ByVal carga As String, _
+    ByVal entrada As String, _
+    ByVal Saida As String, _
+    ByVal Justificativa As String, _
+    ByVal selecionado As Boolean _
+) As String
+
+    JsonServidor = "{""cp"":""" & JsEncode(cp) & """," & _
+                   """matricula"":""" & JsEncode(Matricula) & """," & _
+                   """nome"":""" & JsEncode(nome) & """," & _
+                   """cargo"":""" & JsEncode(Cargo) & """," & _
+                   """carga"":""" & JsEncode(carga) & """," & _
+                   """entrada"":""" & JsEncode(entrada) & """," & _
+                   """saida"":""" & JsEncode(Saida) & """," & _
+                   """justificativa"":""" & JsEncode(Justificativa) & """," & _
+                   """selecionado"":" & IIf(selecionado, "true", "false") & "}"
+End Function
+
+Private Function ValorCampoRecordset( _
+    ByVal rs As DAO.Recordset, _
+    ByVal candidatos As Variant, _
+    ByVal padrao As Variant _
+) As Variant
+
+    Dim i As Long
+    Dim nome As String
+
+    On Error GoTo Falha
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        nome = CStr(candidatos(i))
+
+        If CampoExisteRecordset(rs, nome) Then
+            ValorCampoRecordset = rs.Fields(nome).Value
+            Exit Function
+        End If
+    Next i
+
+Falha:
+    ValorCampoRecordset = padrao
+End Function
+
+Private Function TextoCampoRecordset(ByVal rs As DAO.Recordset, ByVal candidatos As Variant) As String
+    Dim v As Variant
+    v = ValorCampoRecordset(rs, candidatos, Null)
+    TextoCampoRecordset = Trim$(Nz(v, ""))
+End Function
+
+Private Function MesmaData(ByVal a As Variant, ByVal b As Variant) As Boolean
+    On Error GoTo Falha
+
+    If Not IsDate(a) Then Exit Function
+    If Not IsDate(b) Then Exit Function
+
+    MesmaData = (DateValue(CDate(a)) = DateValue(CDate(b)))
+    Exit Function
+
+Falha:
+    MesmaData = False
+End Function
+
+Private Function MesmoTexto(ByVal a As Variant, ByVal b As Variant) As Boolean
+    Dim sa As String
+    Dim sb As String
+
+    sa = UCase$(Trim$(Nz(a, "")))
+    sb = UCase$(Trim$(Nz(b, "")))
+
+    If Len(sa) = 0 Or Len(sb) = 0 Then
+        MesmoTexto = False
+    Else
+        MesmoTexto = (StrComp(sa, sb, vbTextCompare) = 0)
+    End If
+End Function
+
+Private Function MesmoCodigo(ByVal a As Variant, ByVal b As Variant) As Boolean
+    MesmoCodigo = (StrComp(Trim$(Nz(a, "")), Trim$(Nz(b, "")), vbTextCompare) = 0)
+End Function
+
+Private Function CodigoValido(ByVal v As Variant) As Boolean
+    CodigoValido = (Len(Trim$(Nz(v, ""))) > 0)
+End Function
+
+Private Function JsEncode(ByVal texto As String) As String
+    texto = Replace$(texto, "\", "\\")
+    texto = Replace$(texto, """", "\""")
+    texto = Replace$(texto, vbCrLf, "\n")
+    texto = Replace$(texto, vbCr, "\n")
+    texto = Replace$(texto, vbLf, "\n")
+    texto = Replace$(texto, "<", "\u003C")
+    texto = Replace$(texto, ">", "\u003E")
+    JsEncode = texto
+End Function
+
+ ' =====================================================================
+' CENTRAL DE IMPRESSÃO - TODOS OS REGISTROS DISPONÍVEIS
+' =====================================================================
+
+Private Function MontarJsonCentralPeriodo( _
+    ByVal dataInicio As Variant, _
+    ByVal dataFim As Variant _
+) As String
+
+    On Error GoTo TrataErro
+
+    Dim rs As DAO.Recordset
+    Dim itens As String
+    Dim primeiro As Boolean
+    Dim vistos As Object
+
+    Dim vCodigo As Variant
+    Dim vData As Variant
+    Dim vSetor As Variant
+    Dim Matricula As String
+    Dim nome As String
+    Dim Cargo As String
+    Dim entrada As String
+    Dim Saida As String
+    Dim Justificativa As String
+    Dim chave As String
+    Dim dataTexto As String
+    Dim dataIso As String
+    Dim dataExtenso As String
+    Dim mesNome As String
+    Dim anoTexto As String
+
+    primeiro = True
+    Set vistos = CreateObject("Scripting.Dictionary")
+    vistos.CompareMode = 1
+
+    Set rs = AbrirTabelaRealDeExtrasPeriodo(dataInicio, dataFim)
+
+    If Not rs Is Nothing Then
+        If Not (rs.BOF And rs.EOF) Then
+            rs.MoveFirst
+
+            Do While Not rs.EOF
+
+                vCodigo = ValorCampoRecordset(rs, _
+                          Array("Codigo do Servidor", "Código do Servidor", _
+                                "CP", "Codigo", "Código"), Null)
+
+                vData = ValorCampoRecordset(rs, _
+                        Array("Data da Extra", "Data Extra", "Data"), Null)
+
+                vSetor = ValorCampoRecordset(rs, _
+                         Array("Setor da Extra", "Setor", _
+                               "Setor do Servidor"), Null)
+
+                If CodigoValido(vCodigo) And _
+                   IsDate(vData) And _
+                   Len(Trim$(Nz(vSetor, ""))) > 0 Then
+
+                    entrada = FmtHora(ValorCampoRecordset(rs, _
+                              Array("HoraEntrada", "Hora Entrada", "Entrada"), Null))
+
+                    Saida = FmtHora(ValorCampoRecordset(rs, _
+                            Array("HoraSaída", "HoraSaida", "Hora Saída", _
+                                  "Saída", "Saida"), Null))
+
+                    chave = Format$(CDate(vData), "yyyymmdd") & "|" & _
+                            UCase$(Trim$(Nz(vSetor, ""))) & "|" & _
+                            UCase$(Trim$(Nz(vCodigo, ""))) & "|" & _
+                            entrada & "|" & Saida
+
+                    If Not vistos.Exists(chave) Then
+                        vistos.Add chave, True
+
+                        Matricula = TextoCampoRecordset(rs, _
+                                    Array("Matricula", "Matrícula", _
+                                          "Matricula do Servidor", _
+                                          "Matrícula do Servidor"))
+
+                        nome = TextoCampoRecordset(rs, _
+                               Array("Nome", "Nome Completo", _
+                                     "Nome do Servidor", "Servidor"))
+
+                        Cargo = TextoCampoRecordset(rs, _
+                                Array("Cargo", "Cargo/Função", "Cargo/Funcao", _
+                                      "Função", "Funcao"))
+
+                        Justificativa = TextoCampoRecordset(rs, _
+                                        Array("Combinação94", "Motivo", _
+                                              "Justificativa"))
+
+                        If Len(Matricula) = 0 Then
+                            Matricula = ProcurarDadoNasTabelas(vCodigo, _
+                                        Array("Matricula", "Matrícula", _
+                                              "Matricula do Servidor", _
+                                              "Matrícula do Servidor"))
+                        End If
+
+                        If Len(nome) = 0 Then
+                            nome = ProcurarDadoNasTabelas(vCodigo, _
+                                   Array("Nome", "Nome Completo", _
+                                         "Nome do Servidor", "Servidor"))
+                        End If
+
+                        If Len(Cargo) = 0 Then
+                            Cargo = ProcurarDadoNasTabelas(vCodigo, _
+                                    Array("Cargo", "Cargo/Função", _
+                                          "Cargo/Funcao", "Função", "Funcao"))
+                        End If
+
+                        dataTexto = Format$(CDate(vData), "dd/mm/yy")
+                        dataIso = Format$(CDate(vData), "yyyy-mm-dd")
+                        dataExtenso = Format$(CDate(vData), "dd") & " " & _
+                                      LCase$(NomeMesPT(Month(CDate(vData)))) & " " & _
+                                      Format$(CDate(vData), "yyyy")
+
+                        mesNome = UCase$(NomeMesPT(Month(CDate(vData))))
+                        anoTexto = Format$(CDate(vData), "yyyy")
+
+                        If Not primeiro Then itens = itens & ","
+
+                        itens = itens & JsonRegistroCentral( _
+                                CStr(vCodigo), Matricula, nome, Cargo, _
+                                CARGA_HORARIA_PADRAO, entrada, Saida, _
+                                Justificativa, Trim$(Nz(vSetor, "")), _
+                                dataTexto, dataIso, dataExtenso, _
+                                mesNome, anoTexto)
+
+                        primeiro = False
+                    End If
+                End If
+
+                rs.MoveNext
+            Loop
+        End If
+    End If
+
+    MontarJsonCentralPeriodo = "[" & itens & "]"
+
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set vistos = Nothing
+    Exit Function
+
+TrataErro:
+    MontarJsonCentralPeriodo = "[]"
+    Resume Saida
+End Function
+
+Private Function MontarJsonCentralImpressao( _
+    ByVal frm As Access.Form, _
+    ByVal CodigoAtual As Variant, _
+    ByVal dataAtual As Variant _
+) As String
+
+    On Error GoTo TrataErro
+
+    Dim rs As DAO.Recordset
+    Dim itens As String
+    Dim primeiro As Boolean
+    Dim vistos As Object
+
+    Dim vCodigo As Variant
+    Dim vData As Variant
+    Dim vSetor As Variant
+    Dim Matricula As String
+    Dim nome As String
+    Dim Cargo As String
+    Dim entrada As String
+    Dim Saida As String
+    Dim Justificativa As String
+    Dim chave As String
+    Dim dataTexto As String
+    Dim dataIso As String
+    Dim dataExtenso As String
+    Dim mesNome As String
+    Dim anoTexto As String
+
+    primeiro = True
+    Set vistos = CreateObject("Scripting.Dictionary")
+    vistos.CompareMode = 1
+
+    Set rs = AbrirRecordsetCentral(frm, dataAtual)
+
+    If Not rs Is Nothing Then
+        If Not (rs.BOF And rs.EOF) Then
+            rs.MoveFirst
+
+            Do While Not rs.EOF
+
+                vCodigo = ValorCampoRecordset(rs, Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"), Null)
+                vData = ValorCampoRecordset(rs, Array("Data da Extra", "Data Extra", "Data"), Null)
+                vSetor = ValorCampoRecordset(rs, Array("Setor da Extra", "Setor", "Setor do Servidor"), Null)
+
+                If CodigoValido(vCodigo) And IsDate(vData) And Len(Trim$(Nz(vSetor, ""))) > 0 Then
+
+                    entrada = FmtHora(ValorCampoRecordset(rs, Array("HoraEntrada", "Hora Entrada", "Entrada"), Null))
+                    Saida = FmtHora(ValorCampoRecordset(rs, Array("HoraSaída", "HoraSaida", "Hora Saída", "Saída", "Saida"), Null))
+
+                    chave = Format$(CDate(vData), "yyyymmdd") & "|" & _
+                            UCase$(Trim$(Nz(vSetor, ""))) & "|" & _
+                            UCase$(Trim$(Nz(vCodigo, ""))) & "|" & entrada & "|" & Saida
+
+                    If Not vistos.Exists(chave) Then
+                        vistos.Add chave, True
+
+                        Matricula = TextoCampoRecordset(rs, Array("Matricula", "Matrícula", "Matricula do Servidor", "Matrícula do Servidor"))
+                        nome = TextoCampoRecordset(rs, Array("Nome", "Nome Completo", "Nome do Servidor", "Servidor"))
+                        Cargo = TextoCampoRecordset(rs, Array("Cargo", "Cargo/Função", "Cargo/Funcao", "Função", "Funcao"))
+                        Justificativa = TextoCampoRecordset(rs, Array("Combinação94", "Motivo", "Justificativa"))
+
+                        If Len(Matricula) = 0 Then Matricula = ProcurarDadoNasTabelas(vCodigo, Array("Matricula", "Matrícula", "Matricula do Servidor", "Matrícula do Servidor"))
+                        If Len(nome) = 0 Then nome = ProcurarDadoNasTabelas(vCodigo, Array("Nome", "Nome Completo", "Nome do Servidor", "Servidor"))
+                        If Len(Cargo) = 0 Then Cargo = ProcurarDadoNasTabelas(vCodigo, Array("Cargo", "Cargo/Função", "Cargo/Funcao", "Função", "Funcao"))
+
+                        dataTexto = Format$(CDate(vData), "dd/mm/yy")
+                        dataIso = Format$(CDate(vData), "yyyy-mm-dd")
+                        dataExtenso = Format$(CDate(vData), "dd") & " " & _
+                                      LCase$(NomeMesPT(Month(CDate(vData)))) & " " & _
+                                      Format$(CDate(vData), "yyyy")
+                        mesNome = UCase$(NomeMesPT(Month(CDate(vData))))
+                        anoTexto = Format$(CDate(vData), "yyyy")
+
+                        If Not primeiro Then itens = itens & ","
+
+                        itens = itens & JsonRegistroCentral( _
+                                CStr(vCodigo), Matricula, nome, Cargo, CARGA_HORARIA_PADRAO, _
+                                entrada, Saida, Justificativa, Trim$(Nz(vSetor, "")), _
+                                dataTexto, dataIso, dataExtenso, mesNome, anoTexto)
+
+                        primeiro = False
+                    End If
+                End If
+
+                rs.MoveNext
+            Loop
+        End If
+    End If
+
+    MontarJsonCentralImpressao = "[" & itens & "]"
+
+Saida:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set vistos = Nothing
+    Exit Function
+
+TrataErro:
+    MontarJsonCentralImpressao = "[]"
+    Resume Saida
+End Function
+
+Private Function AbrirRecordsetCentral( _
+    ByVal frm As Access.Form, _
+    ByVal dataAtual As Variant _
+) As DAO.Recordset
+
+    On Error GoTo Falha
+
+    ' =================================================================
+    ' V1.6.6 - CENTRAL 100% SQL / DAO + FILTRO MENSAL
+    ' =================================================================
+    ' A Central consulta diretamente a base de Extras.
+    '
+    ' Para evitar lentidão, a SQL carrega SOMENTE os registros do mês
+    ' correspondente à extra que originou a abertura do HTML.
+    '
+    ' Exemplo:
+    '   extra atual = 01/10/2026
+    '   período SQL = 01/10/2026 até 01/11/2026 (exclusive)
+    '
+    ' Dessa forma, não é necessário transferir todo o histórico para
+    ' o navegador apenas para depois filtrá-lo em JavaScript.
+
+    Set AbrirRecordsetCentral = AbrirTabelaRealDeExtras(dataAtual)
+
+    If Not AbrirRecordsetCentral Is Nothing Then
+        If Not (AbrirRecordsetCentral.BOF And AbrirRecordsetCentral.EOF) Then
+            AbrirRecordsetCentral.MoveFirst
+        End If
+    End If
+
+    Exit Function
+
+Falha:
+    Set AbrirRecordsetCentral = Nothing
+End Function
+
+Private Function AbrirTabelaRealDeExtrasPeriodo( _
+    ByVal dataInicio As Variant, _
+    ByVal dataFim As Variant _
+) As DAO.Recordset
+
+    On Error GoTo Falha
+
+    Dim db As DAO.Database
+    Dim tdf As DAO.TableDef
+    Dim melhorTabela As String
+    Dim melhorPontos As Long
+    Dim pontos As Long
+
+    Dim campoData As String
+    Dim campoSetor As String
+    Dim campoCodigo As String
+
+    Dim dtIni As Date
+    Dim dtFimExclusivo As Date
+    Dim sql As String
+
+    If Not IsDate(dataInicio) Or Not IsDate(dataFim) Then
+        Err.Raise vbObjectError + 1670, _
+                  "AbrirTabelaRealDeExtrasPeriodo", _
+                  "Período inválido para consulta."
+    End If
+
+    dtIni = DateValue(CDate(dataInicio))
+    dtFimExclusivo = DateAdd("d", 1, DateValue(CDate(dataFim)))
+
+    If dtFimExclusivo <= dtIni Then
+        Err.Raise vbObjectError + 1671, _
+                  "AbrirTabelaRealDeExtrasPeriodo", _
+                  "A data final não pode ser anterior à data inicial."
+    End If
+
+    Set db = CurrentDb
+    melhorPontos = -1
+
+    For Each tdf In db.TableDefs
+
+        If Left$(tdf.Name, 4) <> "MSys" Then
+
+            If TabelaTemCamposMinimosDeExtra(tdf) Then
+
+                pontos = PontuarFonteDeExtras(tdf)
+
+                If InStr(1, tdf.Name, "extra", vbTextCompare) > 0 Then
+                    pontos = pontos + 5
+                End If
+
+                If pontos > melhorPontos Then
+                    melhorPontos = pontos
+                    melhorTabela = tdf.Name
+                End If
+
+            End If
+        End If
+    Next tdf
+
+    If Len(melhorTabela) = 0 Then
+        Err.Raise vbObjectError + 1672, _
+                  "AbrirTabelaRealDeExtrasPeriodo", _
+                  "Não foi localizada uma tabela de Extras válida."
+    End If
+
+    Set tdf = db.TableDefs(melhorTabela)
+
+    campoData = PrimeiroCampoExistente(tdf, _
+                Array("Data da Extra", "Data Extra", "Data"))
+
+    campoSetor = PrimeiroCampoExistente(tdf, _
+                 Array("Setor da Extra", "Setor", "Setor do Servidor"))
+
+    campoCodigo = PrimeiroCampoExistente(tdf, _
+                  Array("Codigo do Servidor", "Código do Servidor", _
+                        "CP", "Codigo", "Código"))
+
+    If Len(campoData) = 0 Then
+        Err.Raise vbObjectError + 1673, _
+                  "AbrirTabelaRealDeExtrasPeriodo", _
+                  "A fonte localizada não possui campo de data."
+    End If
+
+    sql = "SELECT * FROM [" & Replace(melhorTabela, "]", "]]") & "] " & _
+          "WHERE [" & Replace(campoData, "]", "]]") & "] >= #" & _
+          Format$(dtIni, "mm\/dd\/yyyy") & "# " & _
+          "AND [" & Replace(campoData, "]", "]]") & "] < #" & _
+          Format$(dtFimExclusivo, "mm\/dd\/yyyy") & "#"
+
+    sql = sql & " ORDER BY [" & Replace(campoData, "]", "]]") & "]"
+
+    If Len(campoSetor) > 0 Then
+        sql = sql & ", [" & Replace(campoSetor, "]", "]]") & "]"
+    End If
+
+    If Len(campoCodigo) > 0 Then
+        sql = sql & ", [" & Replace(campoCodigo, "]", "]]") & "]"
+    End If
+
+    Set AbrirTabelaRealDeExtrasPeriodo = _
+        db.OpenRecordset(sql, dbOpenSnapshot)
+
+    Set tdf = Nothing
+    Set db = Nothing
+    Exit Function
+
+Falha:
+    Set AbrirTabelaRealDeExtrasPeriodo = Nothing
+    Set tdf = Nothing
+    Set db = Nothing
+End Function
+
+Private Function AbrirTabelaRealDeExtras( _
+    ByVal dataAtual As Variant _
+) As DAO.Recordset
+
+    On Error GoTo Falha
+
+    Dim db As DAO.Database
+    Dim tdf As DAO.TableDef
+    Dim melhorTabela As String
+    Dim melhorPontos As Long
+    Dim pontos As Long
+
+    Dim campoData As String
+    Dim campoSetor As String
+    Dim campoCodigo As String
+
+    Dim inicioMes As Date
+    Dim inicioMesSeguinte As Date
+
+    Dim sql As String
+
+    If Not IsDate(dataAtual) Then
+        Err.Raise vbObjectError + 1660, _
+                  "AbrirTabelaRealDeExtras", _
+                  "A data da extra atual não é válida para o filtro mensal."
+    End If
+
+    inicioMes = DateSerial(Year(CDate(dataAtual)), Month(CDate(dataAtual)), 1)
+    inicioMesSeguinte = DateAdd("m", 1, inicioMes)
+
+    Set db = CurrentDb
+    melhorPontos = -1
+
+    ' Localiza a fonte real de Extras pela estrutura dos campos.
+    For Each tdf In db.TableDefs
+
+        If Left$(tdf.Name, 4) <> "MSys" Then
+
+            If TabelaTemCamposMinimosDeExtra(tdf) Then
+
+                pontos = PontuarFonteDeExtras(tdf)
+
+                ' O nome contendo "extra" é apenas critério de desempate.
+                If InStr(1, tdf.Name, "extra", vbTextCompare) > 0 Then
+                    pontos = pontos + 5
+                End If
+
+                If pontos > melhorPontos Then
+                    melhorPontos = pontos
+                    melhorTabela = tdf.Name
+                End If
+
+            End If
+        End If
+    Next tdf
+
+    If Len(melhorTabela) = 0 Then
+        Err.Raise vbObjectError + 1661, _
+                  "AbrirTabelaRealDeExtras", _
+                  "Não foi localizada uma tabela de Extras com os campos necessários."
+    End If
+
+    Set tdf = db.TableDefs(melhorTabela)
+
+    campoData = PrimeiroCampoExistente(tdf, _
+                Array("Data da Extra", "Data Extra", "Data"))
+
+    campoSetor = PrimeiroCampoExistente(tdf, _
+                 Array("Setor da Extra", "Setor", "Setor do Servidor"))
+
+    campoCodigo = PrimeiroCampoExistente(tdf, _
+                  Array("Codigo do Servidor", "Código do Servidor", _
+                        "CP", "Codigo", "Código"))
+
+    If Len(campoData) = 0 Then
+        Err.Raise vbObjectError + 1662, _
+                  "AbrirTabelaRealDeExtras", _
+                  "A fonte localizada não possui campo de data utilizável."
+    End If
+
+    ' IMPORTANTE:
+    ' Literais de data do Access SQL usam formato norte-americano entre # #.
+    ' O limite superior é exclusivo, evitando problemas com campos que possuam
+    ' componente de horário.
+    sql = "SELECT * FROM [" & Replace(melhorTabela, "]", "]]") & "] " & _
+          "WHERE [" & Replace(campoData, "]", "]]") & "] >= #" & _
+          Format$(inicioMes, "mm\/dd\/yyyy") & "# " & _
+          "AND [" & Replace(campoData, "]", "]]") & "] < #" & _
+          Format$(inicioMesSeguinte, "mm\/dd\/yyyy") & "#"
+
+    sql = sql & " ORDER BY [" & Replace(campoData, "]", "]]") & "]"
+
+    If Len(campoSetor) > 0 Then
+        sql = sql & ", [" & Replace(campoSetor, "]", "]]") & "]"
+    End If
+
+    If Len(campoCodigo) > 0 Then
+        sql = sql & ", [" & Replace(campoCodigo, "]", "]]") & "]"
+    End If
+
+    Set AbrirTabelaRealDeExtras = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    Set tdf = Nothing
+    Set db = Nothing
+    Exit Function
+
+Falha:
+    Set AbrirTabelaRealDeExtras = Nothing
+    Set tdf = Nothing
+    Set db = Nothing
+End Function
+
+Private Function TabelaTemCamposMinimosDeExtra(ByVal tdf As DAO.TableDef) As Boolean
+
+    Dim cCodigo As String
+    Dim cData As String
+    Dim cSetor As String
+    Dim cEntrada As String
+    Dim cSaida As String
+
+    cCodigo = PrimeiroCampoExistente(tdf, _
+              Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"))
+
+    cData = PrimeiroCampoExistente(tdf, _
+            Array("Data da Extra", "Data Extra", "Data"))
+
+    cSetor = PrimeiroCampoExistente(tdf, _
+             Array("Setor da Extra", "Setor", "Setor do Servidor"))
+
+    cEntrada = PrimeiroCampoExistente(tdf, _
+               Array("HoraEntrada", "Hora Entrada", "Entrada"))
+
+    cSaida = PrimeiroCampoExistente(tdf, _
+             Array("HoraSaída", "HoraSaida", "Hora Saída", "Saída", "Saida"))
+
+    TabelaTemCamposMinimosDeExtra = _
+        (Len(cCodigo) > 0) And _
+        (Len(cData) > 0) And _
+        (Len(cSetor) > 0) And _
+        (Len(cEntrada) > 0) And _
+        (Len(cSaida) > 0)
+End Function
+
+Private Function PontuarFonteDeExtras(ByVal tdf As DAO.TableDef) As Long
+
+    Dim p As Long
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"))) > 0 Then p = p + 10
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("Data da Extra", "Data Extra", "Data"))) > 0 Then p = p + 10
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("Setor da Extra", "Setor", "Setor do Servidor"))) > 0 Then p = p + 10
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("HoraEntrada", "Hora Entrada", "Entrada"))) > 0 Then p = p + 8
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("HoraSaída", "HoraSaida", "Hora Saída", "Saída", "Saida"))) > 0 Then p = p + 8
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("Motivo", "Justificativa", "Combinação94"))) > 0 Then p = p + 4
+
+    If Len(PrimeiroCampoExistente(tdf, _
+       Array("Qtd Horas", "Quantidade Horas", "Horas"))) > 0 Then p = p + 2
+
+    PontuarFonteDeExtras = p
+End Function
+
+Private Function RecordsetEhFonteExtras(ByVal rs As DAO.Recordset) As Boolean
+
+    On Error GoTo Falha
+
+    RecordsetEhFonteExtras = _
+        TemAlgumCampoRecordset(rs, _
+            Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código")) And _
+        TemAlgumCampoRecordset(rs, _
+            Array("Data da Extra", "Data Extra", "Data")) And _
+        TemAlgumCampoRecordset(rs, _
+            Array("Setor da Extra", "Setor", "Setor do Servidor"))
+
+    Exit Function
+
+Falha:
+    RecordsetEhFonteExtras = False
+End Function
+
+Private Function TemAlgumCampoRecordset( _
+    ByVal rs As DAO.Recordset, _
+    ByVal candidatos As Variant _
+) As Boolean
+
+    Dim i As Long
+
+    On Error GoTo Falha
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        If CampoExisteRecordset(rs, CStr(candidatos(i))) Then
+            TemAlgumCampoRecordset = True
+            Exit Function
+        End If
+    Next i
+
+Falha:
+End Function
+
+Private Function JsonRegistroCentral( _
+    ByVal cp As String, _
+    ByVal Matricula As String, _
+    ByVal nome As String, _
+    ByVal Cargo As String, _
+    ByVal carga As String, _
+    ByVal entrada As String, _
+    ByVal Saida As String, _
+    ByVal Justificativa As String, _
+    ByVal Setor As String, _
+    ByVal dataTexto As String, _
+    ByVal dataIso As String, _
+    ByVal dataExtenso As String, _
+    ByVal mesNome As String, _
+    ByVal anoTexto As String _
+) As String
+
+    JsonRegistroCentral = "{""cp"":""" & JsEncode(cp) & """," & _
+                          """matricula"":""" & JsEncode(Matricula) & """," & _
+                          """nome"":""" & JsEncode(nome) & """," & _
+                          """cargo"":""" & JsEncode(Cargo) & """," & _
+                          """carga"":""" & JsEncode(carga) & """," & _
+                          """entrada"":""" & JsEncode(entrada) & """," & _
+                          """saida"":""" & JsEncode(Saida) & """," & _
+                          """justificativa"":""" & JsEncode(Justificativa) & """," & _
+                          """setor"":""" & JsEncode(Setor) & """," & _
+                          """data"":""" & JsEncode(dataTexto) & """," & _
+                          """dataIso"":""" & JsEncode(dataIso) & """," & _
+                          """dataExtenso"":""" & JsEncode(dataExtenso) & """," & _
+                          """mes"":""" & JsEncode(mesNome) & """," & _
+                          """ano"":""" & JsEncode(anoTexto) & """," & _
+                          """adicionado"":false}"
+End Function
+
+' =====================================================================
+' LEITURA ROBUSTA DOS DADOS DO SERVIDOR
+' =====================================================================
+
+Private Function ObterDadoServidor( _
+    ByVal frm As Access.Form, _
+    ByVal codigoServidor As Variant, _
+    ByVal candidatos As Variant _
+) As String
+
+    Dim s As String
+
+    ' 1) formulário atual / ControlSource
+    s = TextoPorCandidatos(frm, candidatos)
+    If Len(s) > 0 Then
+        ObterDadoServidor = s
+        Exit Function
+    End If
+
+    ' 2) formulário pai
+    s = TextoPorCandidatosPai(frm, candidatos)
+    If Len(s) > 0 Then
+        ObterDadoServidor = s
+        Exit Function
+    End If
+
+    ' 3) campos do recordset atual
+    s = TextoRecordsetPorCandidatos(frm, candidatos)
+    If Len(s) > 0 Then
+        ObterDadoServidor = s
+        Exit Function
+    End If
+
+    ' 4) busca nas tabelas do Access pelo código/CP.
+    s = ProcurarDadoNasTabelas(codigoServidor, candidatos)
+    ObterDadoServidor = s
+End Function
+
+Private Function TextoPorCandidatos(ByVal frm As Access.Form, ByVal candidatos As Variant) As String
+    Dim i As Long
+    Dim ctl As Access.Control
+    Dim nome As String
+    Dim src As String
+    Dim s As String
+
+    On Error Resume Next
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        nome = CStr(candidatos(i))
+
+        Err.Clear
+        s = Trim$(Nz(frm.Controls(nome).Value, ""))
+        If Err.Number = 0 Then
+            If Len(s) > 0 Then
+                TextoPorCandidatos = s
+                Exit Function
+            End If
+        End If
+    Next i
+
+    Err.Clear
+
+    For Each ctl In frm.Controls
+        src = ""
+        s = ""
+
+        Err.Clear
+        src = Trim$(Nz(ctl.ControlSource, ""))
+
+        If Err.Number = 0 Then
+            If CampoEstaNosCandidatos(src, candidatos) Then
+                s = Trim$(Nz(ctl.Value, ""))
+                If Len(s) > 0 Then
+                    TextoPorCandidatos = s
+                    Exit Function
+                End If
+            End If
+        End If
+    Next ctl
+
+    On Error GoTo 0
+End Function
+
+Private Function TextoPorCandidatosPai(ByVal frm As Access.Form, ByVal candidatos As Variant) As String
+    On Error GoTo Falha
+
+    Dim f As Object
+    Dim i As Integer
+    Dim s As String
+
+    Set f = frm
+
+    For i = 1 To 3
+        Set f = f.Parent
+
+        If TypeName(f) = "Form" Then
+            s = TextoPorCandidatos(f, candidatos)
+            If Len(s) > 0 Then
+                TextoPorCandidatosPai = s
+                Exit Function
+            End If
+        Else
+            Exit For
+        End If
+    Next i
+
+Falha:
+    On Error GoTo 0
+End Function
+
+Private Function TextoRecordsetPorCandidatos(ByVal frm As Access.Form, ByVal candidatos As Variant) As String
+    On Error GoTo Falha
+
+    Dim rs As DAO.Recordset
+    Dim i As Long
+    Dim nome As String
+    Dim s As String
+
+    Set rs = frm.Recordset
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        nome = CStr(candidatos(i))
+
+        If CampoExisteRecordset(rs, nome) Then
+            s = Trim$(Nz(rs.Fields(nome).Value, ""))
+            If Len(s) > 0 Then
+                TextoRecordsetPorCandidatos = s
+                Exit For
+            End If
+        End If
+    Next i
+
+Falha:
+    Set rs = Nothing
+End Function
+
+Private Function ProcurarDadoNasTabelas( _
+    ByVal codigoServidor As Variant, _
+    ByVal candidatosValor As Variant _
+) As String
+
+    On Error GoTo Falha
+
+    Dim db As DAO.Database
+    Dim tdf As DAO.TableDef
+    Dim campoChave As String
+    Dim campoValor As String
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim s As String
+
+    Set db = CurrentDb
+
+    ' Primeiro prioriza tabelas normalmente usadas no banco.
+    s = ProcurarEmTabelaNome(db, "Cadastro Pessoal", codigoServidor, candidatosValor)
+    If Len(s) > 0 Then
+        ProcurarDadoNasTabelas = s
+        Exit Function
+    End If
+
+    s = ProcurarEmTabelaNome(db, "CadastroPessoal", codigoServidor, candidatosValor)
+    If Len(s) > 0 Then
+        ProcurarDadoNasTabelas = s
+        Exit Function
+    End If
+
+    s = ProcurarEmTabelaNome(db, "Dados Funcionais", codigoServidor, candidatosValor)
+    If Len(s) > 0 Then
+        ProcurarDadoNasTabelas = s
+        Exit Function
+    End If
+
+    ' Depois procura em demais tabelas/consultas vinculadas.
+    For Each tdf In db.TableDefs
+        If Left$(tdf.Name, 4) <> "MSys" Then
+
+            campoChave = PrimeiroCampoExistente(tdf, _
+                         Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"))
+
+            campoValor = PrimeiroCampoExistente(tdf, candidatosValor)
+
+            If Len(campoChave) > 0 And Len(campoValor) > 0 Then
+
+                sql = "SELECT TOP 1 [" & Replace(campoValor, "]", "]]") & "] AS V "
+                sql = sql & "FROM [" & Replace(tdf.Name, "]", "]]") & "] WHERE "
+
+                If IsNumeric(codigoServidor) Then
+                    sql = sql & "[" & Replace(campoChave, "]", "]]") & "]=" & CDbl(codigoServidor)
+                Else
+                    sql = sql & "[" & Replace(campoChave, "]", "]]") & "]='"
+                    sql = sql & Replace(CStr(codigoServidor), "'", "''") & "'"
+                End If
+
+                Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+                If Not rs.EOF Then
+                    s = Trim$(Nz(rs!v, ""))
+                    If Len(s) > 0 Then
+                        ProcurarDadoNasTabelas = s
+                        rs.Close
+                        Set rs = Nothing
+                        Exit Function
+                    End If
+                End If
+
+                rs.Close
+                Set rs = Nothing
+            End If
+        End If
+    Next tdf
+
+Falha:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Function
+
+Private Function ProcurarEmTabelaNome( _
+    ByVal db As DAO.Database, _
+    ByVal nomeTabela As String, _
+    ByVal codigoServidor As Variant, _
+    ByVal candidatosValor As Variant _
+) As String
+
+    On Error GoTo Falha
+
+    Dim tdf As DAO.TableDef
+    Dim campoChave As String
+    Dim campoValor As String
+    Dim sql As String
+    Dim rs As DAO.Recordset
+
+    Set tdf = db.TableDefs(nomeTabela)
+
+    campoChave = PrimeiroCampoExistente(tdf, _
+                 Array("Codigo do Servidor", "Código do Servidor", "CP", "Codigo", "Código"))
+
+    campoValor = PrimeiroCampoExistente(tdf, candidatosValor)
+
+    If Len(campoChave) = 0 Then Exit Function
+    If Len(campoValor) = 0 Then Exit Function
+
+    sql = "SELECT TOP 1 [" & Replace(campoValor, "]", "]]") & "] AS V "
+    sql = sql & "FROM [" & Replace(nomeTabela, "]", "]]") & "] WHERE "
+
+    If IsNumeric(codigoServidor) Then
+        sql = sql & "[" & Replace(campoChave, "]", "]]") & "]=" & CDbl(codigoServidor)
+    Else
+        sql = sql & "[" & Replace(campoChave, "]", "]]") & "]='"
+        sql = sql & Replace(CStr(codigoServidor), "'", "''") & "'"
+    End If
+
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        ProcurarEmTabelaNome = Trim$(Nz(rs!v, ""))
+    End If
+
+Falha:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set tdf = Nothing
+End Function
+
+Private Function PrimeiroCampoExistente(ByVal tdf As DAO.TableDef, ByVal candidatos As Variant) As String
+    Dim i As Long
+    Dim nome As String
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        nome = CStr(candidatos(i))
+
+        If CampoExisteTabela(tdf, nome) Then
+            PrimeiroCampoExistente = nome
+            Exit Function
+        End If
+    Next i
+End Function
+
+Private Function CampoExisteTabela(ByVal tdf As DAO.TableDef, ByVal NomeCampo As String) As Boolean
+    On Error GoTo Falha
+    Dim s As String
+    s = tdf.Fields(NomeCampo).Name
+    CampoExisteTabela = True
+    Exit Function
+Falha:
+    CampoExisteTabela = False
+End Function
+
+Private Function CampoExisteRecordset(ByVal rs As DAO.Recordset, ByVal NomeCampo As String) As Boolean
+    On Error GoTo Falha
+    Dim s As String
+    s = rs.Fields(NomeCampo).Name
+    CampoExisteRecordset = True
+    Exit Function
+Falha:
+    CampoExisteRecordset = False
+End Function
+
+Private Function CampoEstaNosCandidatos(ByVal NomeCampo As String, ByVal candidatos As Variant) As Boolean
+    Dim i As Long
+    Dim s As String
+
+    s = LimparNomeCampo(NomeCampo)
+
+    For i = LBound(candidatos) To UBound(candidatos)
+        If StrComp(s, LimparNomeCampo(CStr(candidatos(i))), vbTextCompare) = 0 Then
+            CampoEstaNosCandidatos = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Private Function LimparNomeCampo(ByVal s As String) As String
+    s = Trim$(s)
+
+    If Left$(s, 1) = "=" Then s = Mid$(s, 2)
+
+    s = Replace$(s, "[", "")
+    s = Replace$(s, "]", "")
+
+    LimparNomeCampo = Trim$(s)
+End Function
+
+' =====================================================================
+' HELPERS GERAIS
+' =====================================================================
+
+Private Function ValorControle( _
+    ByVal frm As Access.Form, _
+    ByVal nomeControle As String, _
+    ByVal padrao As Variant _
+) As Variant
+
+    On Error GoTo Falha
+    ValorControle = frm.Controls(nomeControle).Value
+    Exit Function
+
+Falha:
+    ValorControle = padrao
+End Function
+
+Private Function PrimeiroTextoNaoVazio(ParamArray valores() As Variant) As String
+    Dim i As Long
+    Dim s As String
+
+    For i = LBound(valores) To UBound(valores)
+        s = Trim$(Nz(valores(i), ""))
+
+        If Len(s) > 0 Then
+            PrimeiroTextoNaoVazio = s
+            Exit Function
+        End If
+    Next i
+
+    PrimeiroTextoNaoVazio = ""
+End Function
+
+Private Function FmtHora(ByVal v As Variant) As String
+    If IsDate(v) Then
+        FmtHora = Format$(CDate(v), "hh:nn")
+    Else
+        FmtHora = ""
+    End If
+End Function
+
+Private Function NomeMesPT(ByVal numeroMes As Integer) As String
+    Select Case numeroMes
+        Case 1: NomeMesPT = "Janeiro"
+        Case 2: NomeMesPT = "Fevereiro"
+        Case 3: NomeMesPT = "Março"
+        Case 4: NomeMesPT = "Abril"
+        Case 5: NomeMesPT = "Maio"
+        Case 6: NomeMesPT = "Junho"
+        Case 7: NomeMesPT = "Julho"
+        Case 8: NomeMesPT = "Agosto"
+        Case 9: NomeMesPT = "Setembro"
+        Case 10: NomeMesPT = "Outubro"
+        Case 11: NomeMesPT = "Novembro"
+        Case 12: NomeMesPT = "Dezembro"
+        Case Else: NomeMesPT = ""
+    End Select
+End Function
+
+Private Function HtmlEncode(ByVal texto As String) As String
+    texto = Replace$(texto, "&", "&amp;")
+    texto = Replace$(texto, "<", "&lt;")
+    texto = Replace$(texto, ">", "&gt;")
+    texto = Replace$(texto, """", "&quot;")
+    texto = Replace$(texto, "'", "&#39;")
+    HtmlEncode = texto
+End Function
+
+Private Function NomeArquivoSeguro(ByVal texto As String) As String
+    Dim chars As Variant
+    Dim c As Variant
+
+    chars = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+
+    For Each c In chars
+        texto = Replace$(texto, CStr(c), "_")
+    Next c
+
+    NomeArquivoSeguro = Trim$(texto)
+End Function
+
+Private Function PrepararPastaTemporaria() As String
+    Dim pasta As String
+
+    pasta = Environ$("TEMP")
+
+    If Right$(pasta, 1) <> "\" Then
+        pasta = pasta & "\"
+    End If
+
+    pasta = pasta & PASTA_TEMP_NOME
+
+    If Len(Dir$(pasta, vbDirectory)) = 0 Then
+        MkDir pasta
+    End If
+
+    PrepararPastaTemporaria = pasta
+End Function
+
+Private Function CopiarBrasaoParaPasta(ByVal PastaDestino As String) As String
+    On Error GoTo Falha
+
+    Dim origem As String
+    Dim destino As String
+    Dim extensoes As Variant
+    Dim ext As Variant
+
+    extensoes = Array(".png", ".jpg", ".jpeg", ".bmp", "")
+
+    For Each ext In extensoes
+        origem = PASTA_BRASAO & "\" & NOME_BASE_BRASAO & CStr(ext)
+
+        If Len(Dir$(origem, vbNormal Or vbHidden Or vbSystem Or vbReadOnly)) > 0 Then
+            destino = PastaDestino & "\brasao.png"
+
+            On Error Resume Next
+            If Len(Dir$(destino)) > 0 Then Kill destino
+            On Error GoTo Falha
+
+            FileCopy origem, destino
+            CopiarBrasaoParaPasta = destino
+            Exit Function
+        End If
+    Next ext
+
+Falha:
+    CopiarBrasaoParaPasta = vbNullString
+End Function
+
+Private Sub GravarTextoUtf8(ByVal caminho As String, ByVal conteudo As String)
+    On Error GoTo TrataErro
+
+    Dim stm As Object
+
+    Set stm = CreateObject("ADODB.Stream")
+
+    With stm
+        .Type = 2
+        .charset = "utf-8"
+        .Open
+        .WriteText conteudo
+        .SaveToFile caminho, 2
+        .Close
+    End With
+
+    Set stm = Nothing
+    Exit Sub
+
+TrataErro:
+    Dim n As Long
+    Dim d As String
+
+    n = Err.Number
+    d = Err.Description
+
+    On Error Resume Next
+    If Not stm Is Nothing Then stm.Close
+    Set stm = Nothing
+    On Error GoTo 0
+
+    Err.Raise n, "GravarTextoUtf8", d
+End Sub
+
+Private Sub AbrirArquivo(ByVal caminho As String)
+
+    On Error GoTo TrataErro
+
+#If VBA7 Then
+
+    Dim retorno As LongPtr
+
+#Else
+
+    Dim retorno As Long
+
+#End If
+
+    If Len(Dir$(caminho)) = 0 Then
+        Err.Raise vbObjectError + 1801, _
+                  "AbrirArquivo", _
+                  "Arquivo HTML não encontrado:" & vbCrLf & caminho
+    End If
+
+    retorno = ShellExecute( _
+                0, _
+                "open", _
+                caminho, _
+                vbNullString, _
+                vbNullString, _
+                1)
+
+    If retorno <= 32 Then
+        Err.Raise vbObjectError + 1802, _
+                  "AbrirArquivo", _
+                  "O Windows não conseguiu abrir o HTML. Código: " & retorno
+    End If
+
+    Exit Sub
+
+TrataErro:
+    MsgBox "Não foi possível abrir a Planilha de Plantão Extra." & _
+           vbCrLf & vbCrLf & _
+           Err.Number & " - " & Err.Description, _
+           vbCritical, _
+           "Plantão Extra"
+
+End Sub
+
