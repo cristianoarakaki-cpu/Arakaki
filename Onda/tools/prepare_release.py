@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Nova tela de vídeos
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Momentos dos vídeos
+
+Momentos dos vídeos: Menu → Marcar momento guarda o trecho atual com um nome; Momentos salvos permite Reproduzir daqui, Renomear e Excluir. Os diálogos pausam o vídeo; Reproduzir daqui inicia a cena. Até 30 momentos por vídeo e 100 vídeos, sem apagar marcações antigas automaticamente. Dados locais, sem serviço pago; não incluídos no backup de listas. Referências locais reconhecidas da biblioteca e do seletor Android compartilham as marcações no Android 10 ou superior.
 
 Tela de vídeos redesenhada: biblioteca com mais espaço antes de abrir um vídeo, atalho Abrir arquivo, controles por ícones e tempo em uma linha separada. Painel de vídeo com altura adaptável à tela. Botões e busca acomodam fontes maiores do Android. Mantém tela cheia, janela flutuante, legendas, gestos e retomada de posição.
 

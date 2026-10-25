@@ -1,4 +1,6 @@
-# Onda Música 0.30.0 — Nova tela de vídeos
+# Onda Música 0.31.0 — Momentos dos vídeos
+
+Menu de vídeos → Marcar momento guarda uma cena com nome e posição. Momentos salvos permite Reproduzir daqui, Renomear e Excluir. Abrir esses diálogos pausa o vídeo; Reproduzir daqui inicia o trecho. Até 30 marcações por vídeo e 100 vídeos, sem exclusão automática de marcações antigas. Salvas neste celular, associadas ao arquivo; não fazem parte do backup de listas. No Android 10 ou superior, referências locais reconhecidas da biblioteca e do seletor de documentos compartilham as marcações. Sem servidor nem API paga.
 
 Tela de vídeos reorganizada: sem área preta nem controles inativos antes de escolher um arquivo; atalho Abrir, painel adaptável, tempo separado dos botões e reprodução por ícone. Busca e botões acomodam fontes maiores do Android. Mantidos tela cheia, PiP, legendas, gestos e retomada.
 

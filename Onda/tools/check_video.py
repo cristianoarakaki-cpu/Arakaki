@@ -436,6 +436,57 @@ try:
  assert locate('Reproduzir vídeo') is not None
  (OUTPUT/'pip-tests.json').write_text(json.dumps({'entered':True,'continuedPlaying':True,'expanded':True}))
  (OUTPUT/'video-controls-tests.json').write_text(json.dumps({'externalSrtSelected':True,'gestures':True,'resumeAfterReopen':True,'restart':True},indent=2)+'\n')
+ # Named scenes: save, rename, restart the actual app process and reopen through Android Documents.
+ adb('logcat','-c');shell('input','tap',*fresh_pause)
+ for _ in range(60):
+    if 'frames Onda-Video.mp4' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    time.sleep(.3)
+ else:raise AssertionError('Scene fixture did not resume')
+ time.sleep(4);shell('input','tap',*fresh_pause);time.sleep(.5)
+ assert locate('Reproduzir vídeo') is not None
+ def saved_scenes():
+    data=ET.fromstring(shell('run-as',PACKAGE,'cat','shared_prefs/video_moments.xml'))
+    return [scene for entry in data if entry.tag=='string' and entry.get('name','').startswith('v:') for scene in json.loads(entry.text or '[]')]
+ def name_scene(value):
+    tap('Nome do momento do vídeo');shell('input','keyevent','123')
+    old=locate('Nome do momento do vídeo').attrib.get('text','')
+    for _ in old:shell('input','keyevent','67')
+    shell('input','text',value);shell('input','keyevent','4');tap_text('Salvar')
+ def choose_scene(value):
+    node=next(n for n in nodes() if n.attrib.get('text','').endswith(' • '+value))
+    shell('input','tap',*point(node));time.sleep(.4)
+ menu_action('Menu de vídeos','Marcar momento');name_scene('MeuTrecho')
+ saved=saved_scenes();assert len(saved)==1 and saved[0]['label']=='MeuTrecho'
+ scene_id=saved[0]['id'];scene_time=saved[0]['position'];assert 3000<=scene_time<=14000,scene_time
+ menu_action('Menu de vídeos','Momentos salvos');choose_scene('MeuTrecho');tap_text('Renomear');name_scene('TrechoEditado')
+ saved=saved_scenes();assert saved[0]['id']==scene_id and saved[0]['position']==scene_time and saved[0]['label']=='TrechoEditado'
+ shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
+ tap('Abrir biblioteca de vídeos');menu_action('Menu de vídeos','Abrir arquivo');time.sleep(.5)
+ folder=next((n for n in nodes() if n.attrib.get('text')=='OndaDemo'),None)
+ if folder is not None:shell('input','tap',*point(folder));time.sleep(.3)
+ document=None
+ for _ in range(5):
+    document=next((n for n in nodes() if n.attrib.get('text')=='Onda-Video.mp4'),None)
+    if document is not None:break
+    shell('input','swipe',540,1550,540,650,350);time.sleep(.3)
+ assert document is not None,'Scene fixture absent in Android document picker'
+ adb('logcat','-c');shell('input','tap',*point(document))
+ for _ in range(60):
+    if 'frames Onda-Video.mp4' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
+    time.sleep(.3)
+ else:raise AssertionError('Document scene fixture did not render')
+ shell('input','tap',*fresh_pause);time.sleep(.5)
+ menu_action('Menu de vídeos','Momentos salvos');capture('31-momentos-salvos');choose_scene('TrechoEditado')
+ adb('logcat','-c');tap_text('Reproduzir daqui')
+ for _ in range(60):
+    moment_log=adb('logcat','-d','-s','OndaMoments:D','OndaVideo:D').decode(errors='replace')
+    if 'resumed '+str(scene_time) in moment_log:break
+    time.sleep(.3)
+ else:raise AssertionError('Saved scene did not reach its native decoder position: '+moment_log)
+ shell('input','tap',*fresh_pause);time.sleep(.5)
+ menu_action('Menu de vídeos','Momentos salvos');choose_scene('TrechoEditado');tap_text('Excluir');tap_text('Excluir')
+ assert saved_scenes()==[],'Deleting the scene did not persist'
+ (OUTPUT/'video-moments-tests.json').write_text(json.dumps({'saved':True,'renamedWithSameIdAndTime':True,'processRestart':True,'libraryAndDocumentAlias':True,'nativeSeekMs':scene_time,'deleted':True},indent=2)+'\n')
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):
