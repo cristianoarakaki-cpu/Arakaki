@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Momentos dos vídeos
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Repetir trecho A–B
+
+Repetição A–B para vídeos: Menu → Repetir trecho A–B. Configure início e fim em segundos, m:ss ou h:mm:ss, com intervalo mínimo de 2 segundos. Ativar prepara o trecho pausado; toque em Reproduzir para começar. O intervalo fica visível junto ao tempo. Pausar mantém a configuração; Desativar, selecionar outro vídeo, abrir um momento salvo ou buscar fora do intervalo cancela a repetição. A configuração vale somente para a sessão atual do player. Sem serviço pago nem análise contínua; usa eventos de reprodução e limita tentativas quando o arquivo não responde à busca. A precisão e a continuidade dependem do arquivo e do decoder.
 
 Momentos dos vídeos: Menu → Marcar momento guarda o trecho atual com um nome; Momentos salvos permite Reproduzir daqui, Renomear e Excluir. Os diálogos pausam o vídeo; Reproduzir daqui inicia a cena. Até 30 momentos por vídeo e 100 vídeos, sem apagar marcações antigas automaticamente. Dados locais, sem serviço pago; não incluídos no backup de listas. Referências locais reconhecidas da biblioteca e do seletor Android compartilham as marcações no Android 10 ou superior.
 

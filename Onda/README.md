@@ -1,4 +1,6 @@
-# Onda Música 0.31.0 — Momentos dos vídeos
+# Onda Música 0.32.0 — Repetir trecho A–B
+
+Vídeos → Menu → Repetir trecho A–B: informe início e fim em segundos, m:ss ou h:mm:ss. Intervalo mínimo de 2 segundos. Ativar prepara o trecho com o player pausado; Reproduzir inicia a repetição. O intervalo aparece junto ao tempo do vídeo. Pausar mantém a configuração; Desativar, selecionar outro vídeo, reproduzir um momento salvo ou buscar fora do intervalo cancela a repetição. Vale somente para a sessão atual, sem persistência após recriar/fechar o player. Usa os eventos já emitidos pelo LibVLC, com tentativas limitadas para arquivos que não respondem à busca; não promete repetição sem intervalos nem precisão de quadros.
 
 Menu de vídeos → Marcar momento guarda uma cena com nome e posição. Momentos salvos permite Reproduzir daqui, Renomear e Excluir. Abrir esses diálogos pausa o vídeo; Reproduzir daqui inicia o trecho. Até 30 marcações por vídeo e 100 vídeos, sem exclusão automática de marcações antigas. Salvas neste celular, associadas ao arquivo; não fazem parte do backup de listas. No Android 10 ou superior, referências locais reconhecidas da biblioteca e do seletor de documentos compartilham as marcações. Sem servidor nem API paga.
 

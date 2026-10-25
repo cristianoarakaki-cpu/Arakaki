@@ -487,6 +487,36 @@ try:
  menu_action('Menu de vídeos','Momentos salvos');choose_scene('TrechoEditado');tap_text('Excluir');tap_text('Excluir')
  assert saved_scenes()==[],'Deleting the scene did not persist'
  (OUTPUT/'video-moments-tests.json').write_text(json.dumps({'saved':True,'renamedWithSameIdAndTime':True,'processRestart':True,'libraryAndDocumentAlias':True,'nativeSeekMs':scene_time,'deleted':True},indent=2)+'\n')
+ # A–B: exercise repeated native seeks, paused state, manual escape and explicit cancellation.
+ def set_loop_field(description,value):
+    tap(description);shell('input','keyevent','123')
+    old=locate(description).attrib.get('text','')
+    for _ in old:shell('input','keyevent','67')
+    shell('input','text',value);shell('input','keyevent','4')
+ def prepare_loop():
+    menu_action('Menu de vídeos','Repetir trecho A–B');capture('33-configurar-trecho')
+    set_loop_field('Início do trecho A','2');set_loop_field('Fim do trecho B','5');tap_text('Ativar')
+    assert 'A–B' in locate('Tempo do vídeo').attrib.get('text','')
+ prepare_loop();loop_pause_point=point(locate('Reproduzir vídeo'));capture('32-repetir-trecho')
+ adb('logcat','-c');shell('input','tap',*loop_pause_point)
+ deadline=time.time()+30;acknowledged=[]
+ while time.time()<deadline:
+    loop_log=adb('logcat','-d','-s','OndaLoop:D').decode(errors='replace')
+    acknowledged=[int(n) for n in re.findall(r'OndaLoop.*reached (\d+)',loop_log)]
+    if loop_log.count('return 2000')>=2 and len(acknowledged)>=2:break
+    assert 'failed' not in loop_log,'Native loop seeking failed: '+loop_log
+    time.sleep(.3)
+ else:raise AssertionError('A–B did not repeat twice: '+loop_log)
+ assert all(2000<=n<5000 for n in acknowledged),acknowledged
+ shell('input','tap',*loop_pause_point);time.sleep(.5);assert locate('Reproduzir vídeo') is not None
+ adb('logcat','-c');time.sleep(2)
+ assert 'return ' not in adb('logcat','-d','-s','OndaLoop:D').decode(errors='replace'),'Paused loop continued seeking'
+ bar=locate('Posição no vídeo');left,top,right,bottom=[int(v) for v in re.findall(r'\d+',bar.attrib['bounds'])]
+ shell('input','tap',left+(right-left)*3//4,(top+bottom)//2);time.sleep(.5)
+ assert 'A–B' not in locate('Tempo do vídeo').attrib.get('text',''),'Manual seek outside range did not cancel looping'
+ prepare_loop();menu_action('Menu de vídeos','Repetir trecho A–B');tap_text('Desativar')
+ assert 'A–B' not in locate('Tempo do vídeo').attrib.get('text',''),'Explicit loop cancellation failed'
+ (OUTPUT/'video-loop-tests.json').write_text(json.dumps({'rangeMs':[2000,5000],'nativeReturns':len(acknowledged),'nativeAcknowledgementsMs':acknowledged,'pausedDoesNotSeek':True,'manualEscapeCancels':True,'explicitCancellation':True},indent=2)+'\n')
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):

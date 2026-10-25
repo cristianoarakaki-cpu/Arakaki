@@ -1,0 +1,12 @@
+package br.com.onda;
+import org.junit.Test;
+import static org.junit.Assert.*;
+public class VideoLoopTest {
+ @Test public void understandsSecondsAndClockTimes(){assertEquals(5000,VideoLoop.parse("5"));assertEquals(65000,VideoLoop.parse("1:05"));assertEquals(3723000,VideoLoop.parse("1:02:03"));assertEquals(0,VideoLoop.parse(" 0:00 "));assertEquals("0:00",VideoLoop.time(0));assertEquals("1:02:03",VideoLoop.time(3723000));}
+ @Test public void rejectsMalformedOrUnboundedInputs(){for(String s:new String[]{"","-1","1.5","1:60","1:00:60","1:2:3:4","9999999999999999","2 seconds","NaN"})assertEquals(s,VideoLoop.NONE,VideoLoop.parse(s));assertEquals(VideoLoop.NONE,VideoLoop.parse(null));}
+ @Test public void invalidRangeDoesNotReplaceValidRange(){VideoLoop l=new VideoLoop();assertTrue(l.arm(2000,5000,20000));assertFalse(l.arm(5000,4000,20000));assertFalse(l.arm(0,1000,20000));assertFalse(l.arm(0,21000,20000));assertFalse(l.arm(Long.MAX_VALUE,-1,20000));assertEquals(2000,l.start());assertEquals(5000,l.end());assertTrue(l.active());}
+ @Test public void seeksOnlyOutsideTheRangeAndAcknowledgesReturn(){VideoLoop l=new VideoLoop();l.arm(2000,5000,20000);assertEquals(VideoLoop.NONE,l.correct(2000,0));assertEquals(VideoLoop.NONE,l.correct(4999,1));assertEquals(2000,l.correct(5000,2));assertTrue(l.waiting());assertEquals(VideoLoop.NONE,l.correct(5200,100));assertEquals(VideoLoop.NONE,l.correct(2100,200));assertFalse(l.waiting());assertEquals(2000,l.correct(5001,3000));}
+ @Test public void unresponsiveDecoderStopsAfterBoundedRetries(){VideoLoop l=new VideoLoop();l.arm(2000,5000,20000);assertEquals(2000,l.correct(6000,0));assertEquals(VideoLoop.NONE,l.correct(6000,1499));assertEquals(2000,l.correct(6000,1500));assertEquals(2000,l.correct(6000,3000));assertEquals(VideoLoop.FAILED,l.correct(6000,4500));assertFalse(l.active());assertEquals(VideoLoop.NONE,l.correct(6000,6000));}
+ @Test public void manualSeekInsideKeepsRangeButOutsideCancels(){VideoLoop l=new VideoLoop();l.arm(2000,5000,20000);assertFalse(l.manualSeek(3000));assertTrue(l.active());assertTrue(l.manualSeek(5000));assertFalse(l.active());assertFalse(l.manualSeek(0));}
+ @Test public void endOfFileCannotRetryForeverWithoutAcknowledgement(){VideoLoop l=new VideoLoop();l.arm(2000,20000,20000);assertEquals(2000,l.atEnd(0));assertEquals(2000,l.atEnd(1000));assertEquals(2000,l.atEnd(2000));assertEquals(VideoLoop.FAILED,l.atEnd(3000));l.arm(0,5000,20000);l.clear();assertEquals(VideoLoop.NONE,l.atEnd(4000));}
+}
