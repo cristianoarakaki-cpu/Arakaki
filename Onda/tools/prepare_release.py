@@ -29,13 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Interface, tela cheia e boletos
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Abrir com e vídeo em segundo plano
 
 Coração de favoritas redesenhado como ícone vetorial, sem depender da fonte do Android e sem recortes nas laterais. Botão com área de toque de 48 × 48 dp, contorno quando não favorito e preenchido quando favorito. Cartão Tocando agora com mais separação entre título, artista e coração, altura adaptável aos textos, barra de posição mais espaçada e tempo mais legível. Mantém as favoritas salvas e os demais recursos.
 
 Tela cheia: controles sobrepostos sem reduzir a área da imagem. Somem após 3,5 segundos durante a reprodução; toque na imagem para mostrar ou ocultar. Pausar mantém os controles visíveis; a busca reinicia o prazo. Mantém exploração por toque acessível, Voltar e janela flutuante. A atualização do progresso da interface para enquanto os controles estão ocultos.
 
 PDF → Menu → Texto da página: seleção nativa de trechos para copiar e botão Copiar texto. Extração local da página atual usando PdfBox-Android 2.0.27.0, Apache License 2.0. Até 16 MB para extrair e 100.000 caracteres por página; leitura visual até 64 MB. Respeita a permissão de cópia do documento. PDFs digitalizados podem não conter texto; não há OCR. Sem API paga ou envio a servidor. Licença e avisos da biblioteca incluídos em Downloads → Licença e código-fonte. Fonte: https://github.com/TomRoush/PdfBox-Android .
+
+Novidades: o Onda aparece em Abrir com para áudio, vídeo e PDF quando o gerenciador fornece o tipo correto e acesso. Áudio externo abre no tocador, com metadados e favoritos. Menu de vídeos → Reprodução em segundo plano → Continuar áudio mantém o som com tela bloqueada, com notificação e controles. O motor deixa de decodificar a imagem nessa etapa. Há uma breve troca de motor ao sair/retornar. Pausar ao sair permanece disponível. Janela flutuante mantém a imagem sobre outros apps. Não há retomada automática após reiniciar o processo.
 
 PDF → Menu → Reconhecer boleto: linhas digitáveis bancárias de 47 dígitos e de arrecadação de 48, além de código de barras ITF de 44 dígitos, com conversão para linha digitável e verificação dos dígitos de controle. Um código consistente é copiado automaticamente e exibido; vários resultados abrem escolha. Análise local da página atual, sob comando do usuário, usando texto e barras legíveis, inclusive rotação. Sem pagamento automático, QR Pix ou OCR geral. A consistência matemática não autentica o boleto. Leitura de barras por ZXing 3.5.3, Apache 2.0; avisos e licença incluídos. Fonte: https://github.com/zxing/zxing .
 

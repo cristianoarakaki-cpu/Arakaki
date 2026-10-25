@@ -407,6 +407,8 @@ assert locate('Buscar vídeos por nome') is not None
 assert not any(n.attrib.get('content-desc')=='Reproduzir vídeo' for n in nodes()),'Empty library still reserves playback controls'
 assert locate('Abrir arquivo de vídeo') is not None
 capture('11-biblioteca-videos')
+# Legacy checks explicitly exercise the optional pause-on-leave mode.
+menu_action('Menu de vídeos','Reprodução em segundo plano');tap_text('Pausar ao sair')
 tap('Menu de vídeos');capture('06-menu-videos');shell('input','keyevent','4');time.sleep(.3)
 results=[]
 try:

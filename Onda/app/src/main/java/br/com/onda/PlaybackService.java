@@ -44,7 +44,7 @@ public class PlaybackService extends MediaSessionService {
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
-                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){timer.removeCallbacks(checkpoint);if(p.isPlaying())timer.postDelayed(checkpoint,15000);}
+                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){if(p.isPlaying())VideoBackgroundService.stopForMusic(PlaybackService.this);timer.removeCallbacks(checkpoint);if(p.isPlaying())timer.postDelayed(checkpoint,15000);}
                 if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){soundRoutes.refresh();sound.playing(p.isPlaying());float value=sound.headroom();if(value!=baseVolume){baseVolume=value;cancelFade(true);}}
                 if(e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_IS_PLAYING_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)){updateListening();}
                 if(e.contains(Player.EVENT_POSITION_DISCONTINUITY)&&!e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)){cancelFade(true);}

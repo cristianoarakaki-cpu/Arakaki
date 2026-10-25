@@ -12,15 +12,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:label="Onda Música" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="audio/*" /><data android:mimeType="application/ogg" /><data android:mimeType="application/x-ogg" /></intent-filter>
         </activity>
+        <service android:name=".VideoBackgroundService" android:foregroundServiceType="mediaPlayback" android:exported="false" />
         <service android:name=".MediaDownloadService" android:foregroundServiceType="dataSync" android:exported="false" />
         <activity android:name=".DownloadsActivity" android:launchMode="singleTop" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>
         <activity android:name=".PdfActivity" android:exported="true">
-            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" android:mimeType="application/pdf" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="application/pdf" /><data android:mimeType="application/x-pdf" /></intent-filter>
         </activity>
         <activity android:name=".BackupActivity" android:exported="false" />
         <activity android:name=".QueueActivity" android:exported="false" />
@@ -38,7 +40,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" android:mimeType="video/*" />
+                <data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="video/*" /><data android:mimeType="application/x-matroska" /><data android:mimeType="application/mp4" />
             </intent-filter>
         </activity>
         <activity android:name=".OnlineActivity" android:exported="false" />

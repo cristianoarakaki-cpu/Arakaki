@@ -8,6 +8,7 @@ final class VideoLoop {
  int limit(){return limit;}int completed(){return completed;}
  boolean arm(long start,long end,long duration){return arm(start,end,duration,0);}
  boolean arm(long start,long end,long duration,int times){if(times!=0&&times!=3&&times!=5&&times!=10)return false;if(start<0||start>MAX_TIME||end<0||end>MAX_TIME||duration<=0||end>duration||end<=start||end-start<2000)return false;a=start;b=end;active=true;waiting=false;attempts=0;limit=times;completed=0;inside=false;return true;}
+ void continuePlayback(){waiting=false;attempts=0;inside=false;}
  void clear(){active=false;waiting=false;attempts=0;a=0;b=0;limit=0;completed=0;inside=false;}
  boolean manualSeek(long position){if(!active)return false;if(position<a||position>=b){clear();return true;}waiting=false;attempts=0;return false;}
  long correct(long position,long now){if(!active||position<0)return NONE;if(position>=a&&position<b){waiting=false;attempts=0;inside=true;return NONE;}if(position>=b&&finishPass())return DONE;if(waiting&&now-lastRequest<1500)return NONE;return request(now);}

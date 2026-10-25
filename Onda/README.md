@@ -1,4 +1,6 @@
-# Onda Música 0.35.0 — Favoritas, tela cheia e ferramentas de PDF
+# Onda Música 0.36.0 — Abrir com e áudio dos vídeos em segundo plano
+
+Esta versão registra o Onda em “Abrir com” para áudio, vídeo e PDF. Ao receber áudio externo, lê os metadados e mantém a identidade de favoritos. Vídeos podem continuar como áudio em um serviço com notificação e controles, inclusive com tela bloqueada; a opção Pausar ao sair continua disponível no menu de vídeos. A troca entre os motores pode causar uma breve pausa. O modo não continua automaticamente após reiniciar o processo; respeita perda de foco e desconexão do fone. Para continuar vendo a imagem, use Janela flutuante. Gerenciadores precisam fornecer o tipo correto e acesso ao arquivo; arquivos removidos, sem permissão ou protegidos permanecem indisponíveis.
 
 Botão de favoritas do cartão Tocando agora redesenhado: coração vetorial em vez de caractere de fonte, área de toque de 48 × 48 dp, estados de contorno/preenchido e descrição Adicionar/Remover dos favoritos. Ícone independente do tamanho de fonte do Android, sem downloads de imagem ou animação contínua. Título e artista ficam separados do botão; a linha de metadados cresce conforme o texto, mantendo reticências nos nomes longos. Barra de posição com mais espaço e tempo em fonte um pouco maior. Sem música selecionada, o cartão volta ao estado inicial e o coração fica desabilitado. Preserva favoritas e controles existentes.
 
