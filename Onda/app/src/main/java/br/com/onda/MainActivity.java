@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
     private void filter(){String[] fields={"Todos os campos","Música","Artista","Álbum"};new AlertDialog.Builder(this).setTitle("Buscar por").setSingleChoiceItems(fields,searchScope,(dialog,which)->{searchScope=which;render();dialog.dismiss();}).setNegativeButton("Fechar",null).show();}
     private boolean receiveAudio(Intent intent){
         Uri uri=intent.getData();if(!Intent.ACTION_VIEW.equals(intent.getAction())||uri==null||(!"content".equalsIgnoreCase(uri.getScheme())&&!"file".equalsIgnoreCase(uri.getScheme())))return false;
-        int request=++audioRequest;libraryReady=true;status.setText("Abrindo áudio…");
+        int request=++audioRequest;pendingAudio=null;libraryReady=true;status.setText("Abrindo áudio…");
         try{if((intent.getFlags()&Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)!=0)getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(RuntimeException ignored){}
         scanner.execute(()->{try{MediaItem item=ExternalAudio.read(this,uri,intent.getType());handler.post(()->{if(isDestroyed()||request!=audioRequest)return;pendingAudio=item;songs.removeIf(s->s.mediaId.equals(item.mediaId));songs.add(item);render();playExternal();});}catch(Exception e){handler.post(()->{if(!isDestroyed()&&request==audioRequest)status.setText("Não foi possível abrir o áudio. Selecione o arquivo novamente no gerenciador.");});}});return true;
     }

@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /** Audio-only continuation of the current local video; independent of its Activity. */
+@androidx.media3.common.util.UnstableApi
 public final class VideoBackgroundService extends Service {
  static final String RETURN="br.com.onda.RETURN_VIDEO",CHANNEL="onda_video_background";private static final int NOTICE=903;
  static final class Snapshot {
