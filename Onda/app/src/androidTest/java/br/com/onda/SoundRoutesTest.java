@@ -43,12 +43,19 @@ public class SoundRoutesTest {
   try{ins.runOnMainSync(()->{SoundSettings.route("");SoundSettings.automatic(c,true);player.pause();player.setRepeatMode(Player.REPEAT_MODE_OFF);player.setMediaItem(new MediaItem.Builder().setMediaId("889901").setUri(Uri.fromFile(file)).build());player.prepare();player.play();});
    long deadline=System.currentTimeMillis()+10000;while(SoundSettings.current().isEmpty()&&System.currentTimeMillis()<deadline)Thread.sleep(100);
    assertEquals("Actual emulator AudioTrack must report speaker","speaker",SoundSettings.current());
-   ins.runOnMainSync(player::pause);ins.waitForIdleSync();
    ListenableFuture<SessionResult>[] command=new ListenableFuture[1];ins.runOnMainSync(()->{SoundSettings.saveProfile(c,"speaker",SoundProfile.preset(1,true));command[0]=player.sendCustomCommand(new SessionCommand("sound",Bundle.EMPTY),Bundle.EMPTY);});
-   SessionResult result=command[0].get(5,TimeUnit.SECONDS);assertEquals(SessionResult.RESULT_SUCCESS,result.resultCode);assertTrue(result.extras.getBoolean("enabled"));assertFalse(result.extras.getBoolean("playing"));
+   SessionResult result=command[0].get(5,TimeUnit.SECONDS);assertEquals(SessionResult.RESULT_SUCCESS,result.resultCode);assertTrue("Identified speaker uses its profile",result.extras.getBoolean("enabled"));
+   ins.runOnMainSync(player::pause);ins.waitForIdleSync();
+   // AudioRouting.getRoutedDevice may return null while paused. Compare the paused
+   // state before/after editing another profile, rather than assuming a live route.
+   ins.runOnMainSync(()->command[0]=player.sendCustomCommand(new SessionCommand("sound",Bundle.EMPTY),Bundle.EMPTY));
+   Bundle paused=command[0].get(5,TimeUnit.SECONDS).extras;assertFalse(paused.getBoolean("playing"));
    ins.runOnMainSync(()->assertFalse(player.getPlayWhenReady()));
    ins.runOnMainSync(()->{SoundSettings.saveProfile(c,"bluetooth",SoundProfile.preset(0,false));command[0]=player.sendCustomCommand(new SessionCommand("sound",Bundle.EMPTY),Bundle.EMPTY);});
-   assertTrue("Editing Bluetooth must keep speaker effects",command[0].get(5,TimeUnit.SECONDS).extras.getBoolean("enabled"));
+   Bundle after=command[0].get(5,TimeUnit.SECONDS).extras;
+   assertEquals("Editing Bluetooth preserves paused effects",paused.getBoolean("enabled"),after.getBoolean("enabled"));
+   assertFalse(after.getBoolean("playing"));assertEquals("Voz",SoundSettings.readProfile(c,"speaker").presetName());
+   ins.runOnMainSync(()->assertFalse(player.getPlayWhenReady()));
   }finally{ins.runOnMainSync(()->{player.pause();player.clearMediaItems();restore(profiles,saved);player.sendCustomCommand(new SessionCommand("sound",Bundle.EMPTY),Bundle.EMPTY);MediaController.releaseFuture(connection[0]);});file.delete();}
  }
 }
