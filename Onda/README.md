@@ -1,4 +1,12 @@
-# Onda Música 0.33.1 — Menus que cabem na tela
+# Onda Música 0.34.0 — Modo Aprender e leitor de PDF
+
+Vídeos → Menu → Modo Aprender: velocidade 0,5×, 0,75×, 1×, 1,25×, 1,5× e 2×. Abre pausado; selecione e toque em Reproduzir. Mantida na sessão do mesmo vídeo, inclusive retomada e fallback; outro vídeo volta a 1×. O resultado depende do decoder. Em Repetir trecho A–B, selecione Sem limite, 3, 5 ou 10 vezes. A contagem inclui a primeira passagem completa pelo fim B; tentativas de busca não contam. Ao concluir a quantidade, pausa e desativa a repetição, sem avançar para outro vídeo. Mantém pausa, cancelamento e busca manual fora do intervalo. Configuração e contagem somente na sessão.
+
+Momentos salvos → selecione um momento → Anotação: até 1.000 caracteres, com parágrafos, editável ou apagável esvaziando o texto. Preserva marcações anteriores, nome, ID e posição; renomear não apaga a nota. Salvas no celular, associadas ao mesmo arquivo da biblioteca/seletor reconhecido, sem alterar o vídeo e fora do backup de listas. Os limites continuam em 30 momentos por vídeo e 100 vídeos.
+
+Menu da biblioteca, Explorar ou vídeos → Leitor de PDF. Abrir usa o seletor de documentos Android; também aceita Abrir com Onda para arquivos content:// application/pdf com acesso concedido. Leitor nativo com página anterior/próxima, Ir à página, zoom de 50% a 200% e Continuar último PDF na última página renderizada, inclusive após reiniciar o app quando o provedor permite acesso persistente. O zoom pode ampliar a imagem dentro do limite de resolução de renderização. Não altera o arquivo. Não é editor, OCR ou leitor de PDFs com senha. Até 64 MB e 5.000 páginas; uma página por vez, renderização fora da interface, imagem limitada a 2,5 milhões de pixels. Cópia privada temporária para leitura; liberada ao fechar, e cópias interrompidas são limpas na próxima abertura. Sem serviço próprio, API paga, varredura de arquivos ou permissão adicional; documentos de nuvem dependem do provedor escolhido no Android. A leitura não solicita foco de áudio, permitindo manter música de fundo.
+
+## Menus que cabem na tela
 
 Os menus da biblioteca, vídeos, Explorar e DJ agora abrem em um painel central com lista rolável e botão Fechar fixo. Altura e largura são limitadas pela área útil informada pelo Android, respeitando as barras do sistema. Opções longas podem ocupar mais de uma linha, sem diminuir a fonte escolhida no celular. Mantém todas as opções, descrições de acessibilidade e ações existentes.
 

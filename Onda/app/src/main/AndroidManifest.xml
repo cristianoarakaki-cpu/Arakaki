@@ -19,6 +19,9 @@
         <activity android:name=".DownloadsActivity" android:launchMode="singleTop" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>
+        <activity android:name=".PdfActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" android:mimeType="application/pdf" /></intent-filter>
+        </activity>
         <activity android:name=".BackupActivity" android:exported="false" />
         <activity android:name=".QueueActivity" android:exported="false" />
         <activity android:name=".PlaylistsActivity" android:exported="false" />

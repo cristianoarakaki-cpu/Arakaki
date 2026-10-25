@@ -1,0 +1,55 @@
+package br.com.onda;
+
+import android.app.*;
+import android.content.*;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.*;
+import android.provider.OpenableColumns;
+import android.text.InputType;
+import android.view.*;
+import android.widget.*;
+import java.io.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/** A local page reader using Android's renderer and the system document picker. */
+public class PdfActivity extends Activity {
+ private static final int OPEN=640;
+ private final Handler main=new Handler(Looper.getMainLooper());private final ExecutorService worker=Executors.newSingleThreadExecutor();
+ private final AtomicInteger generation=new AtomicInteger();private volatile boolean closed;private PdfBook book;
+ private Uri source;private String documentName="PDF";private int page,total;private float zoom=1f;private boolean ready;
+ private TextView title,status,counter,zoomLabel;private ImageView image;private ScrollView vertical;private HorizontalScrollView horizontal;private Button previous,next,last;
+ private SharedPreferences history;private AlertDialog pageDialog;
+ @Override public void onCreate(Bundle saved){super.onCreate(saved);history=getSharedPreferences("pdf_reading",0);
+  LinearLayout root=column();Ui.background(root);root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(Ui.dp(this,12),Ui.dp(this,8)+i.getSystemWindowInsetTop(),Ui.dp(this,12),Ui.dp(this,8)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
+  LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);Button back=Ui.button(this,"‹",v->finish());back.setContentDescription("Voltar do PDF");Ui.ghost(back);header.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,48),Ui.dp(this,48)));
+  title=Ui.text(this,"Leitor de PDF",20,Ui.TEXT);title.setMaxLines(1);title.setEllipsize(android.text.TextUtils.TruncateAt.END);Ui.bold(title);header.addView(title,new LinearLayout.LayoutParams(0,-2,1));Button open=Ui.button(this,"Abrir",v->pick());open.setContentDescription("Abrir PDF");header.addView(open,new LinearLayout.LayoutParams(-2,-2));root.addView(header);
+  status=Ui.text(this,"Selecione um PDF do celular. Leitura local, sem enviar o arquivo a um servidor. PDFs protegidos por senha não são suportados nesta versão.",13,Ui.MUTED);status.setPadding(0,Ui.dp(this,8),0,Ui.dp(this,8));status.setContentDescription("Estado do leitor PDF");root.addView(status);
+  last=Ui.button(this,"Continuar último PDF",v->{String raw=history.getString("uri","");if(!raw.isEmpty())load(Uri.parse(raw),history.getInt("page",0));});last.setContentDescription("Continuar último PDF");last.setVisibility(history.getString("uri","").isEmpty()?View.GONE:View.VISIBLE);root.addView(last,new LinearLayout.LayoutParams(-1,-2));
+  horizontal=new HorizontalScrollView(this);horizontal.setFillViewport(true);vertical=new ScrollView(this);vertical.setFillViewport(false);image=new ImageView(this);image.setScaleType(ImageView.ScaleType.FIT_START);image.setContentDescription("Página do PDF");horizontal.addView(image,new HorizontalScrollView.LayoutParams(-2,-2));vertical.addView(horizontal,new ScrollView.LayoutParams(-1,-2));vertical.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(ready&&r-l>0&&r-l!=or-ol)renderPage();});Ui.card(vertical,false);root.addView(vertical,new LinearLayout.LayoutParams(-1,0,1));
+  LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER_VERTICAL);previous=Ui.button(this,"‹",v->showPage(page-1));previous.setContentDescription("Página anterior do PDF");navigation.addView(previous,new LinearLayout.LayoutParams(Ui.dp(this,48),-2));counter=Ui.text(this,"Nenhum PDF aberto",13,Ui.CYAN);counter.setGravity(Gravity.CENTER);counter.setContentDescription("Página atual do PDF");navigation.addView(counter,new LinearLayout.LayoutParams(0,-2,1));next=Ui.button(this,"›",v->showPage(page+1));next.setContentDescription("Próxima página do PDF");navigation.addView(next,new LinearLayout.LayoutParams(Ui.dp(this,48),-2));root.addView(navigation);
+  LinearLayout tools=new LinearLayout(this);Button less=Ui.button(this,"−",v->changeZoom(-.25f));less.setContentDescription("Diminuir zoom do PDF");tools.addView(less,new LinearLayout.LayoutParams(Ui.dp(this,48),-2));zoomLabel=Ui.text(this,"100%",13,Ui.MUTED);zoomLabel.setGravity(Gravity.CENTER);zoomLabel.setContentDescription("Zoom do PDF");tools.addView(zoomLabel,new LinearLayout.LayoutParams(0,-1,1));Button more=Ui.button(this,"+",v->changeZoom(.25f));more.setContentDescription("Aumentar zoom do PDF");tools.addView(more,new LinearLayout.LayoutParams(Ui.dp(this,48),-2));Button go=Ui.button(this,"Ir à página",v->goToPage());go.setContentDescription("Ir à página do PDF");tools.addView(go,new LinearLayout.LayoutParams(-2,-2));root.addView(tools);updateControls();
+  Uri incoming=getIntent().getData();if(saved!=null&&saved.getString("uri")!=null){zoom=Math.max(.5f,Math.min(2f,saved.getFloat("zoom",1)));load(Uri.parse(saved.getString("uri")),saved.getInt("page",0));}else if(Intent.ACTION_VIEW.equals(getIntent().getAction())&&incoming!=null)load(incoming,history.getString("uri","").equals(incoming.toString())?history.getInt("page",0):0);
+ }
+ private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
+ private void pick(){try{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("application/pdf").addCategory(Intent.CATEGORY_OPENABLE).putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,Uri.parse("content://com.android.providers.downloads.documents/root/downloads")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);startActivityForResult(intent,OPEN);}catch(ActivityNotFoundException e){status.setText("O seletor de documentos do Android não está disponível.");}}
+ @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=OPEN||result!=RESULT_OK||data==null||data.getData()==null)return;Uri uri=data.getData();try{getContentResolver().takePersistableUriPermission(uri,data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(RuntimeException ignored){}zoom=1;load(uri,history.getString("uri","").equals(uri.toString())?history.getInt("page",0):0);}
+ private String name(Uri uri){try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst()){String s=c.getString(0);if(s!=null&&!s.isEmpty())return s.substring(0,Math.min(200,s.length()));}}catch(RuntimeException ignored){}return "Documento PDF";}
+ private void load(Uri uri,int at){if(uri==null||!"content".equalsIgnoreCase(uri.getScheme())||uri.toString().length()>4096){status.setText("Selecione um PDF pelo aplicativo Arquivos do Android.");return;}int token=generation.incrementAndGet();ready=false;source=uri;image.setImageDrawable(null);status.setText("Abrindo PDF…");counter.setText("Abrindo PDF…");title.setText("Leitor de PDF");last.setVisibility(View.GONE);updateControls();
+  worker.execute(()->{if(book!=null){book.close();book=null;}if(closed||token!=generation.get())return;try(InputStream input=getContentResolver().openInputStream(uri)){
+    if(input==null)throw new IOException("Arquivo indisponível");String label=name(uri);PdfBook opened=PdfBook.open(this,input,()->closed||token!=generation.get());if(closed||token!=generation.get()){opened.close();return;}book=opened;int count=opened.pages();main.post(()->{if(closed||token!=generation.get())return;documentName=label;total=count;page=Math.max(0,Math.min(at,count-1));ready=true;title.setText(label);renderPage();});
+   }catch(Exception|OutOfMemoryError e){main.post(()->{if(closed||token!=generation.get())return;ready=false;total=0;counter.setText("PDF indisponível");status.setText("Não foi possível abrir o PDF. Selecione novamente um arquivo válido, sem senha, de até 64 MB e 5.000 páginas.");last.setVisibility(history.getString("uri","").isEmpty()?View.GONE:View.VISIBLE);updateControls();});}
+  });
+ }
+ private void showPage(int index){if(!ready||index<0||index>=total)return;page=index;renderPage();}
+ private void changeZoom(float delta){if(!ready)return;zoom=Math.max(.5f,Math.min(2f,zoom+delta));renderPage();}
+ private void updateControls(){previous.setEnabled(ready&&page>0);next.setEnabled(ready&&page+1<total);zoomLabel.setText(Math.round(zoom*100)+"%");if(ready)counter.setText("Página "+(page+1)+" de "+total);}
+ private void renderPage(){if(!ready||closed)return;int token=generation.incrementAndGet(),index=page;Uri owner=source;int width=Math.max(320,vertical.getWidth());int pixels=Math.max(1,Math.round(width*zoom));status.setText("Renderizando página…");updateControls();
+  worker.execute(()->{if(closed||token!=generation.get()||book==null)return;try{Bitmap bitmap=book.render(index,pixels);main.post(()->{if(closed||token!=generation.get()){bitmap.recycle();return;}image.setImageBitmap(bitmap);image.setLayoutParams(new HorizontalScrollView.LayoutParams(pixels,(int)Math.max(1,Math.min(16384,(double)bitmap.getHeight()*pixels/bitmap.getWidth()))));vertical.scrollTo(0,0);horizontal.scrollTo(0,0);image.setContentDescription("Página "+(index+1)+" do PDF "+documentName);status.setText("PDF local • "+total+" páginas");history.edit().putString("uri",owner.toString()).putString("name",documentName).putInt("page",index).apply();android.util.Log.d("OndaPdf","rendered "+(index+1)+"/"+total+" "+bitmap.getWidth()+"x"+bitmap.getHeight());});}catch(Exception|OutOfMemoryError e){main.post(()->{if(!closed&&token==generation.get())status.setText("Não foi possível renderizar esta página. Tente diminuir o zoom ou abrir outro PDF.");});}});
+ }
+ private void goToPage(){if(!ready)return;EditText number=new EditText(this);number.setInputType(InputType.TYPE_CLASS_NUMBER);number.setContentDescription("Número da página do PDF");number.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4)});number.setText(String.valueOf(page+1));number.selectAll();pageDialog=new AlertDialog.Builder(this).setTitle("Ir à página • 1 a "+total).setView(number).setPositiveButton("Abrir",null).setNegativeButton("Cancelar",null).create();pageDialog.setOnShowListener(d->pageDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{int index=Integer.parseInt(number.getText().toString())-1;if(index<0||index>=total)throw new NumberFormatException();pageDialog.dismiss();showPage(index);}catch(NumberFormatException e){number.setError("Escolha uma página de 1 a "+total);}}));pageDialog.show();}
+ @Override protected void onSaveInstanceState(Bundle out){if(source!=null&&ready){out.putString("uri",source.toString());out.putInt("page",page);out.putFloat("zoom",zoom);}super.onSaveInstanceState(out);}
+ @Override protected void onDestroy(){closed=true;generation.incrementAndGet();if(pageDialog!=null)pageDialog.dismiss();image.setImageDrawable(null);worker.execute(()->{if(book!=null){book.close();book=null;}});worker.shutdown();super.onDestroy();}
+}

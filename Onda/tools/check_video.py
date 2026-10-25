@@ -487,6 +487,9 @@ try:
  scene_id=saved[0]['id'];scene_time=saved[0]['position'];assert 3000<=scene_time<=14000,scene_time
  menu_action('Menu de vídeos','Momentos salvos');choose_scene('MeuTrecho');tap_text('Renomear');name_scene('TrechoEditado')
  saved=saved_scenes();assert saved[0]['id']==scene_id and saved[0]['position']==scene_time and saved[0]['label']=='TrechoEditado'
+ menu_action('Menu de vídeos','Momentos salvos');choose_scene('TrechoEditado');tap_text('Anotação')
+ tap('Anotação do momento');shell('input','text','Minha%sanotacao');shell('input','keyevent','4');tap_text('Salvar')
+ assert saved_scenes()[0]['note']=='Minha anotacao'
  shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
  tap('Abrir biblioteca de vídeos');menu_action('Menu de vídeos','Abrir arquivo');time.sleep(.5)
  folder=next((n for n in nodes() if n.attrib.get('text')=='OndaDemo'),None)
@@ -503,6 +506,9 @@ try:
     time.sleep(.3)
  else:raise AssertionError('Document scene fixture did not render')
  shell('input','tap',*fresh_pause);time.sleep(.5)
+ menu_action('Menu de vídeos','Momentos salvos');choose_scene('TrechoEditado');tap_text('Anotação')
+ assert locate('Anotação do momento').attrib.get('text')=='Minha anotacao','Annotation did not survive process restart and URI alias'
+ capture('35-anotacao-aprender');tap_text('Cancelar')
  menu_action('Menu de vídeos','Momentos salvos');capture('31-momentos-salvos');choose_scene('TrechoEditado')
  adb('logcat','-c');tap_text('Reproduzir daqui')
  for _ in range(60):
@@ -548,6 +554,26 @@ try:
  prepare_loop();menu_action('Menu de vídeos','Repetir trecho A–B');tap_text('Desativar')
  assert 'A–B' not in locate('Tempo do vídeo').attrib.get('text',''),'Explicit loop cancellation failed'
  (OUTPUT/'video-loop-tests.json').write_text(json.dumps({'rangeMs':[2000,5000],'nativeReturns':len(acknowledged),'nativeAcknowledgementsMs':acknowledged,'pausedDoesNotSeek':True,'manualEscapeCancels':True,'explicitCancellation':True},indent=2)+'\n')
+ # Learning: actual VLC speed, exactly three complete passes, then a native pause.
+ menu_action('Menu de vídeos','Modo Aprender');tap_text('Velocidade: 1×');tap_text('1,5×')
+ assert locate('Reproduzir vídeo') is not None
+ menu_action('Menu de vídeos','Repetir trecho A–B')
+ set_loop_field('Início do trecho A','2');set_loop_field('Fim do trecho B','5')
+ tap('Quantidade de repetições do trecho');tap_text('3 vezes');tap_text('Ativar')
+ finite_point=point(locate('Reproduzir vídeo'));capture('36-aprender-tres-vezes')
+ adb('logcat','-c');shell('input','tap',*finite_point)
+ deadline=time.time()+35
+ while time.time()<deadline:
+    learning_log=adb('logcat','-d','-s','OndaLearn:D','OndaLoop:D').decode(errors='replace')
+    if 'completed 3' in learning_log:break
+    assert 'failed' not in learning_log,learning_log
+    time.sleep(.3)
+ else:raise AssertionError('Finite repetitions did not complete: '+learning_log)
+ assert 'rate 1.5' in learning_log,'VLC did not acknowledge the selected speed'
+ assert locate('Reproduzir vídeo') is not None,'Three passes did not leave the video paused'
+ assert 'A–B' not in locate('Tempo do vídeo').attrib.get('text','')
+ menu_action('Menu de vídeos','Modo Aprender');tap_text('Velocidade: 1,5×');tap_text('1× • normal')
+ (OUTPUT/'learning-tests.json').write_text(json.dumps({'nativeRate':1.5,'completedPasses':3,'pausedAfterCompletion':True,'annotationRetainedAcrossRestartAndUriAlias':True},indent=2)+'\n')
  for extension,vcodec,acodec,mime in formats:
     filename='Onda-Video.'+extension
     if extension in ('avi','flv','wmv'):
