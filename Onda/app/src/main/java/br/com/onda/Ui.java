@@ -47,8 +47,35 @@ final class Ui {
         b.setText("");b.setContentDescription(description);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setBackground(ripple(c,shape(c,RAISED,BORDER,16),16));b.setOnClickListener(listener);return b;
     }
     static void menu(Activity activity,View anchor,String[] labels,String[] descriptions,Runnable[] actions){
-        PopupMenu popup=new PopupMenu(activity,anchor);for(int i=0;i<labels.length;i++)popup.getMenu().add(0,i,i,labels[i]).setContentDescription(descriptions[i]);
-        popup.setOnMenuItemClickListener(item->{actions[item.getItemId()].run();return true;});popup.show();
+        if(activity.isFinishing()||activity.isDestroyed())return;
+        // PopupMenu can exceed the usable screen on manufacturer skins. A dialog's
+        // ListView reserves room for its fixed close button and scrolls independently.
+        Rect frame=new Rect();activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(frame);
+        if(frame.isEmpty()){Point size=new Point();activity.getWindowManager().getDefaultDisplay().getSize(size);frame.set(0,0,size.x,size.y);}
+        int width=Math.max(1,Math.min(dp(activity,480),frame.width()-dp(activity,16)));
+        BaseAdapter adapter=new BaseAdapter(){
+            public int getCount(){return labels.length;}
+            public Object getItem(int position){return labels[position];}
+            public long getItemId(int position){return position;}
+            public View getView(int position,View recycled,ViewGroup parent){
+                TextView row=recycled instanceof TextView?(TextView)recycled:text(activity,"",16,TEXT);
+                row.setText(labels[position]);row.setContentDescription(descriptions[position]);
+                row.setSingleLine(false);row.setEllipsize(null);row.setMinHeight(dp(activity,48));
+                row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(activity,20),dp(activity,12),dp(activity,20),dp(activity,12));
+                row.setLayoutParams(new AbsListView.LayoutParams(-1,-2));return row;
+            }
+        };
+        int desired=dp(activity,136);for(int i=0;i<labels.length;i++){
+            View row=adapter.getView(i,null,null);row.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));desired+=row.getMeasuredHeight();
+        }
+        CharSequence title=anchor.getContentDescription();
+        android.app.AlertDialog dialog=new android.app.AlertDialog.Builder(activity)
+            .setTitle(title==null?"Menu":title).setAdapter(adapter,(d,index)->{d.dismiss();actions[index].run();})
+            .setNegativeButton("Fechar",null).create();
+        dialog.show();ListView list=dialog.getListView();list.setContentDescription("Opções do menu");list.setVerticalScrollBarEnabled(true);list.setScrollbarFadingEnabled(false);
+        Window window=dialog.getWindow();if(window!=null){window.setBackgroundDrawable(shape(activity,SURFACE,BORDER,20));
+            window.setLayout(width,Math.max(1,Math.min(desired,Math.min(dp(activity,600),frame.height()-dp(activity,16)))));
+        }
     }
     static Button menuButton(Context context,String description,View.OnClickListener listener){Button b=button(context,"☰",listener);ghost(b);b.setTextSize(25);b.setContentDescription(description);return b;}
     @androidx.media3.common.util.UnstableApi

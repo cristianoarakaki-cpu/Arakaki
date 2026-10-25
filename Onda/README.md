@@ -1,4 +1,8 @@
-# Onda Música 0.33.0 — Perfis de som por saída
+# Onda Música 0.33.1 — Menus que cabem na tela
+
+Os menus da biblioteca, vídeos, Explorar e DJ agora abrem em um painel central com lista rolável e botão Fechar fixo. Altura e largura são limitadas pela área útil informada pelo Android, respeitando as barras do sistema. Opções longas podem ocupar mais de uma linha, sem diminuir a fonte escolhida no celular. Mantém todas as opções, descrições de acessibilidade e ações existentes.
+
+## Perfis de som por saída
 
 Menu → Estúdio de som → Perfis automáticos por saída. Um perfil para alto-falante, fone com fio, Bluetooth, USB, HDMI e outras saídas, com nome editável de até 40 caracteres. Todos os dispositivos Bluetooth compartilham um perfil. Escolha qual perfil editar; editar uma saída inativa não muda o perfil da saída atual. Restaurar som original afeta somente o perfil em edição quando o modo automático está ligado. Desligar o modo automático recupera os ajustes gerais anteriores.
 

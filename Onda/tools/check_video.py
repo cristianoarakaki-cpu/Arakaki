@@ -31,10 +31,18 @@ def dialog_action(label):
     tap_text(label)
 def menu_action(description,label):
     tap(description)
-    for _ in range(3):
-        if any(n.attrib.get('text','').casefold()==label.casefold() for n in nodes()):break
-        shell('input','swipe',850,1500,850,650,300);time.sleep(.3)
-    tap_text(label)
+    for _ in range(12):
+        current=nodes()
+        target=next((n for n in current if n.attrib.get('text','').casefold()==label.casefold()),None)
+        listing=next(n for n in current if n.attrib.get('content-desc')=='Opções do menu')
+        bounds=[int(x) for x in re.findall(r'\d+',listing.attrib['bounds'])]
+        if target is not None:
+            rect=[int(x) for x in re.findall(r'\d+',target.attrib['bounds'])]
+            if rect[1]>=bounds[1] and rect[3]<=bounds[3] and rect[3]>rect[1]:
+                shell('input','tap',*point(target));time.sleep(.5);return
+        x=(bounds[0]+bounds[2])//2;y1=bounds[1]+int((bounds[3]-bounds[1])*.85);y2=bounds[1]+int((bounds[3]-bounds[1])*.2)
+        shell('input','swipe',x,y1,x,y2,300);time.sleep(.3)
+    raise AssertionError('Menu option could not be reached: '+label)
 def capture(name):
     (OUTPUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
     (OUTPUT/(name+'.xml')).write_bytes(shell('cat','/sdcard/onda-video.xml'))
@@ -74,7 +82,7 @@ shell('input','keyevent','4');time.sleep(.5)
 tap('Filtrar busca no celular');tap_text('Artista')
 assert locate('Filtrar busca no celular').attrib.get('text')=='Artista'
 tap('Filtrar busca no celular');tap_text('Todos os campos')
-tap('Menu da biblioteca');capture('02-menu-biblioteca');tap_text('Coleções inteligentes')
+tap('Menu da biblioteca');capture('02-menu-biblioteca');shell('input','keyevent','4');menu_action('Menu da biblioteca','Coleções inteligentes')
 assert any(n.attrib.get('text')=='Onda Lab' for n in nodes())
 shell('input','keyevent','4');time.sleep(.5)
 menu_action('Menu da biblioteca','Atualizações');capture('03-atualizacoes-menu')
