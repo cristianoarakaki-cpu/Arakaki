@@ -1,4 +1,8 @@
-# Onda Música 0.34.0 — Modo Aprender e leitor de PDF
+# Onda Música 0.34.1 — Favoritas sem ícone cortado
+
+Botão de favoritas do cartão Tocando agora redesenhado: coração vetorial em vez de caractere de fonte, área de toque de 48 × 48 dp, estados de contorno/preenchido e descrição Adicionar/Remover dos favoritos. Ícone independente do tamanho de fonte do Android, sem downloads de imagem ou animação contínua. Título e artista ficam separados do botão; a linha de metadados cresce conforme o texto, mantendo reticências nos nomes longos. Barra de posição com mais espaço e tempo em fonte um pouco maior. Sem música selecionada, o cartão volta ao estado inicial e o coração fica desabilitado. Preserva favoritas e controles existentes.
+
+## Modo Aprender e leitor de PDF
 
 Vídeos → Menu → Modo Aprender: velocidade 0,5×, 0,75×, 1×, 1,25×, 1,5× e 2×. Abre pausado; selecione e toque em Reproduzir. Mantida na sessão do mesmo vídeo, inclusive retomada e fallback; outro vídeo volta a 1×. O resultado depende do decoder. Em Repetir trecho A–B, selecione Sem limite, 3, 5 ou 10 vezes. A contagem inclui a primeira passagem completa pelo fim B; tentativas de busca não contam. Ao concluir a quantidade, pausa e desativa a repetição, sem avançar para outro vídeo. Mantém pausa, cancelamento e busca manual fora do intervalo. Configuração e contagem somente na sessão.
 

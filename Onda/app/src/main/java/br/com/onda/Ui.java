@@ -41,6 +41,11 @@ final class Ui {
         TextView arrow=text(c,"›",25,MUTED);arrow.setPadding(dp(c,10),0,0,0);row.addView(arrow);
         LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,-2);rowParams.bottomMargin=dp(c,8);row.setLayoutParams(rowParams);row.setOnClickListener(action);row.setFocusable(true);return row;
     }
+    static Button favoriteButton(Context c,View.OnClickListener listener){
+        HeartButton b=new HeartButton(c);b.setText("");b.setTextColor(MUTED);b.setContentDescription("Adicionar aos favoritos");
+        b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));b.setPadding(0,0,0,0);b.setStateListAnimator(null);
+        b.setBackground(ripple(c,shape(c,RAISED,BORDER,16),16));b.setOnClickListener(listener);return b;
+    }
     static Button transport(Context c,String kind,View.OnClickListener listener){TransportButton b=new TransportButton(c,kind);b.setText("play".equals(kind)?"▶":"");b.setTextColor("play".equals(kind)?BG:MUTED);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setPadding(0,0,0,0);b.setBackground("play".equals(kind)?ripple(c,gradient(c,CYAN,0xFF9BBBFF,28),28):ripple(c,shape(c,Color.TRANSPARENT,0,24),24));b.setOnClickListener(listener);return b;}
     static Button voiceButton(Context c,String description,View.OnClickListener listener){
         Button b=new Button(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
@@ -88,6 +93,22 @@ final class Ui {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int seed;
         SignalArt(Context c,int seed){super(c);this.seed=seed;}
         @Override protected void onDraw(Canvas canvas){float w=getWidth(),h=getHeight();paint.setShader(new LinearGradient(0,0,w,h,new int[]{0xFF19364C,0xFF272145},null,Shader.TileMode.CLAMP));canvas.drawRoundRect(0,0,w,h,w*.24f,w*.24f,paint);paint.setShader(null);paint.setColor(0x334D91B1);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(Math.max(1,w*.017f));canvas.drawCircle(w*.5f,h*.5f,w*.36f,paint);paint.setStyle(Paint.Style.FILL);float[] bars={.18f,.38f,.60f,.36f,.20f};for(int i=0;i<5;i++){float bh=h*bars[i];paint.setColor(i<3?CYAN:VIOLET);canvas.drawRoundRect(w*(.27f+i*.10f),h*.5f-bh*.5f,w*(.315f+i*.10f),h*.5f+bh*.5f,w*.025f,w*.025f,paint);} }
+    }
+    /** Heart geometry uses dp, so Android font scaling cannot crop the icon. */
+    private static final class HeartButton extends Button {
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final Path path=new Path();
+        HeartButton(Context c){super(c);}
+        @Override protected void onDraw(Canvas canvas){
+            float u=Math.max(0,Math.min(dp(getContext(),32),Math.min(getWidth(),getHeight())-dp(getContext(),16)))/24f;
+            if(u<=0)return;float x=getWidth()/2f-12*u,y=getHeight()/2f-12*u;
+            path.reset();path.moveTo(x+12*u,y+21*u);
+            path.cubicTo(x+9*u,y+18*u,x+3*u,y+14*u,x+3*u,y+8*u);
+            path.cubicTo(x+3*u,y+2*u,x+9*u,y+1*u,x+12*u,y+6*u);
+            path.cubicTo(x+15*u,y+1*u,x+21*u,y+2*u,x+21*u,y+8*u);
+            path.cubicTo(x+21*u,y+14*u,x+15*u,y+18*u,x+12*u,y+21*u);path.close();
+            paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(dp(getContext(),2));paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStyle(isSelected()?Paint.Style.FILL:Paint.Style.STROKE);canvas.drawPath(path,paint);
+        }
     }
     private static final class TransportButton extends Button {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final String kind;

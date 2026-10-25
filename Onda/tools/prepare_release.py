@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Aprender e PDF
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Favoritas e cartão do tocador
+
+Coração de favoritas redesenhado como ícone vetorial, sem depender da fonte do Android e sem recortes nas laterais. Botão com área de toque de 48 × 48 dp, contorno quando não favorito e preenchido quando favorito. Cartão Tocando agora com mais separação entre título, artista e coração, altura adaptável aos textos, barra de posição mais espaçada e tempo mais legível. Mantém as favoritas salvas e os demais recursos.
 
 Vídeos → Menu → Modo Aprender: velocidades de 0,5× a 2×, repetição A–B sem limite ou por 3, 5 e 10 passagens completas, com pausa ao concluir. Ativar ou alterar velocidade prepara o vídeo pausado; toque em Reproduzir. Velocidade e repetição valem na sessão do vídeo; outro arquivo volta a 1×. Momentos salvos → Anotação: texto local editável de até 1.000 caracteres; renomear preserva a nota. Marcações antigas são mantidas e notas não alteram o vídeo nem integram o backup de listas.
 

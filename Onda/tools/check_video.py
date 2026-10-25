@@ -155,6 +155,36 @@ def voice(phrase):
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity','--activity-single-top','--es','voice_phrase',phrase);time.sleep(.7)
 voice('toque Onda Sessions');voice('pause')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
+# Reproduce enlarged text on the real now-playing card and exercise both favorites states.
+player_font=shell('settings','get','system','font_scale').decode().strip()
+density_values=re.findall(r'(?:Physical|Override) density:\s*(\d+)',shell('wm','density').decode())
+player_density=int(density_values[-1])/160
+try:
+ shell('settings','put','system','font_scale','1.5');time.sleep(2)
+ for _ in range(8):
+    ns=nodes();heart=next((n for n in ns if n.attrib.get('content-desc') in ('Adicionar aos favoritos','Remover dos favoritos') and n.attrib.get('enabled')=='true'),None)
+    if heart is not None:break
+    time.sleep(.3)
+ assert heart is not None,'Current music did not reconnect after font change'
+ before=heart.attrib['content-desc'];left,top,right,bottom=[int(v) for v in re.findall(r'\d+',heart.attrib['bounds'])]
+ assert right-left>=round(48*player_density)-1 and bottom-top>=round(48*player_density)-1,'Favorite target smaller than 48dp'
+ for text in ('Onda-Audio','Onda Sessions'):
+    candidates=[n for n in ns if n.attrib.get('text')==text and int(re.findall(r'\d+',n.attrib['bounds'])[3])>top-150]
+    assert candidates,'Now-playing metadata disappeared: '+text
+    metadata=max(candidates,key=lambda n:int(re.findall(r'\d+',n.attrib['bounds'])[1]))
+    assert int(re.findall(r'\d+',metadata.attrib['bounds'])[2])<left,'Song metadata overlaps favorite button'
+ tap(before);after='Remover dos favoritos' if before=='Adicionar aos favoritos' else 'Adicionar aos favoritos'
+ changed=locate(after);assert changed.attrib.get('selected')==str(after=='Remover dos favoritos').lower()
+ capture('40-favoritas-fonte-ampliada')
+ tap(after);restored=locate(before);assert restored.attrib.get('selected')==str(before=='Remover dos favoritos').lower()
+ capture('41-coracao-contorno')
+ (OUTPUT/'favorite-layout-tests.json').write_text(json.dumps({'fontScale':1.5,'touchTargetDp':48,'metadataDoesNotOverlap':True,'toggleAndRestore':True},indent=2)+'\n')
+except Exception:
+ try:nodes();capture('favorite-layout-failure')
+ except Exception:pass
+ raise
+finally:
+ shell('settings','put','system','font_scale',player_font if player_font not in ('','null') else '1.0');time.sleep(1)
 # Validate real session effects, readback, persistence and pause/release behavior.
 def sound_state():
  log=adb('logcat','-d','-s','OndaSound:D').decode(errors='replace')
