@@ -37,7 +37,8 @@ try:
  else:raise AssertionError('External MP3 did not play')
  assert any(n.attrib.get('text')=='Onda Sessions' for n in ns),'External audio metadata missing'
  # A PDF delivered by another app opens directly in the Onda reader.
- pdf='content://com.android.externalstorage.documents/document/primary%3ADownload%2FOnda-Guia.pdf'
+ pdf_query=shell('content','query','--uri','content://media/external/file','--projection','_id','--where',"_display_name='Onda-Guia.pdf'").decode();pdf_id=re.search(r'_id=(\d+)',pdf_query);assert pdf_id,pdf_query
+ pdf='content://media/external/file/'+pdf_id[1]
  open_file(pdf,'application/pdf')
  for _ in range(15):
   ns=nodes()
