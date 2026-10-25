@@ -60,7 +60,21 @@ try:
  l,t,r,b=rect(selectable);x=l+min((r-l)//2,180);y=t+min((b-t)//2,45)
  shell('input','swipe',x,y,x,y,1200);time.sleep(.4)
  copied=next((n for n in nodes() if n.attrib.get('text','').casefold() in ('copy','copiar')),None)
- assert copied is not None,'Native selection copy command unavailable';capture('44-pdf-selecao-texto');tap_node(copied)
+ # Android 10 omits the native floating selection toolbar from dump XML even
+ # when it is visible. Use the native keyboard Copy action if its node is absent,
+ # then prove that a proper substring reached the actual Android clipboard.
+ capture('44-pdf-selecao-texto')
+ if copied is not None:tap_node(copied)
+ else:shell('input','keyevent','278');time.sleep(.3)
+ tap_node(next(n for n in nodes() if n.attrib.get('text','').casefold()=='fechar'))
+ tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
+ partial=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
+ original=selectable.attrib.get('text','')
+ assert partial and partial!=original and partial in original,('Selected substring did not reach clipboard',partial,original)
+ shell('input','keyevent','123')
+ for _ in partial:shell('input','keyevent','67')
+ shell('input','keyevent','4');open_reader();tap('Continuar último PDF');page(1)
+ tap('Menu do PDF');tap('Selecionar e copiar texto do PDF')
  tap_node(next(n for n in nodes() if n.attrib.get('text','').casefold()=='copiar texto'))
  tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
  pasted=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
