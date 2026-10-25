@@ -453,12 +453,24 @@ try:
         assert document is not None,'File not visible in picker: '+filename
         adb('logcat','-c');shell('input','tap',*point(document));time.sleep(.5)
     else:
-        tap('Buscar vídeos por nome');shell('input','keyevent','123')
-        field=locate('Buscar vídeos por nome');previous=field.attrib.get('text','')
-        if previous and previous!='Buscar vídeo no celular':
-            for _ in previous:shell('input','keyevent','67')
-        shell('input','text',extension);shell('input','keyevent','4');time.sleep(.5)
-        row=locate('Assistir '+filename);adb('logcat','-c');shell('input','tap',*point(row))
+        # Wait for focus and verify actual text: opening the keyboard moves the search field.
+        for attempt in range(2):
+            tap('Buscar vídeos por nome');shell('input','keyevent','123')
+            previous=locate('Buscar vídeos por nome').attrib.get('text','')
+            if previous and previous!='Buscar vídeo no celular':
+                for _ in previous:shell('input','keyevent','67')
+            shell('input','text',extension)
+            actual=locate('Buscar vídeos por nome').attrib.get('text','')
+            if actual==extension:break
+        else:raise AssertionError('Search input mismatch for '+filename+': '+actual)
+        shell('input','keyevent','4');time.sleep(.5)
+        row=None
+        for attempt in range(4):
+            tree=nodes();row=next((n for n in tree if n.attrib.get('content-desc')=='Assistir '+filename),None)
+            if row is not None:break
+            time.sleep(.25)
+        assert row is not None,'Video result absent: '+filename+'; query='+actual+'; visible='+str([(n.attrib.get('text'),n.attrib.get('content-desc')) for n in tree if n.attrib.get('text') or n.attrib.get('content-desc')])
+        adb('logcat','-c');shell('input','tap',*point(row))
         # The PiP exercise deliberately ran MP4 long enough to save its bookmark.
         if extension=='mp4':tap_text('Recomeçar')
     played=False
@@ -488,6 +500,7 @@ try:
  shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
  print('Android: menus, music/video/online navigation, local filters, online filter panel, timer, collections, updates and 8 video containers passed.')
 finally:
+ (OUTPUT/'video-before-cleanup.xml').write_bytes(shell('cat','/sdcard/onda-video.xml'))
  (OUTPUT/'video-tests.json').write_text(json.dumps(results,indent=2)+'\n')
  (OUTPUT/'video-logcat.txt').write_bytes(adb('logcat','-d','-v','threadtime'))
  (OUTPUT/'video-last-screen.png').write_bytes(adb('exec-out','screencap','-p'))
