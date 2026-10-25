@@ -31,6 +31,7 @@ def page(number):
 objects=[b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R] /Count 3 >>']
 for i in range(3):
  content=f'0.9 0.95 1 rg 0 0 300 420 re f 0 0 0 rg BT /F1 20 Tf 30 360 Td (ONDA PDF - PAGINA {i+1}) Tj ET'.encode()
+ if i==1:content+=b' BT /F1 7 Tf 15 290 Td (00190500954014481606906809350314337370000000100) Tj ET'
  objects.append(f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 420] /Resources << /Font << /F1 9 0 R >> >> /Contents {4+2*i} 0 R >>'.encode())
  objects.append(b'<< /Length '+str(len(content)).encode()+b' >>\nstream\n'+content+b'\nendstream')
 objects.append(b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
@@ -53,13 +54,40 @@ try:
   if document is not None:break
   time.sleep(.4)
  assert document is not None,'Generated PDF absent in system picker';tap_node(document);page(1);capture('37-pdf-primeira-pagina')
- tap('Próxima página do PDF');page(2);tap('Aumentar zoom do PDF');page(2)
+ tap('Menu do PDF');tap('Selecionar e copiar texto do PDF')
+ selectable=next(n for n in nodes() if n.attrib.get('content-desc')=='Texto selecionável da página do PDF')
+ assert 'ONDA PDF - PAGINA 1' in selectable.attrib.get('text','')
+ l,t,r,b=rect(selectable);x=l+min((r-l)//2,180);y=t+min((b-t)//2,45)
+ shell('input','swipe',x,y,x,y,1200);time.sleep(.4)
+ copied=next((n for n in nodes() if n.attrib.get('text','').casefold() in ('copy','copiar')),None)
+ assert copied is not None,'Native selection copy command unavailable';capture('44-pdf-selecao-texto');tap_node(copied)
+ tap_node(next(n for n in nodes() if n.attrib.get('text','').casefold()=='copiar texto'))
+ tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
+ pasted=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
+ assert 'ONDA PDF - PAGINA 1' in pasted,'PDF copy did not reach the Android clipboard'
+ shell('input','keyevent','123')
+ for _ in pasted:shell('input','keyevent','67')
+ shell('input','keyevent','4');open_reader();tap('Continuar último PDF');page(1)
+ tap('Próxima página do PDF');page(2);tap('Menu do PDF');tap('Reconhecer boleto no PDF')
+ for _ in range(12):
+  ns=nodes()
+  if any(n.attrib.get('text')=='Boleto • código copiado' for n in ns):break
+  time.sleep(.3)
+ else:raise AssertionError('Boleto not recognized and copied')
+ capture('45-boleto-copiado');tap_node(next(n for n in ns if n.attrib.get('text','').casefold()=='fechar'))
+ tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
+ pasted=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
+ assert pasted=='00190500954014481606906809350314337370000000100','Boleto clipboard contains incorrect digits'
+ shell('input','keyevent','123')
+ for _ in pasted:shell('input','keyevent','67')
+ shell('input','keyevent','4');open_reader();tap('Continuar último PDF');page(2)
+ tap('Aumentar zoom do PDF');page(2)
  assert next(n for n in nodes() if n.attrib.get('content-desc')=='Zoom do PDF').attrib.get('text')=='125%'
  capture('38-pdf-zoom');tap('Página anterior do PDF');page(1)
  tap('Ir à página do PDF');tap('Número da página do PDF');shell('input','keyevent','123');shell('input','keyevent','67');shell('input','text','3');shell('input','keyevent','4')
  tap_node(next(n for n in nodes() if n.attrib.get('text','').casefold()=='abrir'));page(3)
  shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(.5);open_reader();tap('Continuar último PDF');page(3);capture('39-pdf-retomada')
- (OUT/'pdf-tests.json').write_text(json.dumps({'systemPickerReadGrant':True,'pages':3,'nextAndPrevious':True,'zoom':1.25,'goToPage':3,'restoreAfterProcessRestart':3},indent=2)+'\n')
+ (OUT/'pdf-tests.json').write_text(json.dumps({'systemPickerReadGrant':True,'boletoChecksumAndClipboard':True,'nativeTextSelection':True,'clipboardPasteVerified':True,'pages':3,'nextAndPrevious':True,'zoom':1.25,'goToPage':3,'restoreAfterProcessRestart':3},indent=2)+'\n')
  tap('Voltar do PDF');time.sleep(.5)
  print('PDF reader passed: system picker, real pages, previous/next, zoom, page selection and persisted read permission after process restart.')
 except Exception:

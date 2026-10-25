@@ -29,9 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Favoritas e cartão do tocador
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Interface, tela cheia e boletos
 
 Coração de favoritas redesenhado como ícone vetorial, sem depender da fonte do Android e sem recortes nas laterais. Botão com área de toque de 48 × 48 dp, contorno quando não favorito e preenchido quando favorito. Cartão Tocando agora com mais separação entre título, artista e coração, altura adaptável aos textos, barra de posição mais espaçada e tempo mais legível. Mantém as favoritas salvas e os demais recursos.
+
+Tela cheia: controles sobrepostos sem reduzir a área da imagem. Somem após 3,5 segundos durante a reprodução; toque na imagem para mostrar ou ocultar. Pausar mantém os controles visíveis; a busca reinicia o prazo. Mantém exploração por toque acessível, Voltar e janela flutuante. A atualização do progresso da interface para enquanto os controles estão ocultos.
+
+PDF → Menu → Texto da página: seleção nativa de trechos para copiar e botão Copiar texto. Extração local da página atual usando PdfBox-Android 2.0.27.0, Apache License 2.0. Até 16 MB para extrair e 100.000 caracteres por página; leitura visual até 64 MB. Respeita a permissão de cópia do documento. PDFs digitalizados podem não conter texto; não há OCR. Sem API paga ou envio a servidor. Licença e avisos da biblioteca incluídos em Downloads → Licença e código-fonte. Fonte: https://github.com/TomRoush/PdfBox-Android .
+
+PDF → Menu → Reconhecer boleto: linhas digitáveis bancárias de 47 dígitos e de arrecadação de 48, além de código de barras ITF de 44 dígitos, com conversão para linha digitável e verificação dos dígitos de controle. Um código consistente é copiado automaticamente e exibido; vários resultados abrem escolha. Análise local da página atual, sob comando do usuário, usando texto e barras legíveis, inclusive rotação. Sem pagamento automático, QR Pix ou OCR geral. A consistência matemática não autentica o boleto. Leitura de barras por ZXing 3.5.3, Apache 2.0; avisos e licença incluídos. Fonte: https://github.com/zxing/zxing .
 
 Vídeos → Menu → Modo Aprender: velocidades de 0,5× a 2×, repetição A–B sem limite ou por 3, 5 e 10 passagens completas, com pausa ao concluir. Ativar ou alterar velocidade prepara o vídeo pausado; toque em Reproduzir. Velocidade e repetição valem na sessão do vídeo; outro arquivo volta a 1×. Momentos salvos → Anotação: texto local editável de até 1.000 caracteres; renomear preserva a nota. Marcações antigas são mantidas e notas não alteram o vídeo nem integram o backup de listas.
 

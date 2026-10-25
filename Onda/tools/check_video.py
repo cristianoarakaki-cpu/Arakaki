@@ -662,6 +662,25 @@ try:
     if 'frames Onda-Video.ts' in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'):break
     time.sleep(.5)
  else:raise AssertionError('Fullscreen resume did not render video')
+ # Controls are overlays: hiding them must not change the video frame size.
+ for _ in range(30):
+    controls_log=adb('logcat','-d','-s','OndaControls:D').decode(errors='replace')
+    if 'hidden frame' in controls_log:break
+    time.sleep(.25)
+ else:raise AssertionError('Fullscreen controls did not auto-hide')
+ ns=nodes();assert not any(n.attrib.get('content-desc') in ('Posição no vídeo','Sair da tela cheia') for n in ns),'Fullscreen controls still visible'
+ area=next(n for n in ns if n.attrib.get('content-desc')=='Mostrar controles do vídeo');hidden_rect=[int(v) for v in re.findall(r'\d+',area.attrib['bounds'])]
+ png=adb('exec-out','screencap','-p');image_width,image_height=struct.unpack('>II',png[16:24])
+ assert hidden_rect==[0,0,image_width,image_height],('Video does not fill fullscreen area',hidden_rect,image_width,image_height)
+ capture('42-video-sem-controles')
+ shell('input','tap',*point(area));time.sleep(.15);shell('input','tap',*resume);time.sleep(.5)
+ assert locate('Reproduzir vídeo') is not None,'Revealed overlay could not pause playback'
+ assert locate('Sair da tela cheia') is not None
+ shown_area=locate('Ocultar controles do vídeo');shown_rect=[int(v) for v in re.findall(r'\d+',shown_area.attrib['bounds'])]
+ assert shown_rect==hidden_rect,'Showing overlay resized the video'
+ capture('43-video-controles-sobrepostos')
+ (OUTPUT/'fullscreen-controls-tests.json').write_text(json.dumps({'autoHide':True,'tapShowsControls':True,'pauseKeepsControls':True,'videoFrame':hidden_rect,'showDoesNotResizeVideo':True},indent=2)+'\n')
+ resume=point(locate('Reproduzir vídeo'));shell('input','tap',*resume);time.sleep(.7)
  capture('13-video-tela-cheia')
  adb('logcat','-c');shell('input','keyevent','3');time.sleep(1)
  assert 'paused' in adb('logcat','-d','-s','OndaVideo:D').decode(),'Video did not pause when app hidden'

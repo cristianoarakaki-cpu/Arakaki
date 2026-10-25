@@ -24,6 +24,8 @@ final class PdfBook implements Closeable {
    return new PdfBook(file,renderer);
   }catch(IOException|RuntimeException|OutOfMemoryError e){if(renderer!=null)renderer.close();else if(descriptor!=null)descriptor.close();file.delete();synchronized(PdfBook.class){ACTIVE.remove(file);}throw e;}
  }
+ java.util.List<BoletoCode> boletos(Context context,int index){java.util.List<BoletoCode> out=new java.util.ArrayList<>();java.util.Set<String> seen=new java.util.HashSet<>();try{for(BoletoCode code:BoletoCode.find(text(context,index)))if(seen.add(code.barcode))out.add(code);}catch(IOException|RuntimeException ignored){}Bitmap bitmap=render(index,1800);try{for(BoletoCode code:BoletoScanner.read(bitmap))if(seen.add(code.barcode))out.add(code);}finally{bitmap.recycle();}return out;}
+ String text(Context context,int index)throws IOException{return PdfText.read(context,file,index);}
  int pages(){return renderer.getPageCount();}
  Bitmap render(int index,int requestedWidth){
   if(index<0||index>=pages())throw new IllegalArgumentException("Página inválida");
