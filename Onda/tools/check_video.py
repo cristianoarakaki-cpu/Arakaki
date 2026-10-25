@@ -205,6 +205,25 @@ capture('22-perfil-fones')
 for _ in range(2):shell('input','swipe',540,1500,540,500,250)
 tap_text('Restaurar som original');tap('Voltar');tap('Voltar dos fones')
 (OUTPUT/'headphone-tests.json').write_text(json.dumps({'opensBluetoothSettings':True,'routingControl':True,'profile':headphone}))
+# Profiles UI: select an inactive category, name it and persist its own curve.
+menu_action('Menu da biblioteca','Estúdio de som')
+tap('Ativar perfis automáticos por saída')
+tap('Escolher perfil de saída para editar');tap_text('Bluetooth • Bluetooth')
+tap('Ativar ajustes de som');tap('Escolher preset de som');tap_text('Fones voz nítida')
+assert locate('Escolher preset de som').attrib.get('text')=='Preset: Fones voz nítida'
+tap_text('Dar nome ao perfil');tap('Nome do perfil de saída')
+shell('input','keyevent','123')
+for _ in range(20):shell('input','keyevent','67')
+shell('input','text','MeuFone');tap_text('Salvar')
+assert locate('Escolher perfil de saída para editar').attrib.get('text')=='Editar: MeuFone'
+nodes();capture('34-perfis-por-saida')
+tap('Voltar');menu_action('Menu da biblioteca','Estúdio de som')
+tap('Escolher perfil de saída para editar');tap_text('MeuFone • Bluetooth')
+assert locate('Escolher preset de som').attrib.get('text')=='Preset: Fones voz nítida','Separate Bluetooth profile was not retained'
+tap('Ativar perfis automáticos por saída')
+assert locate('Ativar ajustes de som').attrib.get('checked')=='false','General original sound was not restored'
+(OUTPUT/'sound-profiles-tests.json').write_text(json.dumps({'separateBluetoothProfile':True,'customName':True,'reopenRetainsProfile':True,'disableRestoresGeneral':True},indent=2))
+tap('Voltar')
 voice('adicione essa música aos favoritos')
 assert locate('Remover dos favoritos') is not None
 # The preview is local and finite; playing must publish the exact generated queue.

@@ -19,7 +19,7 @@ public class PlaybackService extends MediaSessionService {
     private final Runnable checkpoint=new Runnable(){public void run(){saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
     private DjSession personalDj;private long historyDuration;private boolean completed;
     private final TrackSleep trackSleep=new TrackSleep();
-    private ExoPlayer player;private MediaSession session;private SoundEffects sound;
+    private ExoPlayer player;private MediaSession session;private SoundEffects sound;private SoundRoutes soundRoutes;
     private final Handler timer=new Handler(Looper.getMainLooper());
     private final Runnable stop=()->{if(player!=null)player.pause();};
     private int fadeMs;private boolean outgoing,incoming,ramping,counted;
@@ -29,7 +29,8 @@ public class PlaybackService extends MediaSessionService {
     private final Runnable startFade=()->{if(player.isPlaying()&&eligible()&&(player.hasNextMediaItem()||player.getRepeatMode()!=Player.REPEAT_MODE_OFF)){outgoing=true;android.util.Log.d("OndaFade","fade-out");ramp(player.getVolume(),0,Math.max(1,Math.min(fadeMs,(long)((player.getDuration()-player.getCurrentPosition())/player.getPlaybackParameters().speed))));}};
     private final Runnable rampStep=new Runnable(){public void run(){if(!ramping)return;long elapsed=SystemClock.elapsedRealtime()-rampStart;player.setVolume(FadeMath.gain(elapsed,rampDuration,rampFrom,rampTo));if(elapsed<rampDuration)timer.postDelayed(this,100);else ramping=false;}};
     @Override public void onCreate(){super.onCreate();sound=new SoundEffects();fadeMs=getSharedPreferences("audio",0).getInt("fade_ms",2000);
-        player=new ExoPlayer.Builder(this).build();player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);
+        soundRoutes=new SoundRoutes(()->{if(player!=null&&!destroyed)applySound();});
+        player=new ExoPlayer.Builder(this,soundRoutes.renderers(this)).build();player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);
         player.addListener(new Player.Listener(){
             @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
             @Override public void onAudioSessionIdChanged(int id){applySound();}
@@ -44,7 +45,7 @@ public class PlaybackService extends MediaSessionService {
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
                 if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){timer.removeCallbacks(checkpoint);if(p.isPlaying())timer.postDelayed(checkpoint,15000);}
-                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){sound.playing(p.isPlaying());float value=sound.headroom();if(value!=baseVolume){baseVolume=value;cancelFade(true);}}
+                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){soundRoutes.refresh();sound.playing(p.isPlaying());float value=sound.headroom();if(value!=baseVolume){baseVolume=value;cancelFade(true);}}
                 if(e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_IS_PLAYING_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)){updateListening();}
                 if(e.contains(Player.EVENT_POSITION_DISCONTINUITY)&&!e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)){cancelFade(true);}
                 if(!p.isPlaying()){timer.removeCallbacks(startFade);if(!p.getPlayWhenReady())cancelFade(true);return;}
@@ -92,5 +93,5 @@ public class PlaybackService extends MediaSessionService {
     private void recordListening(){updateElapsed();if(!counted&&!heardId.isEmpty()&&heardMs>=listenThreshold()){LibraryStore.heard(this,heardId);counted=true;}updateListening();}
     private void finishListening(){updateElapsed();if(!completed&&!heardId.isEmpty()&&ListeningMilestones.reachedEnd(heardMs,historyDuration)){SharedPreferences p=getSharedPreferences("listening",0);String key="complete:"+heardId;p.edit().putInt(key,Math.min(1000000,p.getInt(key,0)+1)).apply();completed=true;}}
     @Override public MediaSession onGetSession(MediaSession.ControllerInfo info){return session;}
-    @Override public void onDestroy(){saveResume(false);destroyed=true;if(personalDj!=null)personalDj.close();resumeWorker.shutdownNow();timer.removeCallbacksAndMessages(null);if(session!=null)session.release();if(sound!=null)sound.release();if(player!=null)player.release();super.onDestroy();}
+    @Override public void onDestroy(){saveResume(false);destroyed=true;if(personalDj!=null)personalDj.close();resumeWorker.shutdownNow();timer.removeCallbacksAndMessages(null);if(session!=null)session.release();if(soundRoutes!=null)soundRoutes.close();if(sound!=null)sound.release();if(player!=null)player.release();super.onDestroy();}
 }

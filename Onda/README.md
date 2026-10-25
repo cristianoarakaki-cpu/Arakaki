@@ -1,4 +1,10 @@
-# Onda Música 0.32.0 — Repetir trecho A–B
+# Onda Música 0.33.0 — Perfis de som por saída
+
+Menu → Estúdio de som → Perfis automáticos por saída. Um perfil para alto-falante, fone com fio, Bluetooth, USB, HDMI e outras saídas, com nome editável de até 40 caracteres. Todos os dispositivos Bluetooth compartilham um perfil. Escolha qual perfil editar; editar uma saída inativa não muda o perfil da saída atual. Restaurar som original afeta somente o perfil em edição quando o modo automático está ligado. Desligar o modo automático recupera os ajustes gerais anteriores.
+
+A opção começa desligada. Ao ativar, copia os ajustes gerais para a saída atual somente se ela já estiver identificada e ainda não tiver perfil; demais saídas começam com efeitos desligados. A identificação vem do AudioTrack real do ExoPlayer, por eventos de roteamento, sem escolher a saída, varrer Bluetooth ou manter análise contínua. Antes de o Android identificar a saída, mantém som original. O último dispositivo identificado não é persistido entre processos. Não inicia reprodução nem altera volume do sistema; o Android continua responsável pelo pareamento e roteamento. Efeitos e compensação de ganho dependem do aparelho. Vale para músicas e áudio online, não para vídeos LibVLC. Sem nova permissão, API paga ou serviço de rede. Os perfis ficam neste celular e não integram o backup de listas. Trocas físicas de fones e Bluetooth exigem validação no aparelho real.
+
+## Repetir trecho A–B
 
 Vídeos → Menu → Repetir trecho A–B: informe início e fim em segundos, m:ss ou h:mm:ss. Intervalo mínimo de 2 segundos. Ativar prepara o trecho com o player pausado; Reproduzir inicia a repetição. O intervalo aparece junto ao tempo do vídeo. Pausar mantém a configuração; Desativar, selecionar outro vídeo, reproduzir um momento salvo ou buscar fora do intervalo cancela a repetição. Vale somente para a sessão atual, sem persistência após recriar/fechar o player. Usa os eventos já emitidos pelo LibVLC, com tentativas limitadas para arquivos que não respondem à busca; não promete repetição sem intervalos nem precisão de quadros.
 
