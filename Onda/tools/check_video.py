@@ -671,15 +671,21 @@ try:
  ns=nodes();assert not any(n.attrib.get('content-desc') in ('Posição no vídeo','Sair da tela cheia') for n in ns),'Fullscreen controls still visible'
  area=next(n for n in ns if n.attrib.get('content-desc')=='Mostrar controles do vídeo');hidden_rect=[int(v) for v in re.findall(r'\d+',area.attrib['bounds'])]
  png=adb('exec-out','screencap','-p');image_width,image_height=struct.unpack('>II',png[16:24])
- assert hidden_rect==[0,0,image_width,image_height],('Video does not fill fullscreen area',hidden_rect,image_width,image_height)
+ native_frames=re.findall(r'hidden frame (\d+)x(\d+)',controls_log)
+ assert native_frames and tuple(map(int,native_frames[-1]))==(image_width,image_height),('Native video frame does not fill screenshot',native_frames,image_width,image_height)
+ # Android 10 accessibility clips nodes to a stale stable navigation inset even
+ # when the actual Surface is immersive. Use the actual View size logged above.
+ assert 0<=hidden_rect[0]<hidden_rect[2]<=image_width and 0<=hidden_rect[1]<hidden_rect[3]<=image_height
  capture('42-video-sem-controles')
  shell('input','tap',*point(area));time.sleep(.15);shell('input','tap',*resume);time.sleep(.5)
  assert locate('Reproduzir vídeo') is not None,'Revealed overlay could not pause playback'
  assert locate('Sair da tela cheia') is not None
  shown_area=locate('Ocultar controles do vídeo');shown_rect=[int(v) for v in re.findall(r'\d+',shown_area.attrib['bounds'])]
- assert shown_rect==hidden_rect,'Showing overlay resized the video'
+ shown_log=adb('logcat','-d','-s','OndaControls:D').decode(errors='replace')
+ shown_frames=re.findall(r'shown frame (\d+)x(\d+)',shown_log)
+ assert shown_frames and shown_frames[-1]==native_frames[-1],'Showing overlay resized the actual video'
  capture('43-video-controles-sobrepostos')
- (OUTPUT/'fullscreen-controls-tests.json').write_text(json.dumps({'autoHide':True,'tapShowsControls':True,'pauseKeepsControls':True,'videoFrame':hidden_rect,'showDoesNotResizeVideo':True},indent=2)+'\n')
+ (OUTPUT/'fullscreen-controls-tests.json').write_text(json.dumps({'autoHide':True,'tapShowsControls':True,'pauseKeepsControls':True,'videoFrame':[0,0,image_width,image_height],'showDoesNotResizeVideo':True},indent=2)+'\n')
  resume=point(locate('Reproduzir vídeo'));shell('input','tap',*resume);time.sleep(.7)
  capture('13-video-tela-cheia')
  adb('logcat','-c');shell('input','keyevent','3');time.sleep(1)

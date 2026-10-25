@@ -132,8 +132,11 @@ jobs:
           script: |
             python Onda/tools/check_upgrade.py
             python Onda/tools/check_menus.py
-            python Onda/tools/check_video.py
             python Onda/tools/check_pdf.py
+            adb shell am force-stop br.com.onda.musica
+            adb shell pm clear br.com.onda.musica
+            adb shell pm clear com.android.documentsui
+            python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
