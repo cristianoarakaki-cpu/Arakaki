@@ -509,8 +509,12 @@ try:
  else:raise AssertionError('A–B did not repeat twice: '+loop_log)
  assert all(2000<=n<5000 for n in acknowledged),acknowledged
  shell('input','tap',*loop_pause_point);time.sleep(.5);assert locate('Reproduzir vídeo') is not None
- adb('logcat','-c');time.sleep(2)
- assert 'return ' not in adb('logcat','-d','-s','OndaLoop:D').decode(errors='replace'),'Paused loop continued seeking'
+ # Log clearing can leave older records in emulator buffers: compare against the pause event.
+ time.sleep(2)
+ paused_log=adb('logcat','-d','-s','OndaLoop:D','OndaVideo:D').decode(errors='replace')
+ assert 'paused at' in paused_log,'Native pause acknowledgement absent'
+ after_pause=paused_log.rsplit('paused at',1)[-1]
+ assert 'OndaLoop' not in after_pause,'Paused loop continued seeking: '+after_pause
  bar=locate('Posição no vídeo');left,top,right,bottom=[int(v) for v in re.findall(r'\d+',bar.attrib['bounds'])]
  shell('input','tap',left+(right-left)*3//4,(top+bottom)//2);time.sleep(.5)
  assert 'A–B' not in locate('Tempo do vídeo').attrib.get('text',''),'Manual seek outside range did not cancel looping'
