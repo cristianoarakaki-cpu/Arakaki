@@ -27,10 +27,10 @@ try:
  # The system folder picker is English in this emulator.
  ns=nodes();drawer=next((n for n in ns if n.attrib.get('content-desc') in ['Show roots','Mostrar raízes']),None)
  if drawer is not None:tap_node(drawer)
- ns=nodes();download=next((n for n in ns if n.attrib.get('text')=='Downloads'),None)
+ ns=nodes();downloads=[n for n in ns if n.attrib.get('text')=='Downloads'];download=downloads[-1] if downloads else None
  if download is not None:tap_node(download)
  for _ in range(5):
-  ns=nodes();select=next((n for n in ns if n.attrib.get('resource-id')=='com.android.documentsui:id/action_menu_select' or n.attrib.get('text','').casefold() in ('use this folder','usar esta pasta','select')),None)
+  ns=nodes();select=next((n for n in ns if n.attrib.get('resource-id')=='com.android.documentsui:id/action_menu_select' or n.attrib.get('text','').casefold() in ('use this folder','usar esta pasta','select') or n.attrib.get('text','').casefold().startswith('allow access')),None)
   if select is not None:tap_node(select);break
   time.sleep(.3)
  else:raise AssertionError('Android folder confirmation unavailable')
@@ -52,5 +52,7 @@ try:
  capture('62-conecta-cancelado')
  (OUT/'connect-ui-tests.json').write_text(json.dumps(dict(menu=True,systemFolderGrant=True,localQr=True,noAutoplay=True,explicitCancellation=True),indent=2))
 except Exception:
+ try:(OUT/'connect-failure.xml').write_bytes(shell('cat','/sdcard/onda-connect.xml'))
+ except Exception:pass
  (OUT/'connect-failure.png').write_bytes(adb('exec-out','screencap','-p'));(OUT/'connect-failure-logcat.txt').write_bytes(adb('logcat','-d'));raise
 finally:shell('am','force-stop',P)
