@@ -1,2 +1,5 @@
 source/assets/vendor/
 **/__pycache__/
+source/build/
+*.jks
+*.keystore

@@ -2,9 +2,10 @@
 // Folha PDF+ 1.6: protect document intake from mislabeled / duplicated files.
 (() => {
   const footerVersion = document.querySelector('aside footer span');
-  if (footerVersion) footerVersion.textContent = '1.9.3';
+  const version=typeof Android!=='undefined' && typeof Android.getVersionName==='function' ? Android.getVersionName() : '1.9.3';
+  if (footerVersion) footerVersion.textContent = version;
   const updateEyebrow = document.querySelector('#updateView .eyebrow');
-  if (updateEyebrow) updateEyebrow.textContent = 'FOLHA PDF+ 1.9.3';
+  if (updateEyebrow) updateEyebrow.textContent = 'FOLHA PDF+ '+version;
   const originalAdd = add;
   let intake = Promise.resolve();
   const signatures = {

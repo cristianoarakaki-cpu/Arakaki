@@ -27,7 +27,7 @@ Para uma próxima versão, compile e assine com **a mesma chave privada** do apl
 - `source/assets/`: JavaScript, HTML e CSS próprios recuperados do APK, sem modificações funcionais.
 - Bibliotecas e modelos completos permanecem dentro do APK preservado. Execute `python3 FPlus/tools/extract_vendor.py` para extraí-los localmente.
 - `apk-analysis.json`: metadados do manifesto, hash e certificado extraído.
-- Os arquivos Java originais **desta edição Plus** e a chave privada não vieram no APK e não foram recuperados. `Folha/source` pertence à edição original e não equivale ao código nativo desta versão. Portanto esta base não é apresentada como um projeto Android integralmente recompilável.
+- Os arquivos Java originais **desta edição Plus** e a chave privada não vieram no APK. Foi adicionada uma base nativa reconstruída em `source/src/com/folha/pd2`, adaptada do Folha original e documentada em `source/LEIA-ME.md`. Ela pode gerar um APK de teste separado; publicações compatíveis com o aplicativo instalado exigem a chave original e validação em aparelho.
 
 ## Análise estática
 
@@ -38,3 +38,7 @@ A ocultação gera páginas rasterizadas sem objetos/textos originais; perde pes
 Alguns textos do atualizador nativo ainda mencionam **1.5.0**, embora o manifesto instalado declare **1.9.3**; a interface usa substituições para exibir a versão atual. Isso deve ser corrigido no código nativo numa próxima compilação. O canal anterior do repositório estava em 1.4.1, sem download. Esta publicação preserva o APK original; não corrige esses textos dentro do binário.
 
 Verificações locais: estrutura ZIP, hashes, metadados binários do manifesto, certificado e sintaxe dos scripts próprios. A verificação criptográfica completa é executada por `apksigner` na Action antes de publicar. Não foi feito teste em aparelho Android nem validação jurídica de LGPD.
+
+## Compilar novas versões a partir do código
+
+A Action **Compilar Folha PDF Plus** compila automaticamente alterações em `FPlus/source`. Sem secrets de assinatura, gera a edição de teste `com.folha.pd2.dev` em artifacts. Com a chave original configurada nos quatro secrets `FPLUS_*`, compila, confere e publica atualizações oficiais com versionCode crescente. Veja as instruções em [source/LEIA-ME.md](source/LEIA-ME.md). O APK 1.9.3 preservado e seu canal continuam disponíveis.
