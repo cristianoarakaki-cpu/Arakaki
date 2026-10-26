@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
 MODE=${1:-verify}
-test "$MODE" = verify || test "$MODE" = production
+test "$MODE" = verify || test "$MODE" = production || test "$MODE" = stable || test "$MODE" = stable-verify
 SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 : "${SDK:?Defina ANDROID_HOME com SDK Android instalado}"
 BT="$SDK/build-tools/35.0.0"
@@ -17,9 +17,9 @@ mkdir -p FPlus/source/build/classes FPlus/source/build/dex FPlus/source/build/ge
 python3 - <<'PY'
 from pathlib import Path
 import json,os,re
-r=Path('FPlus/source');v=json.loads((r/'version.json').read_text());assert re.fullmatch(r'\d+\.\d+\.\d+',v['versionName']);assert type(v['versionCode']) is int and v['versionCode']>15
+r=Path('FPlus/source');stable=os.environ['FPLUS_BUILD_MODE'].startswith('stable');v=json.loads((Path('FPlusStable/version.json') if stable else r/'version.json').read_text());assert re.fullmatch(r'\d+\.\d+\.\d+',v['versionName']);assert type(v['versionCode']) is int and v['versionCode']>15
 prod=os.environ['FPLUS_BUILD_MODE']=='production'
-pairs={'applicationId':'com.folha.pd2' if prod else 'com.folha.pd2.dev','appLabel':'Folha PDF+' if prod else 'Folha PDF+ Teste','versionCode':str(v['versionCode']),'versionName':v['versionName'] if prod else v['versionName']+'-teste'}
+pairs={'applicationId':'com.folha.pd2.stable' if stable else 'com.folha.pd2' if prod else 'com.folha.pd2.dev','appLabel':'Folha PDF+ Definitivo' if stable else 'Folha PDF+' if prod else 'Folha PDF+ Teste','versionCode':str(v['versionCode']),'versionName':v['versionName'] if prod or stable else v['versionName']+'-teste'}
 s=(r/'AndroidManifest.xml').read_text()
 for key,value in pairs.items():s=s.replace('${'+key+'}',value)
 (r/'build/AndroidManifest.xml').write_text(s)
@@ -43,7 +43,10 @@ with ZipFile(r/'base.apk','a',ZIP_DEFLATED) as z:
  for f in (r/'dex').glob('*.dex'):z.write(f,f.name)
 PY
 "$BT/zipalign" -f -p 4 FPlus/source/build/base.apk FPlus/source/build/aligned.apk
-if [ "$MODE" = production ]; then
+if [ "$MODE" = stable ]; then
+ : "${FOLHA_STABLE_KEYSTORE:?Chave permanente não preparada}" "${FOLHA_STABLE_SIGNING_PASSWORD:?Senha permanente ausente}"
+ "$BT/apksigner" sign --ks "$FOLHA_STABLE_KEYSTORE" --ks-key-alias folha-stable --ks-pass env:FOLHA_STABLE_SIGNING_PASSWORD --key-pass env:FOLHA_STABLE_SIGNING_PASSWORD --out FPlus/source/build/Folha-PDF-Stable.apk FPlus/source/build/aligned.apk
+elif [ "$MODE" = production ]; then
  : "${FPLUS_KEYSTORE_BASE64:?Chave original ausente}" "${FPLUS_STORE_PASSWORD:?Senha ausente}" "${FPLUS_KEY_PASSWORD:?Senha da chave ausente}" "${FPLUS_KEY_ALIAS:?Alias ausente}"
  KEY_FILE=$(mktemp "${RUNNER_TEMP:-/tmp}/fplus-keystore.XXXXXX")
  export FPLUS_KEY_FILE="$KEY_FILE"
@@ -57,7 +60,9 @@ else
  cp FPlus/source/build/aligned.apk FPlus/source/build/Folha-PDF-Plus-VALIDACAO.apk.unsigned
  echo 'Sem chave original: validação sem assinatura. Nenhum APK instalável foi gerado.'
 fi
-if [ "$MODE" = production ]; then
+if [ "$MODE" = stable ]; then
+ python3 FPlusStable/tools/release.py prepare
+elif [ "$MODE" = production ]; then
  python3 FPlus/source/tools/build_release_info.py
  python3 FPlus/tools/verify_signature.py "$BT/apksigner" "$BT/aapt"
 else
