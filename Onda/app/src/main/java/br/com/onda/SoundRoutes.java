@@ -10,12 +10,13 @@ import androidx.media3.exoplayer.audio.*;
 @androidx.media3.common.util.UnstableApi
 final class SoundRoutes {
     private final Handler main=new Handler(Looper.getMainLooper());
-    private final Runnable changed;private AudioTrack track;private boolean closed;
+    private final Runnable changed;private final SpeechProcessor speech;private AudioTrack track;private boolean closed;
     private final AudioRouting.OnRoutingChangedListener listener=router->refresh();
-    SoundRoutes(Runnable changed){this.changed=changed;}
+    SoundRoutes(Runnable changed){this(changed,null);}
+    SoundRoutes(Runnable changed,SpeechProcessor speech){this.changed=changed;this.speech=speech;}
     DefaultRenderersFactory renderers(Context context){return new DefaultRenderersFactory(context){
         @Override protected AudioSink buildAudioSink(Context c,boolean floats,boolean parameters){
-            return new DefaultAudioSink.Builder(c).setEnableFloatOutput(floats).setEnableAudioTrackPlaybackParams(parameters)
+            DefaultAudioSink.Builder builder=new DefaultAudioSink.Builder(c).setEnableFloatOutput(speech==null&&floats).setEnableAudioTrackPlaybackParams(parameters);if(speech!=null)builder.setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{speech});return builder
                 .setAudioTrackProvider((config,attributes,session)->{
                     AudioTrack created=DefaultAudioSink.AudioTrackProvider.DEFAULT.getAudioTrack(config,attributes,session);
                     main.post(()->attach(created));return created;

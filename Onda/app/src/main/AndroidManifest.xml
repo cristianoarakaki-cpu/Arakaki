@@ -30,6 +30,7 @@
         <activity android:name=".PlaylistsActivity" android:exported="false" />
         <activity android:name=".DjActivity" android:exported="false" />
         <activity android:name=".AudioOutputActivity" android:exported="false" />
+        <activity android:name=".SpeechActivity" android:exported="false" />
         <activity android:name=".SoundActivity" android:exported="false" />
         <activity android:name=".VoicePhrasesActivity" android:exported="false" />
         <activity android:name=".SmartLibraryActivity" android:exported="false" />

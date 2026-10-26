@@ -116,6 +116,13 @@ jobs:
           run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
           run("-i",str(root/"combined.mp4"),"-vn","-ac","2","-ar","48000","-c:a","aac",str(root/"audio-stereo.m4a"))
           PY
+          python - <<'PYVOICE'
+          import wave,math,struct
+          with wave.open('Onda/app/src/androidTest/assets/speech.wav','wb') as wav:
+              wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(16000)
+              tone=b''.join(struct.pack('<h',int(4000*math.sin(2*math.pi*400*n/16000))) for n in range(16000))
+              wav.writeframes(tone+b'\x00'*16000*2*8+tone*3)
+          PYVOICE
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
       - name: Habilitar aceleração do emulador
         run: sudo chmod 666 /dev/kvm
@@ -139,12 +146,16 @@ jobs:
             adb shell am instrument -w -e class br.com.onda.ShelfStoreTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-shelf-tests.txt
             cat /tmp/onda-shelf-tests.txt
             python -c 's=open("/tmp/onda-shelf-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            python Onda/tools/check_speech_ui.py
+            adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-speech-tests.txt
+            cat /tmp/onda-speech-tests.txt
+            python -c 's=open("/tmp/onda-speech-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb shell pm clear br.com.onda.musica
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (30 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
@@ -163,6 +174,7 @@ jobs:
             Onda/download-preview/
             /tmp/onda-native-tests.txt
             /tmp/onda-shelf-tests.txt
+            /tmp/onda-speech-tests.txt
             /tmp/onda-memory-tests.txt
             Onda/app/build/reports/
 

@@ -1,4 +1,8 @@
-# Onda Música 0.37.1 — Meu espaço: continuar, coleções multimídia e anotações
+# Onda Música 0.38.0 — Aulas e podcasts
+
+Menu → Aulas e podcasts, também disponível no Estúdio de som: equilíbrio de fala com dinâmica ligada entre canais, proteção de picos e presença suave; opção independente de pular silêncios pelo Media3. Ambas desligadas inicialmente. Processamento local de PCM16 durante o fluxo de áudio, sem microfone, varredura de arquivos, API paga ou serviço de análise separado. O modo desligado preserva as amostras originais; a troca de efeito usa uma transição de 20 ms. Não modifica os arquivos. Aplicável ao player de músicas e áudio online; o motor de vídeo LibVLC permanece separado. Formatos ou saídas que usam passagem direta/offload podem não disponibilizar PCM compatível. A tela permite consultar a aplicação. Reduzir silêncios pode encurtar pausas intencionais, por isso é indicado para fala. Posições continuam no tempo do arquivo original. A equalização permanece independente; restaurar o som original da saída ativa desliga também os dois recursos de fala. Não há promessa de loudness padronizada, isolamento de voz, remoção de ruído ou compatibilidade universal.
+
+## Histórico — Onda Música 0.37.1 — Meu espaço: continuar, coleções multimídia e anotações
 
 Faixas concluídas naturalmente na fila voltam ao início no histórico; pular para outra faixa preserva o ponto de saída.
 

@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Meu espaço, coleções e anotações
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Aulas e podcasts
+
+Menu → Aulas e podcasts: equilíbrio de fala com dinâmica e presença suave e opção independente de pular silêncios. Ambas começam desligadas. Processamento local de áudio compatível, sem API paga, microfone ou análise de arquivos em segundo plano. Mantém posições no tempo original do arquivo; não modifica os arquivos. Vale para músicas e áudio online, com compatibilidade dependente do formato/saída. Vídeos usam outro motor. Pausas intencionais também podem ser reduzidas: use com conteúdo falado. Equalização e perfis existentes permanecem disponíveis.
 
 Faixas concluídas naturalmente na fila voltam ao início no histórico; pular uma faixa preserva o ponto de saída.
 
