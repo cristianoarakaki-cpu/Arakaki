@@ -8,7 +8,23 @@ def nodes():
  shell('uiautomator','dump','/sdcard/onda-speech.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-speech.xml')).iter('node'))
 def tap_node(n):
  l,t,r,b=map(int,re.findall(r'\d+',n.attrib['bounds']));assert r>l and b>t;shell('input','tap',(l+r)//2,(t+b)//2);time.sleep(.4)
-def find(label):return next(n for n in nodes() if n.attrib.get('content-desc')==label or n.attrib.get('text','').casefold()==label.casefold())
+def find(label):
+ controls={'Ativar equilíbrio de fala','Ativar redução de silêncios','Verificar na reprodução','Desligar recursos de fala'}
+ for _ in range(7):
+  ns=nodes();scroll=next((n for n in ns if n.attrib.get('class')=='android.widget.ScrollView'),None)
+  for n in ns:
+   if n.attrib.get('content-desc')!=label and n.attrib.get('text','').casefold()!=label.casefold():continue
+   l,t,r,b=map(int,re.findall(r'\d+',n.attrib['bounds']))
+   if r<=l or b<=t:continue
+   if label in controls and scroll is not None:
+    a,c,d,e=map(int,re.findall(r'\d+',scroll.attrib['bounds']))
+    if t<c or b>e:continue
+   return n
+  if scroll is None:break
+  l,t,r,b=map(int,re.findall(r'\d+',scroll.attrib['bounds']));low=t+int((b-t)*.85);high=t+int((b-t)*.2)
+  if label in ('Verificar na reprodução','Desligar recursos de fala'):shell('input','swipe',(l+r)//2,low,(l+r)//2,high,250)
+  else:shell('input','swipe',(l+r)//2,high,(l+r)//2,low,250)
+ raise AssertionError('Control not reachable: '+label)
 def tap(label):tap_node(find(label))
 def open_screen():
  shell('am','start','-W','-n',P+'/br.com.onda.MainActivity');time.sleep(.5);tap('Menu da biblioteca')
