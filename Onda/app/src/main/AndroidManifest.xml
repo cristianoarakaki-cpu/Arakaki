@@ -24,6 +24,7 @@
         <activity android:name=".PdfActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="application/pdf" /><data android:mimeType="application/x-pdf" /></intent-filter>
         </activity>
+        <activity android:name=".ShelfActivity" android:exported="false" />
         <activity android:name=".BackupActivity" android:exported="false" />
         <activity android:name=".QueueActivity" android:exported="false" />
         <activity android:name=".PlaylistsActivity" android:exported="false" />

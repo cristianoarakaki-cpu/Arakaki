@@ -70,6 +70,7 @@ public class PlaybackService extends MediaSessionService {
     private void saveResume(boolean rebuild){
         if(restoring||destroyed||player==null)return;
         if(rebuild){List<String> ids=new ArrayList<>();for(int i=0;i<player.getMediaItemCount();i++){MediaItem item=player.getMediaItemAt(i);if(!DjSession.deviceAudio(item)){ids.clear();break;}ids.add(item.mediaId);}savedQueue=MusicResume.encode(ids);}
+        MediaItem current=player.getCurrentMediaItem();if(DjSession.deviceAudio(current)&&current.localConfiguration!=null)ShelfStore.remember(this,"audio",current.localConfiguration.uri.toString(),String.valueOf(current.mediaMetadata.title),player.getPlaybackState()==Player.STATE_ENDED?0:Math.max(0,player.getCurrentPosition()),Math.max(LibraryStore.number(current,"durationMs"),player.getDuration()));
         SharedPreferences.Editor edit=getSharedPreferences("music_resume",0).edit();
         if(rebuild){List<MediaItem> queue=new ArrayList<>();if(!savedQueue.equals("[]"))for(int i=0;i<player.getMediaItemCount();i++)queue.add(player.getMediaItemAt(i));edit.putString("queue",savedQueue).putString("dj_context",DjSession.remember(queue));}
         edit.putInt("index",Math.max(0,player.getCurrentMediaItemIndex())).putLong("position",player.getPlaybackState()==Player.STATE_ENDED?0:Math.max(0,player.getCurrentPosition())).putBoolean("shuffle",player.getShuffleModeEnabled()).putInt("repeat",player.getRepeatMode()).apply();

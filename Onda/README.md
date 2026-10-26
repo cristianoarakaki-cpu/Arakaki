@@ -1,4 +1,8 @@
-# Onda Música 0.36.0 — Abrir com e áudio dos vídeos em segundo plano
+# Onda Música 0.37.0 — Meu espaço: continuar, coleções multimídia e anotações
+
+Menu → Meu espaço: pontos locais de áudio, vídeo e PDF, coleções mistas e notas ligadas a um minuto ou página. Toque para retomar; segure para organizar ou anotar. Crie uma coleção e adicione arquivos pelo seletor Android ou por Continuar. Referências locais, sem duplicar/excluir mídia, sem análise contínua e sem API paga. Até 200 referências, 30 coleções, 50 itens por coleção e 10 notas de 1.000 caracteres por arquivo, dentro de 1 MB de dados. Referências com notas ou em coleções não são descartadas para liberar espaço. Os dados ficam neste celular e não integram o backup de listas anterior. Arquivos removidos ou sem acesso precisam ser selecionados novamente. A retomada usa a busca disponível no arquivo e no decoder. Áudio salva pontos nas ações e em intervalos de 15 segundos durante a reprodução; PDF, após renderizar a página. O histórico anterior começa a ser registrado após esta atualização; não reconstrói sessões antigas.
+
+## Histórico — Onda Música 0.36.0 — Abrir com e áudio dos vídeos em segundo plano
 
 Esta versão registra o Onda em “Abrir com” para áudio, vídeo e PDF. Ao receber áudio externo, lê os metadados e mantém a identidade de favoritos. Vídeos podem continuar como áudio em um serviço com notificação e controles, inclusive com tela bloqueada; a opção Pausar ao sair continua disponível no menu de vídeos. A troca entre os motores pode causar uma breve pausa. O modo não continua automaticamente após reiniciar o processo; respeita perda de foco e desconexão do fone. Para continuar vendo a imagem, use Janela flutuante. Gerenciadores precisam fornecer o tipo correto e acesso ao arquivo; arquivos removidos, sem permissão ou protegidos permanecem indisponíveis.
 
