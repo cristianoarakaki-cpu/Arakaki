@@ -62,7 +62,7 @@ try:
  assert 'Onda vídeo' in shell('dumpsys','media_session').decode(),'Background media controls absent'
  shell('input','keyevent','127');time.sleep(.7);assert 'paused' in logs('OndaVideoBg')
  # While paused there must be no advancing native playback events.
- adb('logcat','-c');time.sleep(2);assert not positions(),'Background audio kept playing after media pause'
+ paused_positions=positions();time.sleep(2);assert positions()==paused_positions,'Background audio kept advancing after media pause'
  shell('input','keyevent','126');resumed=wait_position(later)
  shell('input','keyevent','223');locked=wait_position(resumed+1500)
  shell('input','keyevent','224');shell('wm','dismiss-keyguard')
@@ -76,7 +76,7 @@ try:
  (OUT/'46-video-background.png').write_bytes(adb('exec-out','screencap','-p'))
  assert 'br.com.onda.VideoBackgroundService' not in shell('dumpsys','activity','services',P).decode(),'Audio continuation service was not removed on return'
  # Starting music stops a background video instead of overlapping both sources.
- adb('logcat','-c');shell('input','keyevent','3');wait_position(0);open_file(media('audio','Onda-Audio.mp3'),'audio/mpeg');time.sleep(1)
+ before_home=max(positions(),default=0);shell('input','keyevent','3');wait_position(before_home+500);open_file(media('audio','Onda-Audio.mp3'),'audio/mpeg');time.sleep(1)
  assert 'br.com.onda.VideoBackgroundService' not in shell('dumpsys','activity','services',P).decode(),'Music did not stop background video'
  assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'External music did not resume'
  (OUT/'open-background-tests.json').write_text(json.dumps(dict(externalAudio=True,externalVideo=True,externalPdf=True,backgroundClock=True,mediaPauseAndResume=True,screenOff=True,restorePosition=True,noMusicOverlap=True),indent=2))
