@@ -2,13 +2,13 @@ name: Compilar Folha PDF Plus
 on:
   push:
     branches: [main]
-    paths: ['FPlus/source/**', '.github/workflows/folha-plus-build.yml']
+    paths: ['FPlus/source/**', 'FPlus/signing/**', '.github/workflows/folha-plus-build.yml']
   workflow_dispatch:
     inputs:
       mode:
-        description: 'auto publica somente com chave original configurada; test gera edição separada'
+        description: 'auto publica somente com chave original configurada; verify valida sem gerar chave descartável'
         type: choice
-        options: [auto, test, production]
+        options: [auto, verify, production]
         default: auto
 permissions:
   contents: write
@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verificar configuração segura da assinatura
+        run: python3 FPlus/signing/test_configure.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -48,8 +50,8 @@ jobs:
           mode=os.environ['REQUESTED_MODE']
           ready=all(os.environ.get(k) for k in ['FPLUS_KEYSTORE_BASE64','FPLUS_STORE_PASSWORD','FPLUS_KEY_PASSWORD','FPLUS_KEY_ALIAS'])
           if mode=='production' and not ready: raise SystemExit('Configure os quatro secrets FPLUS da chave original antes de publicar.')
-          if mode=='auto': mode='production' if ready else 'test'
-          assert mode in ['production','test']
+          if mode=='auto': mode='production' if ready else 'verify'
+          assert mode in ['production','verify']
           with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('mode='+mode+'\n')
           print('Compilação selecionada:',mode)
           PY
@@ -64,7 +66,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Folha-PDF-Plus-${{ steps.mode.outputs.mode }}-${{ github.run_number }}
-          path: FPlus/source/build/Folha-PDF*.apk
+          path: |
+            FPlus/source/build/Folha-PDF.apk
+            FPlus/source/build/Folha-PDF-Plus-VALIDACAO.apk.unsigned
           if-no-files-found: error
           retention-days: 30
       - name: Publicar versão com assinatura original

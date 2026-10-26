@@ -2,8 +2,8 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
-MODE=${1:-test}
-test "$MODE" = test || test "$MODE" = production
+MODE=${1:-verify}
+test "$MODE" = verify || test "$MODE" = production
 SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 : "${SDK:?Defina ANDROID_HOME com SDK Android instalado}"
 BT="$SDK/build-tools/35.0.0"
@@ -54,13 +54,13 @@ p=pathlib.Path(os.environ['FPLUS_KEY_FILE']);p.write_bytes(base64.b64decode(os.e
 PY
  "$BT/apksigner" sign --ks "$KEY_FILE" --ks-key-alias "$FPLUS_KEY_ALIAS" --ks-pass env:FPLUS_STORE_PASSWORD --key-pass env:FPLUS_KEY_PASSWORD --out FPlus/source/build/Folha-PDF.apk FPlus/source/build/aligned.apk
 else
- keytool -genkeypair -keystore FPlus/source/build/test.jks -storepass android -keypass android -alias test -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Folha Plus Test Only'
- "$BT/apksigner" sign --ks FPlus/source/build/test.jks --ks-key-alias test --ks-pass pass:android --key-pass pass:android --out FPlus/source/build/Folha-PDF-Plus-TESTE.apk FPlus/source/build/aligned.apk
+ cp FPlus/source/build/aligned.apk FPlus/source/build/Folha-PDF-Plus-VALIDACAO.apk.unsigned
+ echo 'Sem chave original: validação sem assinatura. Nenhum APK instalável foi gerado.'
 fi
 if [ "$MODE" = production ]; then
  python3 FPlus/source/tools/build_release_info.py
  python3 FPlus/tools/verify_signature.py "$BT/apksigner" "$BT/aapt"
 else
- "$BT/apksigner" verify --verbose FPlus/source/build/Folha-PDF-Plus-TESTE.apk
- "$BT/aapt" dump badging FPlus/source/build/Folha-PDF-Plus-TESTE.apk | head -1
+ "$BT/aapt" dump badging FPlus/source/build/Folha-PDF-Plus-VALIDACAO.apk.unsigned > FPlus/source/build/metadata.txt
+ head -1 FPlus/source/build/metadata.txt
 fi

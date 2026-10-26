@@ -41,4 +41,6 @@ Verificações locais: estrutura ZIP, hashes, metadados binários do manifesto, 
 
 ## Compilar novas versões a partir do código
 
-A Action **Compilar Folha PDF Plus** compila automaticamente alterações em `FPlus/source`. Sem secrets de assinatura, gera a edição de teste `com.folha.pd2.dev` em artifacts. Com a chave original configurada nos quatro secrets `FPLUS_*`, compila, confere e publica atualizações oficiais com versionCode crescente. Veja as instruções em [source/LEIA-ME.md](source/LEIA-ME.md). O APK 1.9.3 preservado e seu canal continuam disponíveis.
+A Action **Compilar Folha PDF Plus** compila automaticamente alterações em `FPlus/source`. Sem secrets de assinatura, valida o código e gera somente um artifact não assinado e não instalável; o teste 1.9.4 já publicado permanece disponível. Com a chave original configurada nos quatro secrets `FPLUS_*`, compila, confere e publica atualizações oficiais com versionCode crescente. Veja as instruções em [source/LEIA-ME.md](source/LEIA-ME.md). O APK 1.9.3 preservado e seu canal continuam disponíveis.
+
+A chave temporária do teste 1.9.4 não foi preservada. Para continuidade e configuração segura da chave original, consulte [signing/README.md](signing/README.md). As novas compilações não criam outras chaves descartáveis.
