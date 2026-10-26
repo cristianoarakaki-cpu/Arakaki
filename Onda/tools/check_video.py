@@ -19,7 +19,13 @@ def nodes():
     return list(ET.fromstring(shell('cat','/sdcard/onda-video.xml')).iter('node'))
 def point(node):
     v=[int(x) for x in re.findall(r'\d+',node.attrib['bounds'])];return ((v[0]+v[2])//2,(v[1]+v[3])//2)
-def locate(desc):return next(n for n in nodes() if n.attrib.get('content-desc')==desc)
+def locate(desc):
+    # The library scanner posts its result after Activity resume; wait for that layout.
+    for _ in range(4):
+        found=next((n for n in nodes() if n.attrib.get('content-desc')==desc),None)
+        if found is not None:return found
+        time.sleep(.3)
+    raise AssertionError('View did not appear after library update: '+desc)
 def tap(desc):shell('input','tap',*point(locate(desc)));time.sleep(.5)
 def tap_text(text):
     node=next(n for n in nodes() if n.attrib.get('text','').casefold()==text.casefold())

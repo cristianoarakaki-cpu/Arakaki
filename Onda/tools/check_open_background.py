@@ -82,6 +82,9 @@ try:
   if 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode():break
   time.sleep(.2)
  else:raise AssertionError('External music did not resume')
+ # Keep the subsequent library regression limited to its own eight fixtures.
+ shell('content','delete','--uri',media('video','Onda-Background.mp4'))
+ shell('rm','-f','/sdcard/Movies/OndaDemo/Onda-Background.mp4')
  (OUT/'open-background-tests.json').write_text(json.dumps(dict(externalAudio=True,externalVideo=True,externalPdf=True,backgroundClock=True,mediaPauseAndResume=True,screenOff=True,restorePosition=True,noMusicOverlap=True),indent=2))
 except Exception:
  (OUT/'open-background-logcat.txt').write_bytes(adb('logcat','-d'));(OUT/'open-background-failure.png').write_bytes(adb('exec-out','screencap','-p'));raise
