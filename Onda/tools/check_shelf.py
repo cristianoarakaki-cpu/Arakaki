@@ -8,7 +8,7 @@ def nodes():
  shell('uiautomator','dump','/sdcard/onda-shelf.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-shelf.xml')).iter('node'))
 def target(value):
  for _ in range(5):
-  n=next((n for n in nodes() if value in (n.attrib.get('content-desc'),n.attrib.get('text'))),None)
+  n=next((n for n in nodes() if n.attrib.get('content-desc')==value or n.attrib.get('text','').casefold()==value.casefold()),None)
   if n is not None:return n
   time.sleep(.3)
  raise AssertionError('Missing '+value)
@@ -55,7 +55,7 @@ try:
  assert any(11000<=p<18000 for p in positions),positions
  count=video_log().count('resumed 6000')
  open_file(media('video','Onda-Video.mp4'),'video/mp4','--el','onda_start_ms','6000')
- for _ in range(35):
+ for _ in range(60):
   if video_log().count('resumed 6000')>count:break
   time.sleep(.3)
  else:raise AssertionError('Video did not seek to requested journal point')

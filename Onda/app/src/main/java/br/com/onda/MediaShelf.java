@@ -16,6 +16,10 @@ final class MediaShelf {
  }
  boolean pinned(String id){for(Collection c:collections.values())if(c.items.contains(id))return true;return false;}
  Collection create(String name){String label=clean(name,60);if(!valid||label.isEmpty()||collections.size()>=COLLECTIONS)return null;Collection c=new Collection();c.id=UUID.randomUUID().toString();c.name=label;collections.put(c.id,c);return c;}
+ boolean hide(String id){Item i=items.get(id);if(i==null||(!i.notes.isEmpty()&&!pinned(id)))return false;i.seen=0;return true;}
+ private void reveal(Item i,long now){if(i!=null&&i.seen==0&&!i.notes.isEmpty()&&!pinned(i.id))i.seen=Math.max(1,now);}
+ boolean removeFrom(String collection,String id,long now){Collection c=collections.get(collection);if(c==null||!c.items.remove(id))return false;reveal(items.get(id),now);return true;}
+ boolean removeCollection(String id,long now){Collection c=collections.remove(id);if(c==null)return false;for(String key:c.items)reveal(items.get(key),now);return true;}
  boolean add(String collection,String item){Collection c=collections.get(collection);if(c==null||!items.containsKey(item))return false;if(c.items.contains(item))return true;if(c.items.size()>=PER_COLLECTION)return false;c.items.add(item);return true;}
  boolean note(String item,String id,long at,String text){Item i=items.get(item);String body=clean(text,1000);if(i==null||body.isEmpty()||at<0||at>(i.type.equals("pdf")?4999:VideoLoop.MAX_TIME)||(i.duration>0&&at>=(i.type.equals("pdf")?i.duration:i.duration+1)))return false;for(Note n:i.notes)if(n.id.equals(id)){n.text=body;return true;}if(i.notes.size()>=NOTES)return false;i.notes.add(new Note(UUID.randomUUID().toString(),at,body));return true;}
  List<Item> recent(){List<Item> result=new ArrayList<>();for(Item i:items.values())if(i.seen>0)result.add(i);result.sort((a,b)->Long.compare(b.seen,a.seen));return result;}
