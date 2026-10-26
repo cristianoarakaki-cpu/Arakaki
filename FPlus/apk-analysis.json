@@ -1,0 +1,155 @@
+{
+  "filename": "Folha-PDF-Plus-1.9.3-LGPD-PERSONALIZADO.apk",
+  "size": 14733569,
+  "sha256": "9ce4a79acee0bb1bd993965407c9460fd7b88fe4be1878f777f763c43845d39f",
+  "manifest": [
+    {
+      "name": "manifest",
+      "attrs": {
+        "versionCode": 15,
+        "versionName": "1.9.3",
+        "compileSdkVersion": 35,
+        "compileSdkVersionCodename": "15",
+        "package": "com.folha.pd2",
+        "platformBuildVersionCode": 35,
+        "platformBuildVersionName": 15
+      }
+    },
+    {
+      "name": "uses-sdk",
+      "attrs": {
+        "minSdkVersion": 26,
+        "targetSdkVersion": 35
+      }
+    },
+    {
+      "name": "uses-permission",
+      "attrs": {
+        "name": "android.permission.INTERNET"
+      }
+    },
+    {
+      "name": "uses-permission",
+      "attrs": {
+        "name": "android.permission.REQUEST_INSTALL_PACKAGES"
+      }
+    },
+    {
+      "name": "application",
+      "attrs": {
+        "theme": 16974401,
+        "label": "Folha PDF+",
+        "icon": 2130771968,
+        "allowBackup": 0,
+        "largeHeap": 4294967295,
+        "supportsRtl": 4294967295,
+        "usesCleartextTraffic": 0
+      }
+    },
+    {
+      "name": "provider",
+      "attrs": {
+        "name": "com.folha.pd2.LocalFileProvider",
+        "exported": 0,
+        "authorities": "com.folha.pd2.files",
+        "grantUriPermissions": 4294967295
+      }
+    },
+    {
+      "name": "activity",
+      "attrs": {
+        "name": "com.folha.pd2.MainActivity",
+        "exported": 4294967295,
+        "windowSoftInputMode": 16
+      }
+    },
+    {
+      "name": "intent-filter",
+      "attrs": {}
+    },
+    {
+      "name": "action",
+      "attrs": {
+        "name": "android.intent.action.MAIN"
+      }
+    },
+    {
+      "name": "category",
+      "attrs": {
+        "name": "android.intent.category.LAUNCHER"
+      }
+    },
+    {
+      "name": "intent-filter",
+      "attrs": {}
+    },
+    {
+      "name": "action",
+      "attrs": {
+        "name": "android.intent.action.VIEW"
+      }
+    },
+    {
+      "name": "category",
+      "attrs": {
+        "name": "android.intent.category.DEFAULT"
+      }
+    },
+    {
+      "name": "data",
+      "attrs": {
+        "mimeType": "application/pdf",
+        "scheme": "content"
+      }
+    },
+    {
+      "name": "intent-filter",
+      "attrs": {}
+    },
+    {
+      "name": "action",
+      "attrs": {
+        "name": "android.intent.action.VIEW"
+      }
+    },
+    {
+      "name": "category",
+      "attrs": {
+        "name": "android.intent.category.DEFAULT"
+      }
+    },
+    {
+      "name": "data",
+      "attrs": {
+        "mimeType": "application/pdf",
+        "scheme": "file"
+      }
+    },
+    {
+      "name": "intent-filter",
+      "attrs": {}
+    },
+    {
+      "name": "action",
+      "attrs": {
+        "name": "android.intent.action.SEND"
+      }
+    },
+    {
+      "name": "category",
+      "attrs": {
+        "name": "android.intent.category.DEFAULT"
+      }
+    },
+    {
+      "name": "data",
+      "attrs": {
+        "mimeType": "application/pdf"
+      }
+    }
+  ],
+  "certificateSha256": [
+    "261f78cf56ce24cf0589f5f718bd19c38a7ac4016af43bc6b03841199bcde8ce"
+  ],
+  "note": "Certificate extracted; cryptographic APK signature verification requires apksigner."
+}
