@@ -8,8 +8,9 @@ import java.util.*;
 
 final class YoutubeDownloads {
  static final class Option {
-  final String title,first,second,extension,mime;
-  Option(String title,String first,String second,String extension,String mime){this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;}
+  final String title,first,second,extension,mime,referer;final boolean original;
+  Option(String title,String first,String second,String extension,String mime){this(title,first,second,extension,mime,false,"");}
+  Option(String title,String first,String second,String extension,String mime,boolean original,String referer){this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;this.original=original;this.referer=referer;}
  }
  static final class Result {final String title;final List<Option> options;Result(String t,List<Option> o){title=t;options=o;}}
  private static boolean ready;

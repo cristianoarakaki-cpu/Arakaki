@@ -1,0 +1,11 @@
+package br.com.onda;
+import java.net.*;
+import java.util.*;
+/** One explicit provider per URL; no third-party download servers. */
+final class MediaDownloads {
+ static YoutubeDownloads.Result inspect(String input)throws Exception{String url=MediaLinks.resolve(input);if(MediaLinks.isTikTok(url)){PublicMediaHttp.Page page=PublicMediaHttp.read(url,true);String id=MediaLinks.videoId(page.url);if(id.isEmpty())throw new Exception("O link curto não levou a um vídeo público do TikTok. Pode estar expirado ou exigir verificação.");TiktokPage.Clip clip=TiktokPage.parse(page.text(),id);return tiktok(clip,page.url);}
+  String extension=MediaLinks.extension(url);if(extension.isEmpty())return YoutubeDownloads.inspect(url);PublicMediaHttp.Page page=PublicMediaHttp.read(url,false);if(!PublicMediaHttp.mediaHeader(page.bytes,extension))throw new Exception("O endereço não retornou um arquivo "+extension.toUpperCase(Locale.ROOT)+" reconhecível. Links de páginas, login e listas HLS não são arquivos diretos.");List<YoutubeDownloads.Option> options=new ArrayList<>();options.add(new YoutubeDownloads.Option(extension.toUpperCase(Locale.ROOT)+" • arquivo original",page.url,null,extension,mime(extension),true,""));if(!extension.equals("mp3"))options.add(new YoutubeDownloads.Option("MP3 • extrair áudio AAC e converter • 192 kbps",page.url,null,"mp3","audio/mpeg",false,""));String name=new URI(url).getPath();name=name.substring(name.lastIndexOf('/')+1);return new YoutubeDownloads.Result(name,options);
+ }
+ static YoutubeDownloads.Result tiktok(TiktokPage.Clip clip,String page)throws Exception{String id=MediaLinks.videoId(page);if(id.isEmpty())throw new Exception("Vídeo inválido");String referer=MediaLinks.tiktok(page);List<YoutubeDownloads.Option> options=new ArrayList<>();options.add(new YoutubeDownloads.Option("TikTok • MP4 original",clip.video,null,"mp4","video/mp4",true,referer));options.add(new YoutubeDownloads.Option("MP3 • áudio do vídeo • 192 kbps",clip.video,null,"mp3","audio/mpeg",false,referer));options.add(new YoutubeDownloads.Option("M4A • extrair áudio AAC do vídeo",clip.video,null,"m4a","audio/mp4",false,referer));return new YoutubeDownloads.Result(clip.title,options);}
+ static String mime(String extension){return extension.equals("mp3")?"audio/mpeg":extension.equals("m4a")?"audio/mp4":"video/mp4";}
+}

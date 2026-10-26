@@ -1,3 +1,11 @@
+## Onda Música 0.41.0 — Mais tipos de link em Downloads
+
+Aceita YouTube (vídeo, Shorts, youtu.be, playlists e Mixes), vídeos públicos do TikTok (vt.tiktok.com, vm.tiktok.com, tiktok.com/t e links completos /@autor/video/id) e arquivos HTTPS diretos terminados em .mp4, .mp3 ou .m4a, inclusive com parâmetros de assinatura. Também aceita o texto de compartilhamento com exatamente um link. Sites não listados, fotos/perfis/lives do TikTok, HTTP sem TLS, listas HLS e links de redes locais/reservadas não são aceitos.
+
+TikTok é consultado diretamente pela página pública, com redirecionamentos limitados. Não usa login/cookies de conta, APIs pagas, servidores de download externos, solução de verificações nem remoção de marcas. A disponibilidade depende do site e da região. Se a página expõe o arquivo do vídeo, oferece MP4 original e extração do áudio completo em MP3/M4A (requer AAC compatível). Bloqueios de verificação, conteúdo privado, removido ou mudanças no site podem impedir a análise; a tela informa o serviço e o motivo disponível. Isso não garante que todos os vídeos do TikTok possam ser baixados.
+
+Arquivos diretos: análise limitada a 64 KB, preservação do original, MP3 pronto sem nova conversão e validação real das faixas pelo Android antes de salvar. Arquivos MP4/M4A com AAC podem oferecer extração para MP3. Arquivos/páginas inválidos são recusados. Mantidos cancelamento, limite de 512 MB, prazos e reconexão existentes. YouTube usa os caminhos anteriores de extração, conversão e playlists.
+
 ## Onda Música 0.40.0 — Onda Conecta
 
 Menu → Onda Conecta compartilha áudios, vídeos e PDFs na mesma rede Wi-Fi privada (IPv4). Ambos precisam desta versão ou de uma versão compatível. Quem recebe escolhe uma pasta local no seletor Android e mostra o QR. Quem envia seleciona até 10 arquivos e lê o QR pela câmera, por imagem ou cola o código de conexão. A lista precisa ser aceita no receptor antes de criar arquivos. O QR contém endereço local, chave aleatória e impressão do certificado TLS; não compartilhe fora dos aparelhos envolvidos. Não requer conta nem servidor de transferência, e o Wi-Fi não precisa ter acesso à internet. Redes de convidados, VPNs e isolamento de clientes podem impedir a conexão.

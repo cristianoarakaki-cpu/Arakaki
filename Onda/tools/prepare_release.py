@@ -29,7 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Onda Conecta
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Downloads com mais tipos de link
+
+Downloads aceita links curtos vt.tiktok.com, vm.tiktok.com e tiktok.com/t, links completos de vídeos públicos do TikTok e endereços HTTPS diretos de arquivos MP4, MP3 e M4A. Pode colar também o texto de compartilhamento quando ele contém um único link. YouTube e playlists continuam disponíveis.
+
+TikTok: o Onda tenta ler os arquivos publicados pela página, sem login, API paga, servidores de terceiros, remoção de marcas ou solução de verificações. Vídeos privados, fotos, lives, bloqueios regionais e verificações podem impedir a análise. Quando um vídeo é disponibilizado, oferece MP4 original e extração do áudio completo para MP3/M4A, conforme compatibilidade AAC. Não garante disponibilidade de todos os vídeos.
+
+Links diretos preservam o arquivo original; MP3 já pronto não é convertido novamente. A análise lê apenas um trecho e o download valida as faixas reais antes de salvar. Extração para MP3 depende de áudio AAC. Endereços locais/reservados, páginas disfarçadas de mídia e formatos de streaming HLS não são aceitos. Até 512 MB por arquivo, com cancelamento e recuperação de conexão existentes. Outros sites de redes sociais não estão incluídos nesta versão.
+
+Recursos anteriores:
 
 Menu → Onda Conecta: envie e receba músicas, vídeos e PDFs entre aparelhos Onda na mesma rede Wi-Fi privada IPv4. No receptor, escolha a pasta e gere o QR; no remetente, escolha até 10 arquivos e leia o QR pela câmera, por imagem ou cole o código. O receptor precisa aceitar a lista antes de salvar. Conexão TLS com certificado conferido pelo QR e verificação SHA-256 de cada arquivo. Sem conta nem servidor de transferência.
 
