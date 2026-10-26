@@ -139,6 +139,12 @@ jobs:
           script: |
             python Onda/tools/check_upgrade.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            python Onda/tools/check_connect.py
+            adb shell am instrument -w -e class br.com.onda.ConnectSessionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-connect-tests.txt
+            cat /tmp/onda-connect-tests.txt
+            python -c 's=open("/tmp/onda-connect-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-speech-tests.txt
             cat /tmp/onda-speech-tests.txt
             python -c 's=open("/tmp/onda-speech-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
@@ -162,7 +168,7 @@ jobs:
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (30 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
@@ -183,6 +189,7 @@ jobs:
             /tmp/onda-shelf-tests.txt
             /tmp/onda-speech-tests.txt
             /tmp/onda-search-tests.txt
+            /tmp/onda-connect-tests.txt
             /tmp/onda-memory-tests.txt
             Onda/app/build/reports/
 

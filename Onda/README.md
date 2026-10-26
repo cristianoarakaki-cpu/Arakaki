@@ -1,3 +1,11 @@
+## Onda Música 0.40.0 — Onda Conecta
+
+Menu → Onda Conecta compartilha áudios, vídeos e PDFs na mesma rede Wi-Fi privada (IPv4). Ambos precisam desta versão ou de uma versão compatível. Quem recebe escolhe uma pasta local no seletor Android e mostra o QR. Quem envia seleciona até 10 arquivos e lê o QR pela câmera, por imagem ou cola o código de conexão. A lista precisa ser aceita no receptor antes de criar arquivos. O QR contém endereço local, chave aleatória e impressão do certificado TLS; não compartilhe fora dos aparelhos envolvidos. Não requer conta nem servidor de transferência, e o Wi-Fi não precisa ter acesso à internet. Redes de convidados, VPNs e isolamento de clientes podem impedir a conexão.
+
+Conexão criptografada com certificado conferido pelo QR e SHA-256 por arquivo. Limites: 10 arquivos, 512 MB por arquivo, 1 GB por envio. O provedor precisa informar o tamanho dos arquivos. Espera inicial de 3 minutos; aprovação em até 1 minuto. QR de uso único; gere outro após cada tentativa. Recebidos ficam na pasta escolhida e no Meu espaço quando houver capacidade; áudios também são registrados na biblioteca de downloads. Onda não substitui arquivos existentes intencionalmente; o provedor escolhe o nome de arquivos repetidos.
+
+Mantenha a tela Conecta aberta nos dois celulares. O app mantém a tela acesa durante a sessão; sair interrompe o envio. Não há serviço de transferência permanente, detecção automática de aparelhos nem varredura da rede. Recusa não cria arquivos. Falha/cancelamento preserva os arquivos confirmados e tenta remover o arquivo incompleto; provedores podem impedir sua exclusão. Nova tentativa começa de novo, sem retomada de bytes. A câmera só é aberta no leitor de QR e as imagens não são salvas. Não inclui sincronização de reprodução nesta versão.
+
 ## Onda Música 0.39.0 — Busca unificada
 
 Menu → Busca unificada reúne músicas por nome/artista/álbum, vídeos da biblioteca, PDFs adicionados ou abertos, coleções e texto das anotações. Filtros: tipo, favoritas de áudio e Continuar. Toque numa anotação para ler e abrir o minuto/página marcado. Até 200 resultados visíveis; refine a consulta. Não pesquisa o texto completo dos PDFs.

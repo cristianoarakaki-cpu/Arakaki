@@ -29,7 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Busca unificada
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Onda Conecta
+
+Menu → Onda Conecta: envie e receba músicas, vídeos e PDFs entre aparelhos Onda na mesma rede Wi-Fi privada IPv4. No receptor, escolha a pasta e gere o QR; no remetente, escolha até 10 arquivos e leia o QR pela câmera, por imagem ou cole o código. O receptor precisa aceitar a lista antes de salvar. Conexão TLS com certificado conferido pelo QR e verificação SHA-256 de cada arquivo. Sem conta nem servidor de transferência.
+
+Até 512 MB por arquivo e 1 GB por envio. Tamanhos precisam ser informados pelo provedor. Mantenha esta tela aberta nos dois celulares; sair cancela. QR de uso único e espera de conexão de até 3 minutos. Recusa não cria arquivos. Em falhas/cancelamento, arquivos confirmados são mantidos e o arquivo incompleto é removido quando o provedor permite. Uma nova tentativa começa de novo; não há retomada de bytes. Recebidos ficam na pasta escolhida e são registrados no Meu espaço, conforme capacidade. A câmera é usada apenas ao abrir o leitor de QR; imagens não são salvas. Redes com isolamento de clientes/convidados podem bloquear a conexão. Ainda não inclui reprodução sincronizada.
+
+Recursos anteriores:
 
 Menu → Busca unificada: encontre músicas por nome, artista e álbum, vídeos locais, PDFs adicionados, coleções e texto das anotações. Filtros por tipo, favoritas de áudio e Continuar. Abra anotações no minuto ou página marcado. PDFs precisam ser abertos ou adicionados; não pesquisa o texto completo das páginas. Adicionar arquivo usa o seletor do Android. Metadados processados fora da interface, sem varredura contínua nem API paga; até 10 mil músicas e 10 mil vídeos na leitura e 200 resultados visíveis.
 
