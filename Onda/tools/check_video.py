@@ -15,8 +15,14 @@ def on_failure(kind,value,tb):
     sys.__excepthook__(kind,value,tb)
 sys.excepthook=on_failure
 def nodes():
-    shell('rm','-f','/sdcard/onda-video.xml');shell('uiautomator','dump','/sdcard/onda-video.xml')
-    return list(ET.fromstring(shell('cat','/sdcard/onda-video.xml')).iter('node'))
+    # Android can briefly expose no accessibility root just after restarting a task.
+    for attempt in range(4):
+        try:
+            shell('rm','-f','/sdcard/onda-video.xml');shell('uiautomator','dump','/sdcard/onda-video.xml')
+            return list(ET.fromstring(shell('cat','/sdcard/onda-video.xml')).iter('node'))
+        except (subprocess.CalledProcessError,ET.ParseError):
+            if attempt==3:raise
+            time.sleep(.3)
 def point(node):
     v=[int(x) for x in re.findall(r'\d+',node.attrib['bounds'])];return ((v[0]+v[2])//2,(v[1]+v[3])//2)
 def locate(desc):
