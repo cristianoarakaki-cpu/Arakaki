@@ -1,0 +1,47 @@
+name: Disponibilizar Folha Plus Teste
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/folha-plus-test-download.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: folha-plus-test-download-1-9-4
+  cancel-in-progress: false
+jobs:
+  publish-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar APK de teste já compilado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh run download 40340166133 --name Folha-PDF-Plus-test-2 --dir test-output
+      - name: Conferir arquivo e preparar download
+        run: |
+          python3 - <<'PY'
+          import hashlib,pathlib
+          root=pathlib.Path('test-output')
+          files=list(root.rglob('*.apk'))
+          assert len(files)==1
+          data=files[0].read_bytes()
+          expected='a5edf6a94577cd86aa156c020f0401fd647d3447222782164b99dae06e9522f6'
+          assert hashlib.sha256(data).hexdigest()==expected,'APK divergente da compilação verificada'
+          dest=pathlib.Path('download');dest.mkdir()
+          name='Folha-PDF-Plus-1.9.4-TESTE.apk'
+          (dest/name).write_bytes(data)
+          (dest/'SHA256SUMS.txt').write_text(expected+'  '+name+'\n')
+          (dest/'notes.txt').write_text('Edição de teste reconstruída do Folha PDF+ 1.9.4.\n\nInstala ao lado do Folha PDF+ 1.9.3, com o nome Folha PDF+ Teste e pacote com.folha.pd2.dev. Não desinstale o aplicativo original. Esta edição não usa a chave de assinatura original e não recebe atualizações do canal oficial. Bibliotecas e modelos de OCR offline preservados. Compilação e assinatura de teste verificadas; os fluxos ainda precisam de validação em aparelho.\n')
+          PY
+      - name: Publicar download externo de teste
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view folha-plus-teste-1.9.4 >/dev/null 2>&1; then
+            echo 'Release de teste já publicada; não substituímos o arquivo.'
+            exit 0
+          fi
+          gh release create folha-plus-teste-1.9.4 download/Folha-PDF-Plus-1.9.4-TESTE.apk download/SHA256SUMS.txt --target "$GITHUB_SHA" --title 'Folha PDF+ 1.9.4 — TESTE' --notes-file download/notes.txt --prerelease --latest=false
