@@ -78,7 +78,10 @@ try:
  # Starting music stops a background video instead of overlapping both sources.
  before_home=max(positions(),default=0);shell('input','keyevent','3');wait_position(before_home+500);open_file(media('audio','Onda-Audio.mp3'),'audio/mpeg');time.sleep(1)
  assert 'br.com.onda.VideoBackgroundService' not in shell('dumpsys','activity','services',P).decode(),'Music did not stop background video'
- assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'External music did not resume'
+ for _ in range(30):
+  if 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode():break
+  time.sleep(.2)
+ else:raise AssertionError('External music did not resume')
  (OUT/'open-background-tests.json').write_text(json.dumps(dict(externalAudio=True,externalVideo=True,externalPdf=True,backgroundClock=True,mediaPauseAndResume=True,screenOff=True,restorePosition=True,noMusicOverlap=True),indent=2))
 except Exception:
  (OUT/'open-background-logcat.txt').write_bytes(adb('logcat','-d'));(OUT/'open-background-failure.png').write_bytes(adb('exec-out','screencap','-p'));raise

@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application android:label="Onda Música" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
             <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="audio/*" /><data android:mimeType="application/ogg" /><data android:mimeType="application/x-ogg" /></intent-filter>
         </activity>
@@ -21,7 +21,7 @@
         <activity android:name=".DownloadsActivity" android:launchMode="singleTop" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
             <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
         </activity>
-        <activity android:name=".PdfActivity" android:exported="true">
+        <activity android:name=".PdfActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="application/pdf" /><data android:mimeType="application/x-pdf" /></intent-filter>
         </activity>
         <activity android:name=".BackupActivity" android:exported="false" />
@@ -36,7 +36,7 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" />
         </provider>
-        <activity android:name=".VideoActivity" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:exported="true" android:launchMode="singleTop" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden">
+        <activity android:name=".VideoActivity" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:exported="true" android:launchMode="singleTask" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
