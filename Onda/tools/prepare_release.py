@@ -29,7 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Aulas e podcasts
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Busca unificada
+
+Menu → Busca unificada: encontre músicas por nome, artista e álbum, vídeos locais, PDFs adicionados, coleções e texto das anotações. Filtros por tipo, favoritas de áudio e Continuar. Abra anotações no minuto ou página marcado. PDFs precisam ser abertos ou adicionados; não pesquisa o texto completo das páginas. Adicionar arquivo usa o seletor do Android. Metadados processados fora da interface, sem varredura contínua nem API paga; até 10 mil músicas e 10 mil vídeos na leitura e 200 resultados visíveis.
+
+Comandos de voz: “abra minha coleção Estudo”, “continue o último vídeo”, “continue o último PDF”, “continue a última música”, “continue o último conteúdo” e “busque no Onda Chitãozinho e Xororó”. Pedidos como “abra o PDF Fatura” mostram resultados para escolher. Coleções com nomes iguais exigem escolha. Frases personalizadas existentes têm prioridade na biblioteca. Busca local sem internet; reconhecimento de voz depende do serviço do Android.
+
+Recursos anteriores preservados:
 
 Menu → Aulas e podcasts: equilíbrio de fala com dinâmica e presença suave e opção independente de pular silêncios. Ambas começam desligadas. Processamento local de áudio compatível, sem API paga, microfone ou análise de arquivos em segundo plano. Mantém posições no tempo original do arquivo; não modifica os arquivos. Vale para músicas e áudio online, com compatibilidade dependente do formato/saída. Vídeos usam outro motor. Pausas intencionais também podem ser reduzidas: use com conteúdo falado. Equalização e perfis existentes permanecem disponíveis.
 
