@@ -1,7 +1,9 @@
 {
   "packageName": "com.folha.pd2",
-  "versionCode": 7,
-  "versionName": "1.4.1",
-  "downloadAvailable": false,
-  "notes": "Canal do Folha PDF+. Não há versão posterior à 1.4.1 publicada neste canal. A primeira instalação da correção 1.4.1 é feita pelo APK entregue na conversa. Futuras atualizações devem publicar primeiro o APK assinado em uma release folha-vplus* e então incluir downloadUrl e sha256 neste manifesto."
+  "versionCode": 15,
+  "versionName": "1.9.3",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/folha-vplus1.9.3/Folha-PDF.apk",
+  "sha256": "9ce4a79acee0bb1bd993965407c9460fd7b88fe4be1878f777f763c43845d39f",
+  "notes": "Folha PDF+ 1.9.3 LGPD Personalizado. OCR offline em português, inglês e espanhol; biblioteca local de PDFs; leitura de boletos; ocultação de dados com revisão e regras personalizadas. APK original preservado, sem recompilação ou troca de assinatura.",
+  "downloadAvailable": true
 }
