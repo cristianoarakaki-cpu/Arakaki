@@ -31,6 +31,8 @@ manifest = {
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 (output / 'notes.md').write_text(f"""Onda Música {version_name} — Meu espaço, coleções e anotações
 
+Faixas concluídas naturalmente na fila voltam ao início no histórico; pular uma faixa preserva o ponto de saída.
+
 Menu → Meu espaço: continuar áudio, vídeo e PDF, criar coleções com os três tipos de arquivo e guardar anotações ligadas a um minuto ou página. Toque para retomar; segure para organizar ou anotar. Seleção de arquivos pelo Android, sem copiar ou excluir os originais. Tudo local, sem API paga nem análise contínua. Até 200 referências, 30 coleções, 50 itens por coleção e 10 notas de 1.000 caracteres por arquivo (dados limitados a 1 MB). Notas e coleções são preservadas no celular; não integram o backup de listas atual. Arquivos removidos ou com acesso expirado exigem nova seleção. O registro começa após atualizar, sem reconstruir histórico antigo. Áudio usa pontos nas ações e a cada 15 segundos de reprodução.
 
 Coração de favoritas redesenhado como ícone vetorial, sem depender da fonte do Android e sem recortes nas laterais. Botão com área de toque de 48 × 48 dp, contorno quando não favorito e preenchido quando favorito. Cartão Tocando agora com mais separação entre título, artista e coração, altura adaptável aos textos, barra de posição mais espaçada e tempo mais legível. Mantém as favoritas salvas e os demais recursos.

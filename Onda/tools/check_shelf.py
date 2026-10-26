@@ -42,6 +42,10 @@ def add_recent(label):tap('Adicionar no Meu espaço');tap('Escolher de Continuar
 # Independent of the longer video UI regression: create its one required movie.
 fixture=Path('/tmp/Onda-Shelf.mp4')
 subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','color=c=blue:s=320x180:r=15','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','20','-c:v','libx264','-threads','2','-pix_fmt','yuv420p','-c:a','aac',str(fixture)],check=True,timeout=60)
+# A second local audio permits the focused natural-transition test before the long regression.
+second=Path('/tmp/Onda-Shelf-DJ2.mp3')
+subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(fixture),'-vn','-t','3','-c:a','libmp3lame','-b:a','64k','-metadata','title=DJ-2','-metadata','artist=DJ Artist 2',str(second)],check=True,timeout=60)
+shell('mkdir','-p','/sdcard/Music/OndaDemo');adb('push',str(second),'/sdcard/Music/OndaDemo/DJ-2.mp3');shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Music/OndaDemo/DJ-2.mp3')
 shell('mkdir','-p','/sdcard/Movies/OndaDemo');adb('push',str(fixture),'/sdcard/Movies/OndaDemo/Onda-Video.mp4');shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Movies/OndaDemo/Onda-Video.mp4');time.sleep(1)
 try:
  shell('am','force-stop',P)

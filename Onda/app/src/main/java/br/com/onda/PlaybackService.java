@@ -33,6 +33,10 @@ public class PlaybackService extends MediaSessionService {
         player=new ExoPlayer.Builder(this,soundRoutes.renderers(this)).build();player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);
         player.addListener(new Player.Listener(){
             @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
+            @Override public void onPositionDiscontinuity(Player.PositionInfo oldPosition,Player.PositionInfo newPosition,int reason){
+                MediaItem old=oldPosition.mediaItem,next=newPosition.mediaItem;
+                if(DjSession.deviceAudio(old)&&old.localConfiguration!=null&&(next==null||!old.mediaId.equals(next.mediaId)))ShelfStore.remember(PlaybackService.this,"audio",old.localConfiguration.uri.toString(),String.valueOf(old.mediaMetadata.title),reason==Player.DISCONTINUITY_REASON_AUTO_TRANSITION?0:Math.max(0,oldPosition.positionMs),LibraryStore.number(old,"durationMs"));
+            }
             @Override public void onAudioSessionIdChanged(int id){applySound();}
             @Override public void onMediaItemTransition(MediaItem item,int reason){
                 boolean smooth=outgoing&&(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT);cancelFade(false);incoming=smooth&&item!=null&&!item.mediaId.startsWith("catalog:");player.setVolume(incoming?0:baseVolume);

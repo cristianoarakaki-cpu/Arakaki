@@ -1,4 +1,6 @@
-# Onda Música 0.37.0 — Meu espaço: continuar, coleções multimídia e anotações
+# Onda Música 0.37.1 — Meu espaço: continuar, coleções multimídia e anotações
+
+Faixas concluídas naturalmente na fila voltam ao início no histórico; pular para outra faixa preserva o ponto de saída.
 
 Menu → Meu espaço: pontos locais de áudio, vídeo e PDF, coleções mistas e notas ligadas a um minuto ou página. Toque para retomar; segure para organizar ou anotar. Crie uma coleção e adicione arquivos pelo seletor Android ou por Continuar. Referências locais, sem duplicar/excluir mídia, sem análise contínua e sem API paga. Até 200 referências, 30 coleções, 50 itens por coleção e 10 notas de 1.000 caracteres por arquivo, dentro de 1 MB de dados. Referências com notas ou em coleções não são descartadas para liberar espaço. Os dados ficam neste celular e não integram o backup de listas anterior. Arquivos removidos ou sem acesso precisam ser selecionados novamente. A retomada usa a busca disponível no arquivo e no decoder. Áudio salva pontos nas ações e em intervalos de 15 segundos durante a reprodução; PDF, após renderizar a página. O histórico anterior começa a ser registrado após esta atualização; não reconstrói sessões antigas.
 
