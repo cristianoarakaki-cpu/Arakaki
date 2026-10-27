@@ -1,3 +1,13 @@
+## Onda Música 0.42.0 — Central de downloads, pastas e biblioteca organizada
+
+Central de downloads pelo botão Central em Downloads: histórico local por arquivo, fila da playlist, estado, trecho transferido, conclusão e falha. Filtros Todos, Em andamento, Concluídos e Falhas/interrupções. Abrir arquivos concluídos e Tentar novamente, que preenche o link original para reanalisar os formatos e escolher novo destino. Não guarda URLs temporários dos servidores de mídia. Até 200 registros; limpar histórico não apaga os arquivos. Registros começam nesta versão. Não retoma bytes após encerrar a operação; a recuperação de conexão dentro do download continua disponível.
+
+Central → menu → Escolher pasta do Onda: escolha a pasta base pelo Android uma vez. Cria Onda/Áudios e Onda/Vídeos, com acesso persistente quando o provedor permite. Downloads e conversões do download podem usar essas pastas; playlists criam sua própria subpasta dentro do tipo correspondente. Pode escolher Outro local a cada operação e alternar para pedir destino sempre. Cria arquivos novos, sem substituir existentes; o provedor resolve nomes repetidos. Mudança de pasta não move arquivos anteriores. Acesso revogado, cartão removido e pastas na nuvem podem exigir nova seleção/conexão. Não acrescenta um conversor independente de arquivos nesta versão.
+
+Menu da biblioteca → Organizar biblioteca: título, artista, álbum, duração crescente/decrescente e mais recentes. Ordenação por artista/álbum inclui cabeçalhos de grupos. Filtro Downloads do Onda mostra os áudios registrados pelo app, inclusive abertos/recebidos; mantém busca e favoritas. Duração/data ausentes ficam após valores conhecidos. Preferências locais, sem alterar nomes, metadados ou arquivos. Não inclui busca/exclusão de duplicatas nem nova extração de capas.
+
+A pendência do TikTok permanece: o teste anterior reconheceu o vídeo, mas os arquivos foram recusados com HTTP 403. Esta atualização não promete resolver o bloqueio externo. YouTube e links diretos mantêm os caminhos existentes.
+
 ## Onda Música 0.41.1 — Correção da consulta ao TikTok
 
 Consulta vídeos do TikTok com a página para computador, pois a página móvel pode retornar somente a tela de compartilhamento sem arquivo. Mantém a mesma identificação de navegador ao baixar o vídeo. YouTube e arquivos diretos mantêm as consultas anteriores. Confere um pequeno trecho do arquivo antes de oferecer os formatos e tenta até quatro endereços de vídeo publicados pela própria página quando um deles é recusado. Não usa login, solução de verificações nem serviço externo. A disponibilidade continua dependendo do site.
