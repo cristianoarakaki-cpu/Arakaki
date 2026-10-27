@@ -1,6 +1,6 @@
 ## Onda Música 0.41.1 — Correção da consulta ao TikTok
 
-Consulta vídeos do TikTok com a página para computador, pois a página móvel pode retornar somente a tela de compartilhamento sem arquivo. Mantém a mesma identificação de navegador ao baixar o vídeo. YouTube e arquivos diretos mantêm as consultas anteriores. Não usa login, solução de verificações nem serviço externo. A disponibilidade continua dependendo do site.
+Consulta vídeos do TikTok com a página para computador, pois a página móvel pode retornar somente a tela de compartilhamento sem arquivo. Mantém a mesma identificação de navegador ao baixar o vídeo. YouTube e arquivos diretos mantêm as consultas anteriores. Confere um pequeno trecho do arquivo antes de oferecer os formatos e tenta até quatro endereços de vídeo publicados pela própria página quando um deles é recusado. Não usa login, solução de verificações nem serviço externo. A disponibilidade continua dependendo do site.
 
 ## Onda Música 0.41.0 — Mais tipos de link em Downloads
 
