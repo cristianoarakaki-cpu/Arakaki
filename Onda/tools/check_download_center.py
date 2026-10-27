@@ -43,7 +43,7 @@ try:
  writeprefs('onda_folders',prefsxml({'tree':folder['tree'],'enabled':True}))
  entry=dict(id=str(uuid.uuid4()),title='Exemplo para tentar novamente',source=URL,format='mp4',state='failed',detail='Conexão interrompida no teste',time=int(time.time()*1000),bytes=50,expected=100)
  writeprefs('download_history',prefsxml({'data':json.dumps(dict(version=1,items=[entry]))}))
- shell('am','start','-W','-n',P+'/br.com.onda.DownloadCenterActivity');time.sleep(.5)
+ shell('am','start','-W','-n',P+'/br.com.onda.DownloadsActivity');time.sleep(.5);tap('Central');time.sleep(.3)
  tap('Exemplo para tentar novamente');tap('Tentar novamente')
  assert any(n.attrib.get('content-desc')=='Link do vídeo' and n.attrib.get('text')==URL for n in nodes())
  tap('Analisar link');until=time.monotonic()+95
