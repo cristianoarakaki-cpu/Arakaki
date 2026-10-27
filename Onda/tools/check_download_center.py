@@ -65,7 +65,7 @@ try:
  tap('Central');time.sleep(.5);assert any(n.attrib.get('text')=='Concluído • MP4 • '+time.strftime('%d/%m %H:%M',time.gmtime(complete['time']/1000)) for n in nodes()) or any('Concluído • MP4' in n.attrib.get('text','') for n in nodes());capture('73-central-downloads')
  shell('am','start','-W','-n',P+'/br.com.onda.MainActivity');time.sleep(.6);tap('Menu da biblioteca',True);tap('Organizar biblioteca');tap('Ordenar: Título A–Z');tap('Artista A–Z');time.sleep(.3)
  library=ET.fromstring(shell('run-as',P,'cat','shared_prefs/library.xml'));assert any(n.attrib.get('name')=='sort_order' and n.attrib.get('value')=='1' for n in library)
- capture('74-biblioteca-artistas')
+ capture('74-biblioteca-artistas');tap('Menu da biblioteca',True);tap('Organizar biblioteca');assert any(n.attrib.get('text')=='Copiar favoritas para a pasta do Onda' for n in nodes());capture('75-organizar-e-copiar-favoritas');tap('Fechar')
  (OUT/'download-center-tests.json').write_text(json.dumps(dict(retryReanalysesSource=True,savesInOndaVideoFolder=True,completedRecord=True,libraryArtistSort=True,folderNativeChecks=folder),indent=2,ensure_ascii=False))
 except Exception:
  capture('download-center-failure');(OUT/'download-center-logcat.txt').write_bytes(adb('logcat','-d'));raise
