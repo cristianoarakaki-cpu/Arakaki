@@ -29,7 +29,9 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Downloads com mais tipos de link
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Correção da consulta ao TikTok
+
+Corrige a consulta ao TikTok: usa a página pública para computador e mantém a identificação de navegador durante o download. A página móvel pode retornar somente uma tela de compartilhamento sem os dados do vídeo. Não usa login nem resolve verificações.
 
 Downloads aceita links curtos vt.tiktok.com, vm.tiktok.com e tiktok.com/t, links completos de vídeos públicos do TikTok e endereços HTTPS diretos de arquivos MP4, MP3 e M4A. Pode colar também o texto de compartilhamento quando ele contém um único link. YouTube e playlists continuam disponíveis.
 

@@ -30,7 +30,7 @@ public class MediaDownloadService extends Service {
  private void check()throws IOException{if(cancelled||Thread.currentThread().isInterrupted())throw new InterruptedIOException("Cancelado");long now=SystemClock.elapsedRealtime();if(now-startedAt>2*60*60*1000L)throw new InterruptedIOException("Tempo total de 2 horas atingido");if(now-itemStarted>30*60*1000L)throw new IOException("Tempo limite de 30 minutos por arquivo");}
  private void fetch(String link,File target)throws IOException{
   stage="Download";check();long remaining=LIMIT-total;
-  ResilientDownload.fetch(link,target,remaining,ExtractorHttp.AGENT,new ResilientDownload.Control(){
+  ResilientDownload.fetch(link,target,remaining,referer.isEmpty()?ExtractorHttp.AGENT:PublicMediaHttp.TIKTOK_AGENT,new ResilientDownload.Control(){
    public void check()throws IOException{MediaDownloadService.this.check();}
    public void opened(HttpURLConnection c){active=c;}
    public void closed(HttpURLConnection c){if(active==c)active=null;}
