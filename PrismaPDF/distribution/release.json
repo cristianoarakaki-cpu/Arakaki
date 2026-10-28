@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "notes": "Novas ferramentas offline: dividir PDF em arquivos individuais, numerar páginas com início configurável e aplicar marca d’água com intensidade ajustável. Seleção de páginas disponível nas três ferramentas; numeração e marca respeitam a rotação das páginas. Mantém leitor, boletos, OCR e conversões locais.",
+  "versionCode": 3,
+  "versionName": "1.2.0",
+  "notes": "Novidades offline: remover páginas, inserir páginas em branco em A4 ou Carta e consultar ou limpar os metadados básicos Info/XMP do documento. Busca de ferramentas na tela inicial. A limpeza não remove conteúdo, comentários, anexos ou dados internos de páginas.",
   "size": 14690531,
-  "sha256": "fd2eacd93ba789efe93348d386b4fa9e637c07461fe3371fde0276e67dfd88b7",
+  "sha256": "166a688ca160d357efa9bf0507170329ad9702f65a02bc585a703161ba8638d2",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.1.0/Prisma-PDF.apk",
-  "sourceBuildCommit": "734978c04915813672fc1651b10fe29bfa331bcb",
-  "sourceValidationRun": 40730055037
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.2.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "6a9fc92e9ef640bc096c2ac510a8034d49bfd67c",
+  "sourceValidationRun": 40731291181
 }
