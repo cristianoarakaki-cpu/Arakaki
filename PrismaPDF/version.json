@@ -1,5 +1,5 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "notes": "Novas ferramentas offline: dividir PDF em arquivos individuais, numerar páginas com início configurável e aplicar marca d’água com intensidade ajustável. Seleção de páginas disponível nas três ferramentas; numeração e marca respeitam a rotação das páginas. Mantém leitor, boletos, OCR e conversões locais."
+  "versionCode": 3,
+  "versionName": "1.2.0",
+  "notes": "Novidades offline: remover páginas, inserir páginas em branco em A4 ou Carta e consultar ou limpar os metadados básicos Info/XMP do documento. Busca de ferramentas na tela inicial. A limpeza não remove conteúdo, comentários, anexos ou dados internos de páginas."
 }

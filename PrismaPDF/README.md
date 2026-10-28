@@ -47,3 +47,7 @@ Passaram testes de regras, ITF sintético, operações PDF, leitor, busca, bibli
 ## Versão 1.1.0
 
 Três novas ferramentas locais: dividir até 20 páginas em PDFs individuais, numerar páginas com início entre 1 e 1.000.000 e aplicar marca d’água de texto com três intensidades. Todas aceitam seleção e ordem de páginas. Os originais não são sobrescritos. Numeração e marca consideram rotação e área visível (CropBox). Texto latino e pontuação são aceitos; emojis são recusados antes de produzir o arquivo. Uma marca visual não impede edição posterior.
+
+## Versão 1.2.0
+
+Remoção de páginas com seleção obrigatória e preservação de ao menos uma página; inserção de até 20 páginas em branco no início, fim ou entre páginas, em A4 retrato/paisagem e Carta. Consulta de dados básicos e limpeza do Info e XMP do catálogo: não é anonimização e não remove conteúdo, comentários, anexos ou metadados de páginas. Busca de ferramentas na tela inicial. Os resultados continuam sendo cópias que o usuário escolhe salvar.
