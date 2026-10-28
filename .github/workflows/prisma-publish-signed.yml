@@ -1,0 +1,31 @@
+name: Publicar Prisma PDF assinado
+on:
+  push:
+    branches: [main]
+    paths: ['PrismaPDF/distribution/**', 'PrismaPDF/signing/certificate.sha256', 'PrismaPDF/tools/publish_signed.py', '.github/workflows/prisma-publish-signed.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: prisma-pdf-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Localizar ferramentas Android
+        shell: bash
+        run: |
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          if [ ! -x "$BT/apksigner" ]; then
+            BT=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1 | xargs dirname)
+          fi
+          test -x "$BT/apksigner" && test -x "$BT/aapt" && test -x "$BT/zipalign"
+          echo "PRISMA_PUBLISH_TOOLS=$BT" >> "$GITHUB_ENV"
+      - name: Conferir APK assinado e identidade permanente
+        run: python3 PrismaPDF/tools/publish_signed.py prepare "$PRISMA_PUBLISH_TOOLS"
+      - name: Publicar download externo e ativar atualizações
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 PrismaPDF/tools/publish_signed.py publish

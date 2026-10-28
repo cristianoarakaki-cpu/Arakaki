@@ -1,0 +1,12 @@
+{
+  "packageName": "com.arakaki.prismapdf",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "size": 14690531,
+  "sha256": "9baa0775fa83cdf9a8a12628adb6da56d166d2f8911c615a124f84e57883bb10",
+  "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.0.0/Prisma-PDF.apk",
+  "notes": "Primeira versão do Prisma PDF: ferramentas locais, OCR offline em português, inglês e espanhol, boletos com verificação de dígitos, leitor com busca, biblioteca opcional e importação por link HTTPS quando habilitada.",
+  "sourceBuildCommit": "2a2f9a10522ab8e42d5af5605c2c865ebfb3a5af",
+  "sourceValidationRun": 40495965892
+}

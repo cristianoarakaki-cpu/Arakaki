@@ -42,5 +42,5 @@ else
  cp PrismaPDF/build/aligned.apk PrismaPDF/build/Prisma-PDF-VALIDACAO.apk.unsigned
  "$BT/aapt" dump badging PrismaPDF/build/Prisma-PDF-VALIDACAO.apk.unsigned > PrismaPDF/build/metadata.txt
  head -1 PrismaPDF/build/metadata.txt
- echo 'Compilação validada. Falta o secret PRISMA_SIGNING_PASSWORD para gerar APK instalável.'
+ echo 'Compilação validada. APKs instaláveis são distribuídos pelo fluxo Publicar Prisma PDF assinado.'
 fi

@@ -5,9 +5,9 @@ on:
     paths: ['PrismaPDF/assets/**', 'PrismaPDF/src/**', 'PrismaPDF/tools/**', 'PrismaPDF/res/**', 'PrismaPDF/dependencies/**', 'PrismaPDF/version.json', 'PrismaPDF/AndroidManifest.xml', 'PrismaPDF/build.sh', '.github/workflows/prisma-pdf.yml']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: prisma-pdf-release
+  group: prisma-pdf-validation
   cancel-in-progress: false
 jobs:
   build:
@@ -36,24 +36,6 @@ jobs:
           fi
           export CHROME_BIN
           node PrismaPDF/tools/browser_test.cjs
-      - name: Selecionar modo de compilação
-        id: mode
-        env:
-          PRISMA_SIGNING_PASSWORD: ${{ secrets.PRISMA_SIGNING_PASSWORD }}
-        run: |
-          python3 - <<'PY'
-          import os
-          ready=bool(os.environ.get('PRISMA_SIGNING_PASSWORD'))
-          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('mode='+('signed' if ready else 'verify')+'\n')
-          if not ready:
-            with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('## Prisma pronto para assinar\nCadastre o secret `PRISMA_SIGNING_PASSWORD` com senha forte de pelo menos 24 caracteres ASCII e execute este workflow novamente. Sem o secret, o APK é compilado apenas para validação, sem assinatura e sem instalação.\n')
-          PY
-      - name: Preparar assinatura permanente do Prisma
-        if: steps.mode.outputs.mode == 'signed'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PRISMA_SIGNING_PASSWORD: ${{ secrets.PRISMA_SIGNING_PASSWORD }}
-        run: python3 PrismaPDF/tools/signing.py
       - name: Preparar SDK Android 35
         shell: bash
         run: |
@@ -62,25 +44,17 @@ jobs:
             test -n "$SDKMANAGER"
             "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
           fi
-      - name: Compilar app Android independente
-        env:
-          PRISMA_SIGNING_PASSWORD: ${{ secrets.PRISMA_SIGNING_PASSWORD }}
-          BUILD_MODE: ${{ steps.mode.outputs.mode }}
-        run: bash PrismaPDF/build.sh "$BUILD_MODE"
+      - name: Validar compilação sem solicitar secrets
+        run: bash PrismaPDF/build.sh verify
       - uses: actions/upload-artifact@v4
         with:
-          name: Prisma-PDF-${{ steps.mode.outputs.mode }}-${{ github.run_number }}
+          name: Prisma-PDF-validacao-${{ github.run_number }}
           path: |
-            PrismaPDF/build/Prisma-PDF.apk
             PrismaPDF/build/Prisma-PDF-VALIDACAO.apk.unsigned
             PrismaPDF/test-output/home.png
           if-no-files-found: error
           retention-days: 30
-      - name: Publicar APK e habilitar atualizações
-        if: steps.mode.outputs.mode == 'signed'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 PrismaPDF/tools/release.py publish
-      - name: Remover chave aberta do runner
-        if: always()
-        run: rm -f "$RUNNER_TEMP/prisma-signing.p12"
+      - name: Informar canal de instalação
+        run: |
+          echo '## Downloads instaláveis' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Os APKs assinados são publicados pela Action **Publicar Prisma PDF assinado**, sem exigir cadastro de senha pelo usuário. Esta execução valida o código e produz um artifact não assinado para conferência.' >> "$GITHUB_STEP_SUMMARY"

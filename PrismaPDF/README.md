@@ -1,49 +1,45 @@
 # Prisma PDF — Android, offline primeiro
 
-Novo aplicativo, interface e implementação próprias. Pacote `com.arakaki.prismapdf`, sem substituir Folha PDF, Plus ou suas edições de teste. Bibliotecas de terceiros são empacotadas localmente; lógica e interface anteriores não são reutilizadas.
+Aplicativo novo, com interface e implementação próprias. Pacote `com.arakaki.prismapdf`, separado dos apps Folha anteriores.
+
+## Instalar sem cadastrar senha
+
+[Baixar Prisma PDF 1.0.0](https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.0.0/Prisma-PDF.apk) · [Página da versão](https://github.com/cristianoarakaki-cpu/Arakaki/releases/tag/prisma-v1.0.0)
+
+O Android pede autorização para instalar o APK. O usuário não precisa de conta no app, senha, GitHub Secrets ou chave de assinatura. A instalação em aparelho ainda deve ser validada pelo proprietário. O código, os testes em navegador e a compilação já foram verificados.
 
 ## Ferramentas locais
 
-- Leitor PDF com navegação e pesquisa de texto.
-- OCR para PDF pesquisável em português, inglês e espanhol; imagens também aceitas.
-- Leitura de boletos por texto, barras ITF horizontais e OCR, com verificação de dígitos.
-- Juntar PDFs, extrair páginas, girar páginas e otimizar a estrutura.
-- JPG/PNG para PDF, PDF para PNG e PDF para TXT.
-- Salvar pelo seletor Android, compartilhar e guardar PDFs numa biblioteca local opcional.
+Leitor PDF com pesquisa; OCR em português, inglês e espanhol; boletos por texto, barras ITF e OCR com verificação de dígitos; juntar, extrair e girar páginas; otimizar estrutura; JPG/PNG para PDF; PDF para PNG e TXT. Salvamento e compartilhamento usam o Android. A biblioteca só guarda cópias quando o usuário toca Guardar.
 
-As entradas não são guardadas automaticamente. O botão Guardar salva uma cópia local; desinstalar ou limpar dados apaga a biblioteca. Não há conta, telemetria, CDN em tempo de uso ou upload de documentos.
+Bibliotecas e modelos vêm no APK. Não há conta, telemetria, upload automático ou CDN durante o uso. Os arquivos não são enviados a um servidor para serem processados.
 
-## Online quando necessário
+## Ações online opcionais
 
-O controle Permitir ações online começa desligado. Quando ativado pelo usuário, permite importar PDFs por links HTTPS públicos e verificar/baixar novas versões no GitHub. O WebView não carrega sites externos. As ferramentas de PDF continuam locais. Não há processamento remoto nem conversão Word/Excel nesta versão.
+O controle Permitir ações online começa desligado. Quando ativado, permite importar PDFs de links HTTPS públicos e consultar/baixar novas versões no GitHub. O WebView bloqueia destinos externos; as requisições escolhidas pelo usuário usam a camada nativa. Não há conversão remota nem Word/Excel nesta versão.
 
-## Gerar o APK instalável
+## Assinatura e publicação sem secrets do usuário
 
-Uma configuração única pelo proprietário é necessária para a assinatura permanente:
+O APK é assinado fora do repositório, com uma chave privada mantida em armazenamento protegido do ambiente de execução. A chave e a credencial gerada automaticamente não são incluídas no APK, no repositório ou em artifacts públicos. O certificado público está em `signing/certificate.sha256`.
 
-1. Abra [GitHub Secrets](https://github.com/cristianoarakaki-cpu/Arakaki/settings/secrets/actions/new).
-2. Crie `PRISMA_SIGNING_PASSWORD` com senha forte, exclusiva, de pelo menos 24 caracteres ASCII. Guarde a senha em local privado; não envie no chat.
-3. Abra [Prisma PDF Android em Actions](https://github.com/cristianoarakaki-cpu/Arakaki/actions/workflows/prisma-pdf.yml) e toque Run workflow na branch main.
-4. Ao concluir, o arquivo `Prisma-PDF.apk` ficará na release `prisma-v1.0.0`, com download externo ao chat.
+A preservação dessa chave privada é indispensável para assinar versões futuras que atualizem a mesma instalação. O workspace privado não substitui um cofre durável ou um backup privado permanente; se esse ambiente for substituído sem preservar a chave, não será possível recriá-la a partir do APK. Não anuncie assinatura automática na nuvem: a Action de compilação apenas valida; a assinatura precisa ocorrer no ambiente que possui essa chave.
 
-A primeira execução com o secret cria uma chave RSA e salva backup criptografado com AES-256-GCM e scrypt em `signing/key.enc.json`, junto do certificado público. As execuções seguintes recuperam a mesma chave. Senha incorreta ou backup incompleto interrompem o fluxo; não criam outra chave. Não altere o secret nem apague o backup depois da primeira instalação. Guarde cópia privada do arquivo criptografado e da senha. O APK só é publicado depois de conferir assinatura, pacote, versão e o download final.
+`distribution/` preserva o APK já assinado, dividido em partes com hashes. A Action **Publicar Prisma PDF assinado** reúne as partes, verifica SHA-256, assinatura, certificado fixado, alinhamento, pacote e versão, publica o arquivo e baixa novamente a release para conferir a integridade antes de atualizar `PrismaPDF/update.json`. Não substitui releases públicas existentes nem rebaixa versões. Não requer senha ou secret do usuário.
 
-Sem o secret, a automação executa os testes e a compilação, mas produz somente `.apk.unsigned`, que não é instalável. Não é gerada chave descartável. A conexão do atendimento não dispõe de operação para cadastrar secrets na conta.
+Para uma atualização, compile as mudanças, use `tools/sign_private_local.py` no ambiente privado que contém `/workspace/.prisma-signing/active` para assinar com a mesma chave privada, aumente versão/código e substitua todas as partes e os metadados de distribuição no mesmo commit. O app verifica pacote, versão, assinatura e hash antes de abrir o instalador. O Android solicita confirmação; não há instalação silenciosa.
 
-## Desenvolvimento
+Os scripts experimentais de chave criptografada permanecem como infraestrutura e testes, mas não são invocados pelas Actions ativas. Não gere outra chave para esta identidade. O fluxo anterior de PRISMA_SIGNING_PASSWORD foi retirado da automação de compilação.
 
-JDK 17, Android SDK plataforma/build-tools 35, Python 3 e Node.js. Da raiz do repositório: `bash PrismaPDF/build.sh verify`. `tools/vendor.py` reconstitui as dependências versionadas e verifica todos os hashes, sem acessar a internet. `build.sh signed` exige a chave preparada pela Action.
+## Desenvolvimento e dependências
 
-Cada publicação precisa aumentar versionCode e versionName em `version.json`. O canal é `PrismaPDF/update.json`. A instalação de atualizações é confirmada pelo Android, após verificação de SHA-256, pacote e assinatura. Não existe instalação silenciosa.
+JDK 17, Android SDK plataforma/build-tools 35, Python 3 e Node.js. `bash PrismaPDF/build.sh verify` valida uma compilação sem assinatura. `tools/vendor.py` reconstitui bibliotecas empacotadas e verifica todos os hashes, sem internet. Configure as ferramentas de desenvolvimento uma vez; o app usa os arquivos locais.
 
-## Dependências
-
-PDF-lib 1.17.1 (MIT), PDF.js 3.11.174, Tesseract.js/core 5.1.1 e modelos @tesseract.js-data por/eng/spa 1.0.0 (Apache-2.0). Os avisos de licença acompanham os arquivos empacotados. PDF.js é sempre configurado com `isEvalSupported: false`. A automação usa cryptography 46.0.3 para proteger o backup da assinatura; essa biblioteca não entra no app.
+PDF-lib 1.17.1 (MIT), PDF.js 3.11.174, Tesseract.js/core 5.1.1 e modelos @tesseract.js-data por/eng/spa 1.0.0 (Apache-2.0). Os avisos completos acompanham o APK em `assets/THIRD-PARTY-NOTICES.txt` e os arquivos vendor. PDF.js usa sempre `isEvalSupported: false`.
 
 ## Limites e validação
 
-Android 8+ com WebView atualizado. Até 25 MB por arquivo, 20 entradas e 60 MB no total; OCR/boletos até 12 páginas, PNG até 20 páginas por operação. Documentos com senha precisam ser desbloqueados antes. OCR rasteriza as páginas e pode errar texto e números; revise os resultados. Regravar arquivos invalida assinaturas digitais e pode perder recursos interativos no caso de OCR. Otimizar não garante redução de tamanho.
+Android 8+ com WebView atualizado. 25 MB por arquivo, 20 entradas e 60 MB no total; OCR/boletos até 12 páginas; PNG até 20 páginas. PDFs com senha devem ser desbloqueados antes. OCR pode errar e rasteriza páginas; revise o resultado. Regravar arquivos pode invalidar assinaturas digitais. Otimizar a estrutura não garante redução de tamanho.
 
-A leitura de boleto não verifica autenticidade ou beneficiário. PDFs não devem ser pagos apenas com base na saída do aplicativo. O modelo de barras horizontais pode falhar em baixa resolução ou orientação incorreta.
+A leitura de boletos não verifica autenticidade ou beneficiário. Confira os dados no banco antes de pagar. Barras ITF devem estar horizontais e nítidas. A biblioteca local é apagada ao desinstalar ou limpar os dados do app.
 
-Testes: regras de boletos e intervalos, código ITF sintético, criptografia e recuperação da mesma chave, teste de interface em navegador móvel com bloqueio de solicitações externas, operações de PDF, biblioteca, busca, OCR português e compilação Android. A ponte Android, a importação HTTPS real e a instalação precisam de teste em aparelho após a publicação. Teste de navegador não substitui esse passo.
+Passaram testes de regras, ITF sintético, operações PDF, leitor, busca, biblioteca e OCR português em navegador com solicitações externas bloqueadas, além da compilação Android. A importação HTTPS nativa real, a instalação e a atualização devem ser verificadas em aparelho.
