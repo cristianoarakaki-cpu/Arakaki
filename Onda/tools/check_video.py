@@ -665,6 +665,13 @@ try:
     time.sleep(1);capture('12-video-'+extension)
     shell('input','tap',*pause_point);time.sleep(.5)
     assert locate('Reproduzir vídeo') is not None,'Video did not pause'
+    if extension=='mp4':
+        adb('logcat','-c');tap('Menu de vídeos');tap_text('Voltar 10 segundos');time.sleep(.5)
+        assert 'jump ' in adb('logcat','-d','-s','OndaVideo:D').decode(),'Quick backward seek not dispatched'
+        assert locate('Reproduzir vídeo') is not None,'Quick backward seek started paused video'
+        tap('Menu de vídeos');tap_text('Avançar 30 segundos');time.sleep(.5)
+        assert locate('Reproduzir vídeo') is not None,'Quick forward seek started paused video'
+        (OUTPUT/'video-quick-seek-tests.json').write_text(json.dumps({'back10':True,'forward30':True,'pausedStatePreserved':True},indent=2))
     results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
  tap('Tela cheia do vídeo');time.sleep(1)
  # Android shows its own immersive-mode tutorial on the first fullscreen entry.

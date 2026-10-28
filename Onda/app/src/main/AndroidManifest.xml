@@ -29,6 +29,8 @@
         </activity>
         <activity android:name=".ConnectActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".OndaFilesActivity" android:exported="false" />
         <activity android:name=".DownloadCenterActivity" android:exported="false" />
         <activity android:name=".UnifiedSearchActivity" android:exported="false" />
         <activity android:name=".ShelfActivity" android:exported="false" />

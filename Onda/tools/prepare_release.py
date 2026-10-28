@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Central de downloads e pastas do Onda
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Conversor local, arquivos e controles
+
+Menu → Conversor local: selecione um vídeo ou áudio com faixa AAC, comum em MP4/M4A/AAC. Gere MP3 a 192 kbps ou extraia M4A sem recodificar a faixa AAC. Confere compatibilidade antes de oferecer os botões; esta primeira versão não converte todos os codecs de áudio. Processamento no aparelho, sem API paga. Até 512 MB e 30 minutos por operação, com notificação, cancelamento e resultado na Central. Originais preservados, arquivos temporários removidos e saída incompleta excluída quando o provedor permite. Pode salvar em Onda/Áudios ou escolher outro local. MP3 não melhora a qualidade da fonte.
+
+Menu → Arquivos do Onda: navegue pela pasta configurada e subpastas, busque nomes na pasta atual, ordene por nome/data/tamanho e abra áudio, vídeo e PDF no Onda. Até 1.000 itens por pasta e 30 níveis de navegação. Atalho Converter áudio nos arquivos compatíveis. Não move, renomeia nem exclui arquivos. Se o acesso expirar, configure a pasta novamente pela Central. Provedores de nuvem podem depender da internet.
+
+Menu → Controles de áudio: velocidade de 0,5× a 2× com tom preservado, voltar 10 segundos e avançar 30 segundos. A velocidade é guardada para próximas reproduções de áudio; mudar o ajuste não inicia a reprodução. Vídeos usam velocidade própria no Modo Aprender e ganham os comandos Voltar 10 segundos e Avançar 30 segundos no menu, preservando pausa/reprodução e desativando A–B se o salto sair do trecho. Precisão da busca depende do arquivo.
+
+Mantém pastas, cópia de favoritas, histórico e funções anteriores. O bloqueio externo do TikTok continua pendente; esta atualização não promete resolver HTTP 403.
+
+
 
 Biblioteca → menu → Organizar biblioteca → Copiar favoritas para a pasta do Onda. Após confirmar, copia as favoritas locais disponíveis para Onda/Áudios, preservando formato, originais e marcações. A cópia usa serviço em primeiro plano com notificação, progresso, cancelamento e registro na Central; não converte nem move arquivos. Até 1.000 referências por operação e 512 MB por arquivo; evita referências equivalentes quando reconhecidas, mas repetir a operação pode criar novas cópias. A pasta deve estar configurada e ativa. Arquivos indisponíveis são relatados e saídas incompletas são removidas quando o provedor permite.
 
