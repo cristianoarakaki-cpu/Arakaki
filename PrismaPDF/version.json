@@ -1,1 +1,5 @@
-{"versionCode":1,"versionName":"1.0.0","notes":"Primeira versão do Prisma PDF: ferramentas locais, OCR offline em português, inglês e espanhol, boletos com verificação de dígitos, leitor com busca, biblioteca opcional e importação por link HTTPS quando habilitada."}
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "notes": "Novas ferramentas offline: dividir PDF em arquivos individuais, numerar páginas com início configurável e aplicar marca d’água com intensidade ajustável. Seleção de páginas disponível nas três ferramentas; numeração e marca respeitam a rotação das páginas. Mantém leitor, boletos, OCR e conversões locais."
+}

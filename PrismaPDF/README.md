@@ -43,3 +43,7 @@ Android 8+ com WebView atualizado. 25 MB por arquivo, 20 entradas e 60 MB no tot
 A leitura de boletos não verifica autenticidade ou beneficiário. Confira os dados no banco antes de pagar. Barras ITF devem estar horizontais e nítidas. A biblioteca local é apagada ao desinstalar ou limpar os dados do app.
 
 Passaram testes de regras, ITF sintético, operações PDF, leitor, busca, biblioteca e OCR português em navegador com solicitações externas bloqueadas, além da compilação Android. A importação HTTPS nativa real, a instalação e a atualização devem ser verificadas em aparelho.
+
+## Versão 1.1.0
+
+Três novas ferramentas locais: dividir até 20 páginas em PDFs individuais, numerar páginas com início entre 1 e 1.000.000 e aplicar marca d’água de texto com três intensidades. Todas aceitam seleção e ordem de páginas. Os originais não são sobrescritos. Numeração e marca consideram rotação e área visível (CropBox). Texto latino e pontuação são aceitos; emojis são recusados antes de produzir o arquivo. Uma marca visual não impede edição posterior.
