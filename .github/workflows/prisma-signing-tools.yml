@@ -1,0 +1,31 @@
+name: Preparar ferramentas de assinatura Prisma
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/prisma-signing-tools.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preparar ferramentas públicas do Android SDK
+        run: |
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          if [ ! -f "$BT/lib/apksigner.jar" ]; then
+            BT=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1 | xargs dirname)
+          fi
+          test -f "$BT/lib/apksigner.jar"
+          mkdir -p signing-tools/lib64
+          cp "$BT/lib/apksigner.jar" signing-tools/apksigner.jar
+          cp "$BT/zipalign" signing-tools/zipalign
+          if [ -d "$BT/lib64" ]; then cp -r "$BT/lib64/." signing-tools/lib64/; fi
+          if [ -f "$BT/NOTICE.txt" ]; then cp "$BT/NOTICE.txt" signing-tools/NOTICE.txt; fi
+          sha256sum signing-tools/apksigner.jar > signing-tools/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Prisma-Android-Signing-Tools
+          path: signing-tools/
+          if-no-files-found: error
+          retention-days: 7
