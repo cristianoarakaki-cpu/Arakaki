@@ -20,21 +20,32 @@ def nodes():
  shell('uiautomator','dump','/sdcard/onda-memory.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-memory.xml')).iter('node'))
 def tap_node(node):
  v=list(map(int,re.findall(r'\d+',node.get('bounds'))));shell('input','tap',(v[0]+v[2])//2,(v[1]+v[3])//2);time.sleep(.4)
+# Read the actual menu order so adding entries does not make a deep option unreachable.
+source=(Path(__file__).resolve().parents[1]/'app/src/main/java/br/com/onda/MainActivity.java').read_text()
+menu_source=source.split('private void showLibraryMenu',1)[1]
+menu_labels=json.loads('['+re.search(r'new String\[\]\{(.*?)\}',menu_source,re.S).group(1)+']')
 def tap(text,desc=False):
- for _ in range(14):
+ for _ in range(24):
   current=nodes();target=next((n for n in current if n.get('content-desc' if desc else 'text','').casefold()==text.casefold()),None)
   listing=next((n for n in current if n.get('content-desc')=='Opções do menu'),None)
   if target is not None:
-   bounds=list(map(int,re.findall(r'\d+',target.get('bounds'))))
-   visible=bounds[3]>bounds[1]
+   bounds=list(map(int,re.findall(r'\d+',target.get('bounds'))));visible=bounds[3]>bounds[1]
    if listing is not None:
-    box=list(map(int,re.findall(r'\d+',listing.get('bounds'))));visible=visible and bounds[1]>=box[1] and bounds[3]<=box[3]
+    box=list(map(int,re.findall(r'\d+',listing.get('bounds'))));visible=visible and bounds[1]>=box[1] and bounds[3]<=box[3] and bounds[3]-bounds[1]>=40
    if visible:tap_node(target);return
   if listing is not None:
-   left,top,right,bottom=map(int,re.findall(r'\d+',listing.get('bounds')));x=(left+right)//2
-   shell('input','swipe',x,top+(bottom-top)*8//10,x,top+(bottom-top)//10,250)
+   left,top,right,bottom=map(int,re.findall(r'\d+',listing.get('bounds')));up=False
+   if target is not None:up=bounds[1]<top
+   elif text in menu_labels:
+    wanted=menu_labels.index(text);visible_rows=[menu_labels.index(n.get('text')) for n in current if n.get('text') in menu_labels and int(re.findall(r'\d+',n.get('bounds'))[3])>top]
+    if visible_rows:up=min(visible_rows)>wanted
+   y1=top+(bottom-top)*(3 if up else 7)//10;y2=top+(bottom-top)*(7 if up else 3)//10
+   shell('input','swipe',(left+right)//2,y1,(left+right)//2,y2,420)
   time.sleep(.2)
+ (out/'dj-memory-menu-failure.xml').write_bytes(shell('cat','/sdcard/onda-memory.xml'))
+ (out/'dj-memory-menu-failure.png').write_bytes(adb('exec-out','screencap','-p'))
  raise AssertionError('Menu/control not reachable: '+text)
+
 try:
  state=prefs('music_resume');assert json.loads(state['queue'])==expected;cue=json.loads(state['dj_context'])[fixture['download_id']];assert cue['mode']==3 and cue['reason']=='Preferência salva no teste'
  tree=nodes();assert any(n.get('text')=='Retomada download CI' for n in tree),'Restored download metadata missing'
