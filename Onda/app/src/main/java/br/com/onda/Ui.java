@@ -91,7 +91,7 @@ final class Ui {
     static Button menuButton(Context context,String description,View.OnClickListener listener){Button b=button(context,"☰",listener);ghost(b);b.setTextSize(25);b.setContentDescription(description);return b;}
     @androidx.media3.common.util.UnstableApi
     static LinearLayout navigation(Activity activity,int current){
-        LinearLayout bar=new LinearLayout(activity);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(activity,4),dp(activity,4),dp(activity,4),dp(activity,4));bar.setBackground(shape(activity,SURFACE,BORDER,18));
+        LinearLayout bar=new LinearLayout(activity);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(activity,4),dp(activity,4),dp(activity,4),dp(activity,4));bind(bar,w->w.setBackground(shape(w.getContext(),SURFACE,BORDER,18)));
         String[] labels={"Músicas","Vídeos","Explorar"},descriptions={"Abrir biblioteca de músicas","Abrir biblioteca de vídeos","Buscar e ouvir online"};
         Class<?>[] targets={MainActivity.class,VideoActivity.class,OnlineActivity.class};
         for(int i=0;i<labels.length;i++){final int destination=i;Button b=button(activity,labels[i],v->{if(current==destination)return;activity.startActivity(new Intent(activity,targets[destination]).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));if(!(activity instanceof MainActivity))activity.finish();});b.setTextSize(12);b.setContentDescription(descriptions[i]);b.setSelected(i==current);if(i==current)chip(b,true);else ghost(b);bar.addView(b,new LinearLayout.LayoutParams(0,dp(activity,48),1));}
