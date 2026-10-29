@@ -20,7 +20,21 @@ def nodes():
  shell('uiautomator','dump','/sdcard/onda-memory.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-memory.xml')).iter('node'))
 def tap_node(node):
  v=list(map(int,re.findall(r'\d+',node.get('bounds'))));shell('input','tap',(v[0]+v[2])//2,(v[1]+v[3])//2);time.sleep(.4)
-def tap(text,desc=False):tap_node(next(n for n in nodes() if n.get('content-desc' if desc else 'text','').casefold()==text.casefold()))
+def tap(text,desc=False):
+ for _ in range(14):
+  current=nodes();target=next((n for n in current if n.get('content-desc' if desc else 'text','').casefold()==text.casefold()),None)
+  listing=next((n for n in current if n.get('content-desc')=='Opções do menu'),None)
+  if target is not None:
+   bounds=list(map(int,re.findall(r'\d+',target.get('bounds'))))
+   visible=bounds[3]>bounds[1]
+   if listing is not None:
+    box=list(map(int,re.findall(r'\d+',listing.get('bounds'))));visible=visible and bounds[1]>=box[1] and bounds[3]<=box[3]
+   if visible:tap_node(target);return
+  if listing is not None:
+   left,top,right,bottom=map(int,re.findall(r'\d+',listing.get('bounds')));x=(left+right)//2
+   shell('input','swipe',x,top+(bottom-top)*8//10,x,top+(bottom-top)//10,250)
+  time.sleep(.2)
+ raise AssertionError('Menu/control not reachable: '+text)
 try:
  state=prefs('music_resume');assert json.loads(state['queue'])==expected;cue=json.loads(state['dj_context'])[fixture['download_id']];assert cue['mode']==3 and cue['reason']=='Preferência salva no teste'
  tree=nodes();assert any(n.get('text')=='Retomada download CI' for n in tree),'Restored download metadata missing'
