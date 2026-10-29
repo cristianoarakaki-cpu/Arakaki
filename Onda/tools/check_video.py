@@ -61,6 +61,13 @@ def capture(name):
 formats=[('mp4','libx264','aac','video/mp4'),('mkv','libx264','aac','video/x-matroska'),('avi','mpeg4','libmp3lame','video/avi'),('webm','libvpx','libvorbis','video/webm'),('flv','flv','libmp3lame','video/x-flv'),('wmv','wmv2','wmav2','video/x-ms-wmv'),('mov','libx264','aac','video/quicktime'),('ts','libx264','aac','video/mp2ts')]
 adb('install','-r','Onda/app/build/outputs/apk/debug/app-debug.apk')
 shell('pm','grant',PACKAGE,'android.permission.READ_EXTERNAL_STORAGE')
+# Previous SAF-copy fixtures can be indexed after their documents were removed.
+# Remove only this test's generated names from the fresh emulator's MediaStore.
+cleanup=shell('content','delete','--uri','content://media/external/audio/media','--where',"_display_name LIKE 'Favorite-native-%'").decode()
+assert 'Exception' not in cleanup and 'Error' not in cleanup,cleanup
+leftovers=shell('content','query','--uri','content://media/external/audio/media','--projection','_id:_display_name','--where',"_display_name LIKE 'Favorite-native-%'").decode()
+assert 'Exception' not in leftovers and 'Error' not in leftovers,leftovers
+assert 'Row:' not in leftovers,'Favorite-copy test fixtures were not cleaned: '+leftovers
 shell('mkdir','-p','/sdcard/Music/OndaDemo')
 audio=Path('/tmp/Onda-Audio.wav')
 with wave.open(str(audio),'wb') as wav:
