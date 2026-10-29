@@ -94,3 +94,6 @@ $('#appearance').onchange=e=>{if(!PrismaAppearance.set(e.target.value))info('Tem
 $('#goPage').onclick=()=>{if(!readerDoc)return;const n=Number($('#pageJump').value);if(!Number.isInteger(n)||n<1||n>readerDoc.numPages){info('Informe uma página entre 1 e '+readerDoc.numPages+'.');$('#pageJump').value=readerPage;return}readerPage=n;drawReader().catch(e=>info(e.message))};$('#pageJump').onkeydown=e=>{if(e.key==='Enter')$('#goPage').click()};$('#readerZoom').onchange=()=>drawReader().catch(e=>info(e.message));
 
 pdfjsLib.GlobalWorkerOptions.workerSrc=location.origin+'/vendor/pdf.worker.js';refreshState();
+
+function measureNavigation(){const height=Math.ceil(document.querySelector('nav').getBoundingClientRect().height);document.documentElement.style.setProperty('--nav-height',height+'px')}
+if(typeof ResizeObserver==='function')new ResizeObserver(measureNavigation).observe(document.querySelector('nav'));window.addEventListener('resize',measureNavigation);measureNavigation();

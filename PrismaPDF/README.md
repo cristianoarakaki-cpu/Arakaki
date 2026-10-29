@@ -55,3 +55,7 @@ Remoção de páginas com seleção obrigatória e preservação de ao menos uma
 ## Versão 1.3.0
 
 Modo claro, escuro ou conforme o sistema, com seletor em Sobre e atalho no cabeçalho. Preferência salva no aparelho, aplicada antes da renderização da interface e sincronizada às barras Android. O PDF conserva as cores originais. Favoritas locais por ferramenta, filtro e busca sem acentos. Leitor com zoom de ajuste à largura até 200% e salto para página validado. PDFs e biblioteca não são enviados à rede.
+
+## Versão 1.3.1
+
+Correção de texto saindo dos botões: cartões em duas colunas no celular (uma em telas até 340px), títulos e descrições com quebra segura e crescimento vertical. Alinhamento no topo e espaço próprio para favoritas. Cabeçalho adaptável e margem inferior calculada pela altura real da navegação. Validação visual com larguras de 320 a 960px e simulação de fonte ampliada de 100% a 200%.
