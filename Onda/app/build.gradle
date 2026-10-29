@@ -4,7 +4,7 @@ android {
     compileSdk 36
     ndkVersion '27.2.12479018'
     externalNativeBuild { cmake { path file('src/main/cpp/CMakeLists.txt'); version '3.22.1' } }
-    defaultConfig { testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'; applicationId 'br.com.onda.musica'; minSdk 26; targetSdk 35; versionCode 54; versionName '0.44.0'; ndk { abiFilters.addAll(project.hasProperty('ondaEmulator') ? ['x86_64'] : ['arm64-v8a', 'armeabi-v7a']) } }
+    defaultConfig { testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'; applicationId 'br.com.onda.musica'; minSdk 26; targetSdk 35; versionCode 55; versionName '0.45.0'; ndk { abiFilters.addAll(project.hasProperty('ondaEmulator') ? ['x86_64'] : ['arm64-v8a', 'armeabi-v7a']) } }
     signingConfigs {
         debug {
             storeFile file('../.signing/debug.keystore')
@@ -26,7 +26,15 @@ dependencies {
     implementation 'org.videolan.android:libvlc-all:3.7.7'
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
     implementation 'com.google.zxing:core:3.5.3'
+    implementation 'cz.adaptech.tesseract4android:tesseract4android:4.9.0'
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.media3:media3-exoplayer:1.5.1'
     implementation 'androidx.media3:media3-session:1.5.1'
 }
+
+// Generated model is pinned by Git object id and bundled for offline use.
+tasks.register('prepareOcrModel', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'python3', 'tools/prepare_ocr.py'
+}
+tasks.named('preBuild').configure { dependsOn 'prepareOcrModel' }

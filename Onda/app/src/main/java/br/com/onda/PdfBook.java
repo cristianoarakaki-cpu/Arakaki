@@ -24,7 +24,37 @@ final class PdfBook implements Closeable {
    return new PdfBook(file,renderer);
   }catch(IOException|RuntimeException|OutOfMemoryError e){if(renderer!=null)renderer.close();else if(descriptor!=null)descriptor.close();file.delete();synchronized(PdfBook.class){ACTIVE.remove(file);}throw e;}
  }
- java.util.List<BoletoCode> boletos(Context context,int index){java.util.List<BoletoCode> out=new java.util.ArrayList<>();java.util.Set<String> seen=new java.util.HashSet<>();try{for(BoletoCode code:BoletoCode.find(text(context,index)))if(seen.add(code.barcode))out.add(code);}catch(IOException|RuntimeException ignored){}Bitmap bitmap=render(index,1800);try{for(BoletoCode code:BoletoScanner.read(bitmap))if(seen.add(code.barcode))out.add(code);}finally{bitmap.recycle();}return out;}
+ private final java.util.LinkedHashMap<Integer,LocalOcr.Reading> ocrCache=new java.util.LinkedHashMap<>();
+ static final class PageText {final String value;final boolean ocr;PageText(String value,boolean ocr){this.value=value;this.ocr=ocr;}}
+ PageText readableText(Context context,int index,boolean forceOcr,BooleanSupplier cancelled)throws IOException{
+  check(cancelled);String original=text(context,index);check(cancelled);
+  if(!forceOcr&&!original.isEmpty())return new PageText(original,false);
+  return new PageText(ocr(context,index,cancelled,false).text,true);
+ }
+ private static void check(BooleanSupplier cancelled)throws InterruptedIOException{if(cancelled.getAsBoolean())throw new InterruptedIOException("Leitura cancelada");}
+ private LocalOcr.Reading ocr(Context context,int index,BooleanSupplier cancelled,boolean boleto)throws IOException{
+  check(cancelled);LocalOcr.Reading cached=ocrCache.get(index);if(cached!=null)return cached;
+  Bitmap bitmap=render(index,1800);
+  try(LocalOcr engine=new LocalOcr(context,cancelled)){
+   LocalOcr.Reading best=new LocalOcr.Reading("",0);
+   for(int angle:new int[]{0,90,180,270}){
+    engine.check();LocalOcr.Reading reading=engine.read(bitmap,angle,false);
+    if(best.text.isEmpty()||reading.confidence>best.confidence)best=reading;
+    if(boleto&&!BoletoCode.find(reading.text).isEmpty()){best=reading;break;}
+    if(!boleto&&reading.confidence>=65&&!reading.text.isEmpty())break;
+   }
+   check(cancelled);if(!best.text.isEmpty()){if(ocrCache.size()>=2)ocrCache.remove(ocrCache.keySet().iterator().next());ocrCache.put(index,best);}return best;
+  }finally{bitmap.recycle();}
+ }
+ BoletoReading recognizeBoleto(Context context,int index,BooleanSupplier cancelled)throws IOException{
+  check(cancelled);BoletoReading out=new BoletoReading();
+  // Also checks the PDF extraction permission and the 16 MB text/OCR limit.
+  out.add(BoletoCode.find(text(context,index)),BoletoReading.TEXT);check(cancelled);
+  Bitmap bitmap=render(index,1800);try{out.add(BoletoScanner.read(bitmap,cancelled),BoletoReading.BARS);}finally{bitmap.recycle();}check(cancelled);
+  boolean hasText=out.hasSource(BoletoReading.TEXT);
+  if(!hasText){out.ocrUsed=true;try{out.add(BoletoCode.find(ocr(context,index,cancelled,true).text),BoletoReading.OCR);}catch(InterruptedIOException cancelledError){throw cancelledError;}catch(IOException|RuntimeException error){out.warning="Não foi possível concluir o OCR. Confira os códigos encontrados ou tente uma página mais nítida.";}}
+  check(cancelled);return out;
+ }
  String text(Context context,int index)throws IOException{return PdfText.read(context,file,index);}
  int pages(){return renderer.getPageCount();}
  Bitmap render(int index,int requestedWidth){
@@ -37,5 +67,5 @@ final class PdfBook implements Closeable {
    try{image.eraseColor(Color.WHITE);page.render(image,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);return image;}catch(RuntimeException|OutOfMemoryError e){image.recycle();throw e;}
   }
  }
- @Override public void close(){try{renderer.close();}finally{file.delete();synchronized(PdfBook.class){ACTIVE.remove(file);}}}
+ @Override public void close(){try{ocrCache.clear();renderer.close();}finally{file.delete();synchronized(PdfBook.class){ACTIVE.remove(file);}}}
 }

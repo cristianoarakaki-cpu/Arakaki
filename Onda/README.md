@@ -1,3 +1,15 @@
+## Onda Música 0.45.0 — OCR local e conferência de boletos
+
+PDF → Menu → Texto da página: usa o texto original primeiro; se estiver vazio, reconhece a imagem por OCR. OCR da página permite ler também partes digitalizadas de páginas que já têm texto. Modelo rápido em português incluído no APK, sem baixar modelo no celular nem enviar documentos. Texto reconhecido é identificado como OCR e pode ser selecionado ou copiado; não modifica o PDF nem cria uma camada de texto sobre a página.
+
+Reconhecer boleto combina linhas do texto, barras ITF e OCR quando não encontrou uma linha válida no texto original. Valida campos e dígito geral, mostra a origem e informa quando linha e barras coincidem ou trazem códigos diferentes. Não troca letras por números nem corrige dígitos por tentativa. A partir desta versão, o usuário confere o resultado e toca Copiar código antes de colocá-lo na área de transferência. Dígitos consistentes não garantem autenticidade: confirme beneficiário e valor no banco.
+
+OCR sob comando, uma página por vez, resolução limitada a 2,5 milhões de pixels, motor de uma única thread, ajuste de contraste e tentativas de rotação limitadas. Botão Cancelar leitura; sair da tela solicita interrupção. Mantém até duas páginas reconhecidas apenas na memória enquanto o documento está aberto. Sem análise contínua, varredura de arquivos, serviço de OCR ou nova permissão. PDFs até 16 MB para texto/OCR; leitura visual continua até 64 MB e 5.000 páginas. Respeita restrições de cópia. Depende da nitidez, tamanho das letras e organização do documento; não garante ausência de erros, reconhecimento de manuscritos ou correção de perspectiva.
+
+Tesseract4Android 4.9.0 standard e modelo por.traineddata do tessdata_fast, com revisão fixada e integridade conferida na compilação. Avisos de Tesseract, Leptonica, libpng e IJG em Downloads → Licença e código-fonte. Para compilar, Python 3 e internet são usados na tarefa prepareOcrModel; o modelo fica incluído no APK, e o OCR não usa a internet em execução. Testes cobrem PDF de imagem real, rotação, cancelamento, texto nativo, permissão de cópia, linha com dígito errado e divergências entre fontes. Não há medição de economia de bateria em aparelho físico.
+
+Instale sobre a versão atual, sem desinstalar. Mantém aparências, pastas, favoritas e demais recursos. Não altera a disponibilidade de downloads do TikTok.
+
 ## Onda Música 0.44.0 — Aparências para escolher
 
 Menu → Aparências: lista de cinco interfaces escuras com prévia — Onda Original, Nebulosa, Circuito, Cyber Solar e Grafite. Muda cores, gradientes e cantos dos cartões e controles; mantém organização, funcionalidades e tamanho de fonte do Android. Pode voltar ao Onda Original a qualquer momento. A escolha fica salva somente neste aparelho, permitindo que cada pessoa use sua própria aparência.

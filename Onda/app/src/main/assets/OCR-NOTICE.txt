@@ -1,0 +1,20 @@
+
+OCR local do Onda
+
+Tesseract4Android 4.9.0, variante standard (sem OpenMP)
+Copyright 2019 Adaptech s.r.o., Robert Posel e colaboradores.
+Apache License 2.0. https://github.com/adaptech-cz/Tesseract4Android/tree/4.9.0
+
+Tesseract OCR 5.5.1, Apache License 2.0.
+https://github.com/tesseract-ocr/tesseract
+Modelo Portuguese por.traineddata, tessdata_fast, Apache License 2.0.
+Revisao: 87416418657359cb625c412a48b6e1d6d41c29bd
+https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd
+O modelo e incluido durante a compilacao, sem baixar documentos ou modelos no celular.
+A licenca Apache 2.0 esta incluida em PDFBOX-LICENSE.txt.
+
+Tesseract4Android inclui Leptonica, libjpeg e libpng com suas licencas
+permissivas e avisos originais, incluidos em OCR-THIRD-PARTY.txt.
+Fontes e licencas adicionais:
+https://github.com/adaptech-cz/Tesseract4Android/tree/4.9.0/tesseract4android/src/main
+

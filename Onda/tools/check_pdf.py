@@ -85,9 +85,11 @@ try:
  tap('Próxima página do PDF');page(2);tap('Menu do PDF');tap('Reconhecer boleto no PDF')
  for _ in range(12):
   ns=nodes()
-  if any(n.attrib.get('text')=='Boleto • código copiado' for n in ns):break
+  if any(n.attrib.get('text')=='Conferir boleto' for n in ns):break
   time.sleep(.3)
- else:raise AssertionError('Boleto not recognized and copied')
+ else:raise AssertionError('Boleto not recognized for review')
+ capture('83-boleto-conferencia');tap_node(next(n for n in ns if n.attrib.get('text','').casefold()=='copiar código'));ns=nodes()
+ assert any(n.attrib.get('text')=='Boleto • código copiado' for n in ns)
  capture('45-boleto-copiado');tap_node(next(n for n in ns if n.attrib.get('text','').casefold()=='fechar'))
  tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
  pasted=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
@@ -101,8 +103,44 @@ try:
  tap('Ir à página do PDF');tap('Número da página do PDF');shell('input','keyevent','123');shell('input','keyevent','67');shell('input','text','3');shell('input','keyevent','4')
  tap_node(next(n for n in nodes() if n.attrib.get('text','').casefold()=='abrir'));page(3)
  shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(.5);open_reader();tap('Continuar último PDF');page(3);capture('39-pdf-retomada')
- (OUT/'pdf-tests.json').write_text(json.dumps({'systemPickerReadGrant':True,'boletoChecksumAndClipboard':True,'nativeTextSelection':True,'clipboardPasteVerified':True,'pages':3,'nextAndPrevious':True,'zoom':1.25,'goToPage':3,'restoreAfterProcessRestart':3},indent=2)+'\n')
+ (OUT/'pdf-tests.json').write_text(json.dumps({'systemPickerReadGrant':True,'boletoChecksumAndClipboard':True,'boletoReviewBeforeCopy':True,'nativeTextSelection':True,'clipboardPasteVerified':True,'pages':3,'nextAndPrevious':True,'zoom':1.25,'goToPage':3,'restoreAfterProcessRestart':3},indent=2)+'\n')
+ # Native OCR tests supply an image-only PDF; select it through the real document picker.
  tap('Voltar do PDF');time.sleep(.5)
+ scanned=Path('/tmp/Onda-OCR-Teste.pdf');scanned.write_bytes(adb('exec-out','run-as',PACKAGE,'cat','files/ocr-ui.pdf'))
+ adb('push',str(scanned),'/sdcard/Download/Onda-OCR-Teste.pdf')
+ shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Download/Onda-OCR-Teste.pdf')
+ open_reader();tap('Abrir PDF');ns=nodes()
+ search=next((n for n in ns if n.attrib.get('resource-id','').endswith('menu_search')),None)
+ if search is None:search=next((n for n in ns if n.attrib.get('content-desc','').casefold() in ('search','pesquisar','buscar')),None)
+ document=next((n for n in ns if n.attrib.get('text')=='Onda-OCR-Teste.pdf'),None)
+ if document is None:
+  assert search is not None;tap_node(search);shell('input','text','Onda-OCR-Teste');shell('input','keyevent','66');time.sleep(.5)
+ for _ in range(10):
+  document=next((n for n in nodes() if n.attrib.get('text')=='Onda-OCR-Teste.pdf'),None)
+  if document is not None:break
+  time.sleep(.3)
+ assert document is not None,'Image-only PDF missing from picker';tap_node(document)
+ for _ in range(12):
+  ns=nodes()
+  if any(n.attrib.get('text')=='Página 1 de 1' for n in ns) and any(n.attrib.get('text','').startswith('PDF local') for n in ns):break
+  time.sleep(.3)
+ else:raise AssertionError('Scanned PDF did not render')
+ tap('Menu do PDF');tap('Selecionar e copiar texto do PDF')
+ for _ in range(40):
+  ns=nodes();text=next((n for n in ns if n.attrib.get('content-desc')=='Texto selecionável da página do PDF'),None)
+  if text is not None:break
+  time.sleep(.3)
+ assert text is not None,'Image-only PDF did not produce OCR text'
+ assert 'ONDA LEITURA LOCAL' in text.attrib.get('text',''),text.attrib
+ assert any(n.attrib.get('text')=='OCR • página 1' for n in ns),'OCR must be identified in the result'
+ capture('84-pdf-ocr-local');tap_node(next(n for n in ns if n.attrib.get('text','').casefold()=='copiar texto'))
+ tap('Voltar do PDF');tap('Buscar música, artista ou álbum no celular');shell('input','keyevent','279')
+ pasted=next(n for n in nodes() if n.attrib.get('content-desc')=='Buscar música, artista ou álbum no celular').attrib.get('text','')
+ assert 'ONDA LEITURA LOCAL' in pasted,'OCR text did not reach the clipboard'
+ shell('input','keyevent','123')
+ for _ in pasted:shell('input','keyevent','67')
+ shell('input','keyevent','4')
+ report=json.loads((OUT/'pdf-tests.json').read_text());report.update({'imageOnlyPdfOcr':True,'ocrIdentified':True,'ocrClipboardPaste':True});(OUT/'pdf-tests.json').write_text(json.dumps(report,indent=2)+'\n')
  print('PDF reader passed: system picker, real pages, previous/next, zoom, page selection and persisted read permission after process restart.')
 except Exception:
  try:nodes();capture('pdf-failure');(OUT/'pdf-failure-logcat.txt').write_bytes(adb('logcat','-d'))
