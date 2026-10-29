@@ -13,4 +13,9 @@
         <item name="android:colorBackground">#080C17</item>
         <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
+    <style name="AccentOriginal"><item name="android:colorAccent">#69E7FF</item><item name="android:colorControlActivated">#69E7FF</item></style>
+    <style name="AccentNebula"><item name="android:colorAccent">#E2B4FF</item><item name="android:colorControlActivated">#E2B4FF</item></style>
+    <style name="AccentCircuit"><item name="android:colorAccent">#7DF5C0</item><item name="android:colorControlActivated">#7DF5C0</item></style>
+    <style name="AccentSolar"><item name="android:colorAccent">#FFCC80</item><item name="android:colorControlActivated">#FFCC80</item></style>
+    <style name="AccentGraphite"><item name="android:colorAccent">#E5E7EB</item><item name="android:colorControlActivated">#E5E7EB</item></style>
 </resources>

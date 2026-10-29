@@ -29,7 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Conversor local, arquivos e controles
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Aparências para escolher
+
+Menu → Aparências: lista de cinco interfaces escuras com prévia — Onda Original, Nebulosa, Circuito, Cyber Solar e Grafite. Muda cores, gradientes e cantos dos cartões e controles; mantém organização, funcionalidades e tamanho de fonte do Android. Pode voltar ao Onda Original a qualquer momento. A escolha fica salva somente neste aparelho, permitindo que cada pessoa use sua própria aparência.
+
+A aplicação repinta as telas existentes, sem recriar atividades, reiniciar o tocador ou alterar fila/posição. Os atalhos ficam nos menus de Músicas, Vídeos e Explorar. Prévias estáticas desenhadas no próprio app; não há animação contínua, downloads de temas, nova permissão ou API paga. Leitura de PDF e imagem de vídeo preservam as cores do conteúdo. A preferência de aparência não integra o backup de listas atual.
+
+Mantém conversor local AAC, arquivos do Onda, pastas, favoritas e os demais recursos. A indisponibilidade de downloads do TikTok continua pendente e não é resolvida por esta mudança visual.
+
+
 
 Menu → Conversor local: selecione um vídeo ou áudio com faixa AAC, comum em MP4/M4A/AAC. Gere MP3 a 192 kbps ou extraia M4A sem recodificar a faixa AAC. Confere compatibilidade antes de oferecer os botões; esta primeira versão não converte todos os codecs de áudio. Processamento no aparelho, sem API paga. Até 512 MB e 30 minutos por operação, com notificação, cancelamento e resultado na Central. Originais preservados, arquivos temporários removidos e saída incompleta excluída quando o provedor permite. Pode salvar em Onda/Áudios ou escolher outro local. MP3 não melhora a qualidade da fonte.
 

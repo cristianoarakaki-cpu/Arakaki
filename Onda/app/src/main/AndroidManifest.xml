@@ -14,7 +14,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <application android:label="Onda Música" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
+    <application android:name=".OndaApplication" android:label="Onda Música" android:theme="@style/AppTheme" android:icon="@drawable/ic_onda" android:allowBackup="false" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
             <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="audio/*" /><data android:mimeType="application/ogg" /><data android:mimeType="application/x-ogg" /></intent-filter>
@@ -29,6 +29,7 @@
         </activity>
         <activity android:name=".ConnectActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".AppearanceActivity" android:exported="false" />
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OndaFilesActivity" android:exported="false" />
         <activity android:name=".DownloadCenterActivity" android:exported="false" />

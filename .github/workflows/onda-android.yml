@@ -168,6 +168,11 @@ jobs:
             python -c 's=open("/tmp/onda-evolution-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             python Onda/tools/check_download_center.py
+            adb shell am instrument -w -e class br.com.onda.AppearanceTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-appearance-tests.txt
+            cat /tmp/onda-appearance-tests.txt
+            python -c 's=open("/tmp/onda-appearance-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
+            python Onda/tools/check_appearance.py
             adb shell am force-stop br.com.onda.musica
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-speech-tests.txt
@@ -193,7 +198,7 @@ jobs:
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (30 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
@@ -221,6 +226,7 @@ jobs:
             /tmp/onda-download-organization-tests.txt
             /tmp/onda-favorite-copies-tests.txt
             /tmp/onda-evolution-tests.txt
+            /tmp/onda-appearance-tests.txt
             /tmp/onda-memory-tests.txt
             Onda/app/build/reports/
 
