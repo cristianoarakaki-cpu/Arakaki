@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 8,
-  "versionName": "1.6.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.6.0/Prisma-PDF.apk",
-  "sha256": "9ba876f08f8afbd44da93d13074986b06ed5f51143bddfac29aefbef844db4d6",
-  "notes": "Conferência offline após ocultação: OCR da cópia final, alertas por página e revisão antes de disponibilizar o arquivo. Resumo sem dados pessoais com contagens e SHA-256 do PDF. Falhas são exibidas como conferência incompleta. Nenhum alerta não garante ausência de dados pessoais ou conformidade com a LGPD.",
+  "versionCode": 9,
+  "versionName": "1.7.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.7.0/Prisma-PDF.apk",
+  "sha256": "6f4be728d06cdbc7db2af40a58a4e8a47b5e3feedb61928c2ab4a26df3fcad1f",
+  "notes": "OCR offline aprimorado: maior resolução, ampliação controlada de imagens pequenas, contraste ajustado e comparação de duas leituras no modo reforçado. Giro da imagem para reconhecimento e índices de baixa confiança. Boletos continuam exigindo dígitos verificadores válidos; não há troca automática de letras por números. Ocultação e conferência consideram as duas leituras.",
   "downloadAvailable": true
 }
