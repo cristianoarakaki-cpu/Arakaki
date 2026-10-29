@@ -24,6 +24,9 @@ jobs:
           python3 PrismaPDF/tools/vendor.py
           node --check PrismaPDF/assets/app.js
           node --check PrismaPDF/assets/theme.js
+          node --check PrismaPDF/assets/redaction.js
+          node --check PrismaPDF/assets/redaction-core.js
+          node PrismaPDF/tools/test_redaction.cjs
           node PrismaPDF/tools/test_core.cjs
           python3 PrismaPDF/tools/test_signing.py
       - name: Testar ferramentas em navegador móvel sem internet

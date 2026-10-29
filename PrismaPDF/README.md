@@ -59,3 +59,11 @@ Modo claro, escuro ou conforme o sistema, com seletor em Sobre e atalho no cabe�
 ## Versão 1.3.1
 
 Correção de texto saindo dos botões: cartões em duas colunas no celular (uma em telas até 340px), títulos e descrições com quebra segura e crescimento vertical. Alinhamento no topo e espaço próprio para favoritas. Cabeçalho adaptável e margem inferior calculada pela altura real da navegação. Validação visual com larguras de 320 a 960px e simulação de fonte ampliada de 100% a 200%.
+
+## Versão 1.4.0 — Ocultar dados
+
+Análise local de até 12 páginas, com texto + OCR (padrão) ou só texto selecionável. Detecta possíveis CPF/RG/CNPJ, e-mails, telefones, CEP, nomes por campos e heurística, registros CRM/Coren/CRO/CRP/CREA/OAB e outros. Termos personalizados (até 100, um por linha) permitem localizar nomes, registros ou expressões específicas sem diferenciar acentos e maiúsculas. Sem lista de termos persistente nem upload. Nomes encontrados em campos são procurados nas outras páginas. Números são candidatos mesmo com checksum inválido: possíveis erros de OCR também exigem revisão.
+
+Revisão por página com lista selecionável, prévia e retângulos manuais. Geração exige visualizar todas as páginas e confirmar a revisão; nenhum resultado é criado na análise. A cópia é um PDF novo somente com PNGs dos pixels já cobertos de preto, sem copiar páginas, texto, Info/XMP, formulários, anexos ou assinaturas do original. Não existe opção de retângulo reversível sobre o PDF original. O original permanece no aparelho; resultados só são salvos ou compartilhados quando solicitados.
+
+Limitações: a detecção é heurística e pode omitir dados ou ter falsos positivos; imagens, escrita à mão, conteúdo mal posicionado, nomes sem padrão, QR codes e contexto exigem revisão. Texto/PDF e OCR podem reconhecer os mesmos dados e gerar marcações sobrepostas. Para evitar expor letras de um mesmo objeto textual, a máscara automática cobre o item/trecho inteiro que intersecta o dado; pode esconder conteúdo além do necessário. A cópia rasterizada perde pesquisa, acessibilidade textual, formulários e validade de assinaturas digitais. O recurso auxilia a minimização de dados, mas não certifica conformidade com a LGPD nem anonimização do documento.

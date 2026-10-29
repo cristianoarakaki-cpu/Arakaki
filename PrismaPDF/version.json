@@ -1,5 +1,5 @@
 {
-  "versionCode": 5,
-  "versionName": "1.3.1",
-  "notes": "Correção dos botões: duas colunas em celulares, texto com quebra segura, conteúdo alinhado no topo e altura adaptável à fonte ampliada. Cabeçalho, botão Abrir documento e navegação ajustados para telas pequenas. Mantém modo escuro e ferramentas offline."
+  "versionCode": 6,
+  "versionName": "1.4.0",
+  "notes": "Ocultar dados offline: candidatos a CPF, RG, CNPJ, e-mail, telefone, CEP, nomes e registros profissionais (CRM, Coren e outros). Termos adicionais personalizados por linha, OCR local, revisão de todas as páginas e áreas manuais. Gera uma cópia rasterizada com as áreas cobertas, sem camada de texto original, anexos ou formulários. A detecção exige revisão e não garante conformidade com a LGPD."
 }

@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),core=require('../assets/redaction-core.js');
+const text='Nome: Maria da Silva\nCPF: 529.982.247-25\nRG: 12.345.678-9\nContato: maria@example.org\nTelefone (11) 99999-8888\nCEP 12345-678\nCNPJ 12.345.678/0001-95\nCRM-SP 123456\nCOREN/SP 987654\nOAB 12345 SP';
+const found=core.find(text,{cpf:true,rg:true,cnpj:true,email:true,phone:true,cep:true,names:true,professional:true});for(const type of ['CPF','RG','CNPJ','E-mail','telefone','CEP','nome em campo','registro profissional'])assert(found.some(m=>m.type.includes(type)),type);for(const m of found)assert.equal(text.slice(m.start,m.end),m.value);assert(found.filter(m=>m.type==='Possível registro profissional').length>=3);
+assert.equal(core.find('Data 01/01/2025 e quantidade 1234',{cpf:true,email:true,professional:true}).length,0);assert.equal(core.find('1529982247257',{cpf:true}).length,0);
+assert(core.find('CPF 000.000.000-00',{cpf:true}).length,'Possible OCR errors must remain candidates, without requiring checksum');
+const terms=core.terms('Maria da Silva\nCRM-SP 123456\nMaria da Silva');assert.equal(terms.length,2);assert.throws(()=>core.terms('x'));assert.throws(()=>core.terms(Array(101).fill('abc').join('\n')));
+const custom='Preâmbulo\nMARIA  DA\nSILVA, CRM-SP 123456 e CRM-SP 1234567.';const hits=core.find(custom,{},terms);assert.equal(hits.length,2);assert.equal(hits[0].value,'MARIA  DA\nSILVA');assert.equal(hits[1].value,'CRM-SP 123456');
+const decomposed='A\u0301rvore: Jose\u0301 da Silva';const h=core.find(decomposed,{},['José da Silva']);assert.equal(h.length,1);assert.equal(h[0].value,'Jose\u0301 da Silva');
+assert.deepEqual(core.regions({start:3,end:8},[{start:0,end:5,box:{x:.1,y:.2,w:.3,h:.1}},{start:6,end:9,box:{x:.4,y:.2,w:.2,h:.1}}]).length,2);assert.equal(core.rect({x:NaN,y:0,w:1,h:1}),null);assert.equal(core.rect({x:0,y:0,w:-1,h:1}),null);
+console.log('OK: dados pessoais, CRM/Coren/OAB, termos adicionais, acentos compostos, limites e caixas.');
