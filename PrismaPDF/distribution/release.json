@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 7,
-  "versionName": "1.5.0",
-  "notes": "Galeria de interfaces offline: Prisma, Neon, Aurora, Terminal e Essencial. Prévias, aplicação imediata, preferência salva e restauração do visual original. Todos os estilos funcionam com modo claro, escuro ou automático. Mantém correções para fonte ampliada e as ferramentas de ocultação de dados.",
-  "size": 14707178,
-  "sha256": "c1ccc3848574260d85768b4f2dd58179a77bba37cdfad4b4f980dfab78da2608",
+  "versionCode": 8,
+  "versionName": "1.6.0",
+  "notes": "Conferência offline após ocultação: OCR da cópia final, alertas por página e revisão antes de disponibilizar o arquivo. Resumo sem dados pessoais com contagens e SHA-256 do PDF. Falhas são exibidas como conferência incompleta. Nenhum alerta não garante ausência de dados pessoais ou conformidade com a LGPD.",
+  "size": 14711401,
+  "sha256": "9ba876f08f8afbd44da93d13074986b06ed5f51143bddfac29aefbef844db4d6",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.5.0/Prisma-PDF.apk",
-  "sourceBuildCommit": "35855502de42d7ba790ce87a43329aa6453e18ef",
-  "sourceValidationRun": 40884374984
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.6.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "3349cc1cb102b0b0c1b0f8e57c53f490d4a5bdff",
+  "sourceValidationRun": 40895985691
 }
