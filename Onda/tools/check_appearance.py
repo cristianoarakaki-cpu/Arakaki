@@ -11,7 +11,8 @@ def nodes():
  raise AssertionError('No appearance accessibility tree')
 def bounds(n):return list(map(int,re.findall(r'\d+',n.attrib['bounds'])))
 def tap(label,desc=False):
- for _ in range(18):
+ names=['Onda Original','Nebulosa','Circuito','Cyber Solar','Grafite']
+ for _ in range(24):
   ns=nodes();node=next((n for n in ns if n.attrib.get('content-desc' if desc else 'text')==label),None)
   scroll=next((n for n in ns if n.attrib.get('content-desc') in ('Lista de aparências','Opções do menu')),None)
   if node is not None:
@@ -21,7 +22,14 @@ def tap(label,desc=False):
    if inside and r>l and b>t:
     assert node.attrib.get('enabled')!='false',label;shell('input','tap',(l+r)//2,(t+b)//2);time.sleep(.4);return
   if scroll is not None:
-   l,t,r,b=bounds(scroll);shell('input','swipe',(l+r)//2,t+(b-t)*8//10,(l+r)//2,t+(b-t)//10,220)
+   l,t,r,b=bounds(scroll);up=False
+   if node is not None:up=bounds(node)[1]<t
+   elif scroll.attrib.get('content-desc')=='Lista de aparências' and label.startswith('Usar aparência '):
+    wanted=names.index(label[len('Usar aparência '):]);visible=[names.index(n.attrib['text']) for n in ns if n.attrib.get('text') in names and bounds(n)[3]>t and bounds(n)[1]<b]
+    if visible:up=min(visible)>wanted
+   # Short drags avoid flinging past the requested button. Reverse when needed.
+   y1=t+(b-t)*(3 if up else 7)//10;y2=t+(b-t)*(7 if up else 3)//10
+   shell('input','swipe',(l+r)//2,y1,(l+r)//2,y2,420)
   time.sleep(.2)
  raise AssertionError('Appearance control not reachable: '+label)
 def capture(name):(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
@@ -44,7 +52,7 @@ try:
  assert any(n.attrib.get('text')=='Aparência atual: Cyber Solar' for n in nodes())
  (OUT/'appearance-ui-tests.json').write_text(json.dumps(dict(themes=results,largeFontReachable=True,fontScale=1.4),indent=2,ensure_ascii=False))
 except Exception:
- capture('appearance-failure');(OUT/'appearance-logcat.txt').write_bytes(adb('logcat','-d'));raise
+ capture('appearance-failure');(OUT/'appearance-failure.xml').write_bytes(shell('cat','/sdcard/onda-appearance.xml'));(OUT/'appearance-logcat.txt').write_bytes(adb('logcat','-d'));raise
 finally:
  shell('am','force-stop',P);shell('settings','put','system','font_scale',old_font if old_font not in ('','null') else '1.0')
  if old is None:shell('run-as',P,'rm','-f','shared_prefs/appearance.xml')
