@@ -25,6 +25,9 @@ jobs:
           node --check PrismaPDF/assets/app.js
           node --check PrismaPDF/assets/theme.js
           node --check PrismaPDF/assets/redaction.js
+          node --check PrismaPDF/assets/audit.js
+          node --check PrismaPDF/assets/audit-core.js
+          node PrismaPDF/tools/test_audit.cjs
           node --check PrismaPDF/assets/redaction-core.js
           node PrismaPDF/tools/test_redaction.cjs
           node PrismaPDF/tools/test_core.cjs

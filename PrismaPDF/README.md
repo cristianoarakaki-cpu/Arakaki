@@ -71,3 +71,11 @@ Limitações: a detecção é heurística e pode omitir dados ou ter falsos posi
 ## Versão 1.5.0 — Interfaces
 
 Galeria em Sobre → Aparência, com atalho Escolher interface na tela inicial. Estilos Prisma, Neon, Aurora, Terminal e Essencial: variações de cores, bordas, fundos, tipografia e apresentação das ferramentas (cartões ou listas). Aplicação imediata, opção de restaurar Prisma e preferência local independente do modo claro/escuro/automático. Não afeta documentos, cores de PDFs, marcações de ocultação nem recursos offline. Todos os recursos visuais são arquivos locais, sem fontes, imagens ou estilos remotos.
+
+## Versão 1.6.0 — Conferência da cópia final
+
+Após gerar o PDF ocultado, o app reabre os bytes da cópia final e executa OCR offline em cada página. Procura as categorias escolhidas, os termos adicionais e os valores das marcações selecionadas. Alerta por página sem exibir os valores no resumo. Verifica também a ausência de texto, anexos/catálogo Names, formulários, XMP e anotações na cópia produzida.
+
+Sem achados: disponibiliza o resultado com aviso de limitações do OCR. Com achados: permite voltar à página e acrescentar marcações ou disponibilizar a cópia com alertas após confirmação explícita; o estado no resumo não muda. Falha/interrupção: mostra conferência incompleta, bloqueia a disponibilização e permite repetir. Alterações nas marcações invalidam a conferência e retiram resultados anteriores.
+
+Resumo opcional TXT: versão, data UTC, SHA-256 do PDF de saída, contagens de páginas/marcações e categorias de alertas, sem nomes, documentos, termos pesquisados ou nome do arquivo original. Não é certificado de anonimização ou de LGPD. Nenhum alerta significa apenas que o OCR não reconheceu os padrões procurados.
