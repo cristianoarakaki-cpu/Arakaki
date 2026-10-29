@@ -68,6 +68,14 @@ jobs:
           path: |
             Onda/app/build/reports/
             Onda/app/build/intermediates/lint_intermediate_text_report/
+      - name: Compactar APK sem alterar o conteúdo
+        run: |
+          python -m pip install --disable-pip-version-check --timeout 30 --retries 1 zopfli==0.2.3.post1
+          python Onda/tools/compact_apk.py Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-compact.apk
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f 4 /tmp/onda-compact.apk /tmp/onda-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks Onda/.signing/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey --out Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-final-certificate.txt
+          python -c 'from pathlib import Path; s=Path("/tmp/onda-final-certificate.txt").read_text(); expected=Path("Onda/signing-certificate.sha256").read_text().strip(); assert "Signer #1 certificate SHA-256 digest: "+expected in s, "Assinatura final incorreta"'
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
