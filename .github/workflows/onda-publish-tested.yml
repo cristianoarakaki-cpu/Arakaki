@@ -1,0 +1,106 @@
+name: Onda - Publicar APK verificado
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-publish-tested.yml']
+permissions:
+  contents: write
+  actions: read
+env:
+  SOURCE_RUN: '40944616722'
+  SOURCE_SHA: '42d795f1f6f76ce1a1ccf11213a7166288f9cd86'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;36.0.0'
+      - name: Conferir testes concluídos e recuperar exatamente o APK testado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > /tmp/onda-source-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs" > /tmp/onda-source-jobs.json
+          python - <<'PY'
+          import json,os
+          run=json.load(open('/tmp/onda-source-run.json'))
+          assert run['head_sha']==os.environ['SOURCE_SHA'] and run['head_branch']=='main' and run['event']=='push' and run['status']=='completed'
+          jobs=json.load(open('/tmp/onda-source-jobs.json'))['jobs']
+          assert len(jobs)==1
+          steps={step['name']:step['conclusion'] for step in jobs[0]['steps']}
+          for name in ['Run gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest','Compactar APK sem alterar o conteúdo','Conferir pacote independente','Guardar APK de distribuição e preparar variante do emulador','Conferir telas no Android','Preparar publicação da atualização']:
+              assert steps.get(name)=='success',(name,steps.get(name))
+          assert {name for name,value in steps.items() if value=='failure'}=={'Publicar APK para atualização pelo app'}
+          print('Compilação, lint, testes unitários, assinatura, pacote e testes completos no Android aprovados na execução de origem.')
+          PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/12928752494/zip" > /tmp/onda-tested-apk.zip
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,zipfile
+          data=Path('/tmp/onda-tested-apk.zip').read_bytes()
+          assert hashlib.sha256(data).hexdigest()=='ea31ef9c258ee88138473d01660c8f5441a570e1cc04c818f42357c28cdcd472'
+          with zipfile.ZipFile('/tmp/onda-tested-apk.zip') as archive:
+              assert archive.namelist()==['app-debug.apk'],archive.namelist()
+              apk=archive.read('app-debug.apk')
+          assert len(apk)==64227668
+          root=Path('Onda/distribution');root.mkdir(parents=True,exist_ok=True)
+          (root/'Onda-Musica.apk').write_bytes(apk)
+          print('APK idêntico ao artefato validado:',hashlib.sha256(apk).hexdigest())
+          PY
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs Onda/distribution/Onda-Musica.apk > /tmp/onda-certificate.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/distribution/Onda-Musica.apk > /tmp/onda-package.txt
+          python - <<'PY'
+          from pathlib import Path
+          certificate=Path('/tmp/onda-certificate.txt').read_text()
+          assert 'Signer #1 certificate SHA-256 digest: '+Path('Onda/signing-certificate.sha256').read_text().strip() in certificate
+          package=Path('/tmp/onda-package.txt').read_text()
+          for value in ["name='br.com.onda.musica'", "versionCode='55'", "versionName='0.45.0'", 'arm64-v8a', 'armeabi-v7a']:
+              assert value in package,value
+          assert 'x86_64' not in package
+          PY
+      - name: Preparar publicação do APK verificado
+        id: release
+        run: python Onda/tools/prepare_release.py
+      - name: Publicar atualização sem alterar o conteúdo testado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ONDA_TAG: ${{ steps.release.outputs.tag }}
+          ONDA_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git archive --format=zip --output=Onda/release-out/Onda-Fontes.zip HEAD Onda .github/workflows/onda-android.yml
+          curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
+          curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
+          sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
+          if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+            echo "A versão já existe. Não substituir arquivos publicados."
+            exit 1
+          fi
+          for ATTEMPT in 1 2; do
+            CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            BUILT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$SOURCE_SHA" --jq '.tree[] | select(.path == "Onda") | .sha')
+            CURRENT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$CURRENT_HEAD" --jq '.tree[] | select(.path == "Onda") | .sha')
+            BUILT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$SOURCE_SHA" --jq '.sha')
+            CURRENT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$CURRENT_HEAD" --jq '.sha')
+            if [ -z "$BUILT_ONDA" ] || [ -z "$BUILT_WORKFLOW" ] || [ "$BUILT_ONDA" != "$CURRENT_ONDA" ] || [ "$BUILT_WORKFLOW" != "$CURRENT_WORKFLOW" ]; then
+              echo "Onda mudou desde os testes. Publicação interrompida."
+              exit 1
+            fi
+            if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
+              exit 0
+            fi
+            if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+              echo "Publicação parcial detectada; não sobrescrever."
+              exit 1
+            fi
+          done
+          exit 1
