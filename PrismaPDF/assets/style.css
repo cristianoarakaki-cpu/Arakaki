@@ -30,3 +30,5 @@ nav{gap:4px}nav button{flex:1;min-width:0;width:auto;line-height:1.4;overflow-wr
 @media(max-width:340px){.tools{grid-template-columns:minmax(0,1fr)}.tool-card .tool{padding:18px}.hero-import{padding:16px;gap:10px}.hero-import>b{font-size:20px}}
 @media(min-width:640px){.tools{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:960px){.tools{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+h1,.lead,.greeting,.privacy p,.online-banner h3,.online-banner p{overflow-wrap:anywhere}.online-banner>div{min-width:0;flex:1}
