@@ -98,3 +98,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc=location.origin+'/vendor/pdf.worker.js';r
 
 function measureNavigation(){const height=Math.ceil(document.querySelector('nav').getBoundingClientRect().height);document.documentElement.style.setProperty('--nav-height',height+'px')}
 if(typeof ResizeObserver==='function')new ResizeObserver(measureNavigation).observe(document.querySelector('nav'));window.addEventListener('resize',measureNavigation);measureNavigation();
+
+$('#chooseInterface').onclick=()=>{if(locked)return;show('about');$('#interfaceHeading').scrollIntoView({block:'start'});$('#interfaceHeading').focus({preventScroll:true})};
+for(const button of document.querySelectorAll('[data-interface-choice]'))button.onclick=()=>{if(!PrismaAppearance.setInterface(button.dataset.interfaceChoice))info('Interface aplicada nesta sessão. Não foi possível guardar a preferência.')};
+$('#resetInterface').onclick=()=>{if(!PrismaAppearance.setInterface('prisma'))info('Interface aplicada nesta sessão. Não foi possível guardar a preferência.')};PrismaAppearance.apply();
+for(const button of document.querySelectorAll('[data-interface-choice]'))button.addEventListener('keydown',e=>{const buttons=[...document.querySelectorAll('[data-interface-choice]')],index=buttons.indexOf(button);let next;if(['ArrowRight','ArrowDown'].includes(e.key))next=(index+1)%buttons.length;else if(['ArrowLeft','ArrowUp'].includes(e.key))next=(index+buttons.length-1)%buttons.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=buttons.length-1;else return;e.preventDefault();buttons[next].click();buttons[next].focus()});

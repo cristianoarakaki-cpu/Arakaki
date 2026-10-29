@@ -1,5 +1,5 @@
 {
-  "versionCode": 6,
-  "versionName": "1.4.0",
-  "notes": "Ocultar dados offline: candidatos a CPF, RG, CNPJ, e-mail, telefone, CEP, nomes e registros profissionais (CRM, Coren e outros). Termos adicionais personalizados por linha, OCR local, revisão de todas as páginas e áreas manuais. Gera uma cópia rasterizada com as áreas cobertas, sem camada de texto original, anexos ou formulários. A detecção exige revisão e não garante conformidade com a LGPD."
+  "versionCode": 7,
+  "versionName": "1.5.0",
+  "notes": "Galeria de interfaces offline: Prisma, Neon, Aurora, Terminal e Essencial. Prévias, aplicação imediata, preferência salva e restauração do visual original. Todos os estilos funcionam com modo claro, escuro ou automático. Mantém correções para fonte ampliada e as ferramentas de ocultação de dados."
 }
