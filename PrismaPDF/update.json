@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 6,
-  "versionName": "1.4.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.4.0/Prisma-PDF.apk",
-  "sha256": "6ebde2128309e92459c23084b56b598933da90339834a41e76c22bf662708e6c",
-  "notes": "Ocultar dados offline: candidatos a CPF, RG, CNPJ, e-mail, telefone, CEP, nomes e registros profissionais (CRM, Coren e outros). Termos adicionais personalizados por linha, OCR local, revisão de todas as páginas e áreas manuais. Gera uma cópia rasterizada com as áreas cobertas, sem camada de texto original, anexos ou formulários. A detecção exige revisão e não garante conformidade com a LGPD.",
+  "versionCode": 7,
+  "versionName": "1.5.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.5.0/Prisma-PDF.apk",
+  "sha256": "c1ccc3848574260d85768b4f2dd58179a77bba37cdfad4b4f980dfab78da2608",
+  "notes": "Galeria de interfaces offline: Prisma, Neon, Aurora, Terminal e Essencial. Prévias, aplicação imediata, preferência salva e restauração do visual original. Todos os estilos funcionam com modo claro, escuro ou automático. Mantém correções para fonte ampliada e as ferramentas de ocultação de dados.",
   "downloadAvailable": true
 }
