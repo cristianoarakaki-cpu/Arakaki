@@ -1,5 +1,5 @@
 {
-  "versionCode": 3,
-  "versionName": "1.2.0",
-  "notes": "Novidades offline: remover páginas, inserir páginas em branco em A4 ou Carta e consultar ou limpar os metadados básicos Info/XMP do documento. Busca de ferramentas na tela inicial. A limpeza não remove conteúdo, comentários, anexos ou dados internos de páginas."
+  "versionCode": 4,
+  "versionName": "1.3.0",
+  "notes": "Modo escuro com seleção claro, escuro ou seguir o celular, preferência salva e barras Android ajustadas. Ferramentas favoritas com filtro e busca sem acentos. Leitor com zoom até 200% e navegação direta por página. Recursos de PDF continuam offline; o tema preserva as cores dos documentos."
 }

@@ -51,3 +51,7 @@ Três novas ferramentas locais: dividir até 20 páginas em PDFs individuais, nu
 ## Versão 1.2.0
 
 Remoção de páginas com seleção obrigatória e preservação de ao menos uma página; inserção de até 20 páginas em branco no início, fim ou entre páginas, em A4 retrato/paisagem e Carta. Consulta de dados básicos e limpeza do Info e XMP do catálogo: não é anonimização e não remove conteúdo, comentários, anexos ou metadados de páginas. Busca de ferramentas na tela inicial. Os resultados continuam sendo cópias que o usuário escolhe salvar.
+
+## Versão 1.3.0
+
+Modo claro, escuro ou conforme o sistema, com seletor em Sobre e atalho no cabeçalho. Preferência salva no aparelho, aplicada antes da renderização da interface e sincronizada às barras Android. O PDF conserva as cores originais. Favoritas locais por ferramenta, filtro e busca sem acentos. Leitor com zoom de ajuste à largura até 200% e salto para página validado. PDFs e biblioteca não são enviados à rede.

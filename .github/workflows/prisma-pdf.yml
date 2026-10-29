@@ -23,6 +23,7 @@ jobs:
           python3 -m pip install 'cryptography==46.0.3'
           python3 PrismaPDF/tools/vendor.py
           node --check PrismaPDF/assets/app.js
+          node --check PrismaPDF/assets/theme.js
           node PrismaPDF/tools/test_core.cjs
           python3 PrismaPDF/tools/test_signing.py
       - name: Testar ferramentas em navegador móvel sem internet
@@ -51,7 +52,7 @@ jobs:
           name: Prisma-PDF-validacao-${{ github.run_number }}
           path: |
             PrismaPDF/build/Prisma-PDF-VALIDACAO.apk.unsigned
-            PrismaPDF/test-output/home.png
+            PrismaPDF/test-output/*.png
           if-no-files-found: error
           retention-days: 30
       - name: Informar canal de instalação
