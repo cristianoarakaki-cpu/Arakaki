@@ -1,5 +1,5 @@
 {
-  "versionCode": 8,
-  "versionName": "1.6.0",
-  "notes": "Conferência offline após ocultação: OCR da cópia final, alertas por página e revisão antes de disponibilizar o arquivo. Resumo sem dados pessoais com contagens e SHA-256 do PDF. Falhas são exibidas como conferência incompleta. Nenhum alerta não garante ausência de dados pessoais ou conformidade com a LGPD."
+  "versionCode": 9,
+  "versionName": "1.7.0",
+  "notes": "OCR offline aprimorado: maior resolução, ampliação controlada de imagens pequenas, contraste ajustado e comparação de duas leituras no modo reforçado. Giro da imagem para reconhecimento e índices de baixa confiança. Boletos continuam exigindo dígitos verificadores válidos; não há troca automática de letras por números. Ocultação e conferência consideram as duas leituras."
 }

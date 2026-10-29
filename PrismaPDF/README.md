@@ -79,3 +79,11 @@ Após gerar o PDF ocultado, o app reabre os bytes da cópia final e executa OCR 
 Sem achados: disponibiliza o resultado com aviso de limitações do OCR. Com achados: permite voltar à página e acrescentar marcações ou disponibilizar a cópia com alertas após confirmação explícita; o estado no resumo não muda. Falha/interrupção: mostra conferência incompleta, bloqueia a disponibilização e permite repetir. Alterações nas marcações invalidam a conferência e retiram resultados anteriores.
 
 Resumo opcional TXT: versão, data UTC, SHA-256 do PDF de saída, contagens de páginas/marcações e categorias de alertas, sem nomes, documentos, termos pesquisados ou nome do arquivo original. Não é certificado de anonimização ou de LGPD. Nenhum alerta significa apenas que o OCR não reconheceu os padrões procurados.
+
+## Versão 1.7.0 — OCR reforçado
+
+Módulo OCR compartilhado por PDF pesquisável, boletos, ocultação e conferência. Imagens pequenas são ampliadas em até 2× e limitadas a 2600px no maior lado; renderização de PDFs para OCR passa a até 2600px. Giro manual para reconhecimento (0/90/180/270) com caixas mapeadas de volta à imagem original. Modo reforçado (padrão) faz duas leituras: original e luminância com contraste por percentis, sem binarização agressiva. Se a primeira leitura é vazia ou de baixa confiança, a segunda tenta segmentação de texto esparso. Modo rápido mantém uma leitura.
+
+PDF pesquisável escolhe uma leitura com critérios de confiança e cobertura, apresenta índices e texto para conferência/exportação TXT. Os índices do mecanismo não são taxas reais de acerto. A aparência original é preservada. Nenhuma substituição automática O/0/I/1 é feita. Boletos continuam passando por verificadores. Ocultação procura candidatos em ambas as leituras, sem descartar palavras de baixa confiança. A conferência sempre usa duas leituras, mantém achados de qualquer uma, deduplica ocorrências equivalentes entre passagens e sinaliza divergência/baixa confiança por página no resumo sem expor palavras.
+
+Limitações: preparação e seleção são heurísticas; fotos desfocadas, sombras, escrita à mão e inclinação ainda podem exigir nova captura e revisão. Giro é manual, sem modelo de orientação adicional. Recursos e modelos continuam totalmente locais.
