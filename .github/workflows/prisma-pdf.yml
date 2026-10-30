@@ -24,6 +24,7 @@ jobs:
           python3 PrismaPDF/tools/vendor.py
           node --check PrismaPDF/assets/app.js
           node --check PrismaPDF/assets/organizer.js
+          node --check PrismaPDF/assets/signature.js
           node --check PrismaPDF/assets/compression.js
           node --check PrismaPDF/assets/compression-core.js
           node PrismaPDF/tools/test_compression.cjs
