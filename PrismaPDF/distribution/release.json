@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 9,
-  "versionName": "1.7.0",
-  "notes": "OCR offline aprimorado: maior resolução, ampliação controlada de imagens pequenas, contraste ajustado e comparação de duas leituras no modo reforçado. Giro da imagem para reconhecimento e índices de baixa confiança. Boletos continuam exigindo dígitos verificadores válidos; não há troca automática de letras por números. Ocultação e conferência consideram as duas leituras.",
-  "size": 14715627,
-  "sha256": "6f4be728d06cdbc7db2af40a58a4e8a47b5e3feedb61928c2ab4a26df3fcad1f",
+  "versionCode": 10,
+  "versionName": "1.8.0",
+  "notes": "Novas ferramentas offline: Organizar PDF com miniaturas, arrastar ou mover por setas, girar, remover, desfazer e restaurar páginas. Comprimir PDF com níveis suave/equilibrado/forte, recompressão de imagens compatíveis preservando texto e comparação real de tamanho. Só oferece cópia comprimida quando ela fica menor.",
+  "size": 14719927,
+  "sha256": "332a3928208601672e1efa4401d2dc7057fb7a50787e595e6176ba2451950001",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.7.0/Prisma-PDF.apk",
-  "sourceBuildCommit": "69c65fd17447b5f4a35b71788f7ae77601ce2193",
-  "sourceValidationRun": 40945914381
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.8.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "0ab1af6515da2753f55546f4208eba45680ca91c",
+  "sourceValidationRun": 40979861966
 }
