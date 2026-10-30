@@ -35,12 +35,12 @@ public class DownloadedAudioTest {
    assertNotNull(field(first,"player"));ins.runOnMainSync(()->{try{
     MediaController player=(MediaController)field(first,"player");player.pause();player.setMediaItem(DownloadedAudio.read(c).stream().filter(i->i.mediaId.equals(DownloadedAudio.id("content://fixture/favorite-test"))).findFirst().get());
     ((Button)field(first,"favorite")).performClick();((Button)field(first,"favoritesTab")).performClick();
-    assertTrue(((Map<?,?>)field(first,"rowViews")).containsKey(DownloadedAudio.id("content://fixture/favorite-test")));
+    assertTrue(((java.util.List<androidx.media3.common.MediaItem>)field(first,"visibleSongs")).stream().anyMatch(i->i.mediaId.equals(DownloadedAudio.id("content://fixture/favorite-test"))));
    }catch(Exception e){throw new RuntimeException(e);}});
    ins.runOnMainSync(first::finish);ins.waitForIdleSync();
    activity=(MainActivity)ins.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));final MainActivity reopened=activity;
    deadline=System.currentTimeMillis()+15000;while(!(Boolean)field(reopened,"libraryReady")&&System.currentTimeMillis()<deadline)Thread.sleep(100);
-   ins.runOnMainSync(()->{try{((Button)field(reopened,"favoritesTab")).performClick();assertTrue(((Map<?,?>)field(reopened,"rowViews")).containsKey(DownloadedAudio.id("content://fixture/favorite-test")));}catch(Exception e){throw new RuntimeException(e);}});
+   ins.runOnMainSync(()->{try{((Button)field(reopened,"favoritesTab")).performClick();assertTrue(((java.util.List<androidx.media3.common.MediaItem>)field(reopened,"visibleSongs")).stream().anyMatch(i->i.mediaId.equals(DownloadedAudio.id("content://fixture/favorite-test"))));}catch(Exception e){throw new RuntimeException(e);}});
   }finally{if(activity!=null){MainActivity a=activity;ins.runOnMainSync(a::finish);ins.waitForIdleSync();}registry.edit().putString("documents",documents).commit();library.edit().putStringSet("favorites",favorites).commit();}
  }
 }

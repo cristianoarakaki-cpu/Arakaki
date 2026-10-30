@@ -28,11 +28,9 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaController player;
     private ListenableFuture<MediaController> connection;
-    private LinearLayout rows,nowPanel,mainNavigation;
+    private LinearLayout nowPanel,mainNavigation;private ListView libraryList;private LibraryRows libraryAdapter;private LinearLayout libraryEmpty;private final ArrayList<MediaItem> visibleSongs=new ArrayList<>();
     private TextView status, title, artist, elapsed, total;
     private Button play, shuffle, repeat, favorite, allTab, favoritesTab, searchFilter;
-    private final Map<String,View> rowViews=new HashMap<>();
-    private String activeRowId="";
     private SeekBar seek;
     private EditText localSearch;
     private String query = "";
@@ -70,7 +68,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams tabParams=new LinearLayout.LayoutParams(0,dp(48),1);tabParams.rightMargin=dp(8);tabs.addView(allTab,tabParams);tabs.addView(favoritesTab,new LinearLayout.LayoutParams(0,dp(48),1));
         root.addView(tabs);
         status=label("Preparando biblioteca…",12,Ui.MUTED);root.addView(status);
-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);scroll.setClipToPadding(false);scroll.setPadding(0,dp(4),0,dp(6));rows=column();scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        FrameLayout libraryArea=new FrameLayout(this);libraryList=new ListView(this);libraryList.setContentDescription("Lista de músicas do celular");libraryList.setDivider(null);libraryList.setClipToPadding(false);libraryList.setPadding(0,dp(4),0,dp(6));libraryAdapter=new LibraryRows(this,libraryList,this::playFromLibrary,this::queueFromLibrary);libraryList.setAdapter(libraryAdapter);libraryEmpty=column();libraryEmpty.setPadding(0,dp(6),0,dp(6));libraryArea.addView(libraryList,new FrameLayout.LayoutParams(-1,-1));ScrollView emptyScroll=new ScrollView(this);emptyScroll.addView(libraryEmpty,new FrameLayout.LayoutParams(-1,-2));libraryArea.addView(emptyScroll,new FrameLayout.LayoutParams(-1,-1));libraryList.setEmptyView(emptyScroll);root.addView(libraryArea,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout now=column();nowPanel=now;now.setPadding(dp(14),dp(12),dp(14),dp(8));Ui.playerCard(now);root.addView(now);
         now.addView(Ui.eyebrow(this,"TOCANDO AGORA"));
         LinearLayout songInfo=new LinearLayout(this);songInfo.setGravity(Gravity.CENTER_VERTICAL);songInfo.setMinimumHeight(dp(64));LinearLayout.LayoutParams songInfoParams=new LinearLayout.LayoutParams(-1,-2);songInfoParams.topMargin=dp(3);now.addView(songInfo,songInfoParams);songInfo.addView(Ui.art(this,44,0));
@@ -140,28 +138,19 @@ public class MainActivity extends Activity {
     }
     private void playExternal(){if(player==null||pendingAudio==null)return;MediaItem item=pendingAudio;pendingAudio=null;VideoBackgroundService.stopForMusic(this);player.setMediaItem(item,pendingAudioPosition);player.prepare();player.play();refresh();}
     private void permission(){String p=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED)scan();else requestPermissions(new String[]{p},10);}
-    @Override public void onRequestPermissionsResult(int code,String[] p,int[] results){super.onRequestPermissionsResult(code,p,results);if(code==10&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();else{status.setText("Permita acesso às músicas para abrir sua biblioteca.");rows.removeAllViews();Button settings=button("Abrir configurações",v->startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))));rows.addView(settings);}}
+    @Override public void onRequestPermissionsResult(int code,String[] p,int[] results){super.onRequestPermissionsResult(code,p,results);if(code==10&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();else{status.setText("Permita acesso às músicas para abrir sua biblioteca.");visibleSongs.clear();libraryAdapter.submit(visibleSongs,libraryOrder);libraryEmpty.removeAllViews();Button settings=button("Abrir configurações",v->startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))));libraryEmpty.addView(settings);}}
     private void scan(){status.setText("Buscando músicas no celular…");scanner.execute(()->{ArrayList<MediaItem> found=new ArrayList<>();String error=null;
         try{found.addAll(LibraryStore.scan(this));}catch(Exception e){error="Não foi possível ler a biblioteca. Verifique a permissão e tente atualizar.";}
         String message=error;runOnUiThread(()->{if(isDestroyed())return;songs.clear();songs.addAll(found);libraryReady=true;render();if(pendingVoice!=null&&player!=null){String phrase=pendingVoice;pendingVoice=null;handleVoice(phrase);}if(message!=null)status.setText(message);});});}
+    private void playFromLibrary(MediaItem item){if(player==null){Toast.makeText(this,"Tocador iniciando…",Toast.LENGTH_SHORT).show();return;}int index=visibleSongs.indexOf(item);if(index<0)return;player.setMediaItems(new ArrayList<>(visibleSongs),index,0);player.prepare();player.play();}
+    private void queueFromLibrary(MediaItem item){if(player==null)return;new AlertDialog.Builder(this).setTitle(String.valueOf(item.mediaMetadata.title)).setItems(new String[]{"Colocar como próxima","Adicionar ao fim da fila"},(d,which)->QueueEdit.add(this,player,item,which==0)).setNegativeButton("Cancelar",null).show();}
     private void render(){
-        if(rows==null)return;DownloadedAudio.merge(this,songs);searchFilter.setText(new String[]{"Filtrar","Música","Artista","Álbum"}[searchScope]);Ui.chip(searchFilter,searchScope!=0);rows.removeAllViews();rowViews.clear();activeRowId="";Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
-        ArrayList<MediaItem> visible=new ArrayList<>();
-        for(MediaItem item:songs){
-            MediaMetadata m=item.mediaMetadata;
-            CharSequence text=searchScope==1?m.title:searchScope==2?m.artist:searchScope==3?m.albumTitle:m.title+" "+m.artist+" "+m.albumTitle;
-            if(SearchText.matches(text,query)&&(!downloadsOnly||item.mediaId.startsWith("download:"))&&(!onlyFavorites||favorites.contains(item.mediaId)))visible.add(item);
-        }
-        visible.sort(LibraryOrder.comparator(libraryOrder));String lastGroup="";
-        for(MediaItem item:visible){MediaMetadata m=item.mediaMetadata;
-            if(libraryOrder==1||libraryOrder==2){CharSequence groupValue=libraryOrder==1?m.artist:m.albumTitle;String group=groupValue==null||groupValue.toString().trim().isEmpty()?(libraryOrder==1?"Artista desconhecido":"Sem álbum"):groupValue.toString();if(!group.equals(lastGroup)){TextView heading=Ui.eyebrow(this,group);heading.setPadding(0,dp(12),0,dp(6));rows.addView(heading);lastGroup=group;}}
-            LinearLayout row=Ui.result(this,String.valueOf(m.title),String.valueOf(m.artist),item.mediaId.hashCode(),v->{if(player==null){Toast.makeText(this,"Tocador iniciando…",Toast.LENGTH_SHORT).show();return;}player.setMediaItems(new ArrayList<>(visible),visible.indexOf(item),0);player.prepare();player.play();});
-            row.setOnLongClickListener(v->{if(player==null)return true;new AlertDialog.Builder(this).setTitle(String.valueOf(m.title)).setItems(new String[]{"Colocar como próxima","Adicionar ao fim da fila"},(d,which)->QueueEdit.add(this,player,item,which==0)).setNegativeButton("Cancelar",null).show();return true;});
-            row.setContentDescription("Tocar "+m.title+", "+m.artist);rows.addView(row);rowViews.put(item.mediaId,row);
-        }
-        highlightCurrentRow();
-        int count=visible.size();status.setText(count+" de "+songs.size()+" músicas no celular"+(onlyFavorites?" • favoritas":"")+(downloadsOnly?" • downloads do Onda":"")+(libraryOrder!=0?" • "+LibraryOrder.NAMES[libraryOrder]:""));
-        if(count==0)rows.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou ajuste o filtro.",16,Ui.MUTED));
+        if(libraryAdapter==null)return;DownloadedAudio.merge(this,songs);searchFilter.setText(new String[]{"Filtrar","Música","Artista","Álbum"}[searchScope]);Ui.chip(searchFilter,searchScope!=0);Ui.chip(allTab,!onlyFavorites);Ui.chip(favoritesTab,onlyFavorites);
+        visibleSongs.clear();SearchText.Query prepared=SearchText.prepare(query);
+        for(MediaItem item:songs){MediaMetadata m=item.mediaMetadata;CharSequence text=prepared.isEmpty()?null:searchScope==1?m.title:searchScope==2?m.artist:searchScope==3?m.albumTitle:m.title+" "+m.artist+" "+m.albumTitle;if(prepared.matches(text)&&(!downloadsOnly||item.mediaId.startsWith("download:"))&&(!onlyFavorites||favorites.contains(item.mediaId)))visibleSongs.add(item);}
+        visibleSongs.sort(LibraryOrder.comparator(libraryOrder));libraryAdapter.submit(visibleSongs,libraryOrder);highlightCurrentRow();
+        int count=visibleSongs.size();status.setText(count+" de "+songs.size()+" músicas no celular"+(onlyFavorites?" • favoritas":"")+(downloadsOnly?" • downloads do Onda":"")+(libraryOrder!=0?" • "+LibraryOrder.NAMES[libraryOrder]:""));
+        libraryEmpty.removeAllViews();if(count==0)libraryEmpty.addView(label(songs.isEmpty()?"Sua biblioteca está vazia.\nCopie músicas para a pasta Music do celular e toque em Atualizar.":"Nenhuma música encontrada. Tente outro nome ou ajuste o filtro.",16,Ui.MUTED));
     }
     private void refresh(){if(!screenStarted||player==null)return;MediaItem item=player.getCurrentMediaItem();favorite.setEnabled(item!=null);if(item!=null){title.setText(item.mediaMetadata.title);artist.setText(item.mediaMetadata.artist);favorite.setSelected(favorites.contains(item.mediaId));favorite.setTextColor(favorites.contains(item.mediaId)?Ui.CYAN:Ui.MUTED);favorite.setContentDescription(favorites.contains(item.mediaId)?"Remover dos favoritos":"Adicionar aos favoritos");}else{title.setText("Selecione uma música");artist.setText("Sua trilha começa aqui");favorite.setSelected(false);favorite.setTextColor(Ui.MUTED);favorite.setContentDescription("Adicionar aos favoritos");}play.setText(player.isPlaying()?"❚❚":"▶");play.setContentDescription(player.isPlaying()?"Pausar":"Reproduzir");shuffle.setTextColor(player.getShuffleModeEnabled()?Ui.CYAN:Ui.MUTED);repeat.setText(player.getRepeatMode()==Player.REPEAT_MODE_ONE?"↻ 1":"↻");repeat.setTextColor(player.getRepeatMode()!=Player.REPEAT_MODE_OFF?Ui.CYAN:Ui.MUTED);long duration=player.getDuration();if(duration<=0&&item!=null)duration=LibraryStore.number(item,"durationMs");seek.setMax(duration>0?(int)Math.min(Integer.MAX_VALUE,duration):0);total.setText(time(duration));highlightCurrentRow();restartProgress();}
     private void toggleFavorite(){if(player==null||player.getCurrentMediaItem()==null)return;String id=player.getCurrentMediaItem().mediaId;if(!favorites.remove(id))favorites.add(id);prefs.edit().putStringSet("favorites",new HashSet<>(favorites)).apply();refresh();render();}
@@ -169,7 +158,7 @@ public class MainActivity extends Activity {
     private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.VERTICAL);return v;}
     private TextView label(String text,int size,int color){TextView t=Ui.text(this,text,size,color);t.setPadding(0,dp(6),0,dp(6));return t;}
     private Button button(String text,View.OnClickListener listener){return Ui.button(this,text,listener);}
-    private void highlightCurrentRow(){String id=player!=null&&player.getCurrentMediaItem()!=null?player.getCurrentMediaItem().mediaId:"";if(id.equals(activeRowId))return;View old=rowViews.get(activeRowId);if(old!=null)Ui.card(old,false);View selected=rowViews.get(id);if(selected!=null)Ui.card(selected,true);activeRowId=id;}
+    private void highlightCurrentRow(){if(libraryAdapter!=null)libraryAdapter.current(player!=null&&player.getCurrentMediaItem()!=null?player.getCurrentMediaItem().mediaId:"");}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
     private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted&&!keyboardVisible)handler.post(progress);}

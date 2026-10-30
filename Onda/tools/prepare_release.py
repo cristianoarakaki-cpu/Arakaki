@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Proteção de anúncios no YouTube
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Biblioteca mais leve e menos trabalho em repouso
+
+Biblioteca principal com lista nativa que reutiliza cartões conforme a rolagem. Mantém todos os registros carregados, a ordem, os grupos de artista/álbum, favoritas, filtro Downloads do Onda, busca por campos, destaque da música atual, toque para reproduzir a seleção completa e toque longo para organizar a fila. Não limita a lista aos itens visíveis.
+
+Busca prepara o termo uma vez por filtragem, reaproveita expressões de normalização e evita normalizar o texto quando a busca está vazia. Ordenação guarda as chaves normalizadas somente durante cada comparação de lista, sem cache global de músicas. Downloads observa mudanças de estado e só mantém atualização periódica enquanto existe uma operação ativa; ao sair da tela, remove a observação e os callbacks.
+
+Validação inclui biblioteca sintética de 3.000 músicas, acesso ao último item, poucos cartões anexados à tela, busca, favoritas, grupos de artista e reprodução de áudio AAC real. Também verifica que Downloads parado não mantém polling, recebe mudanças de estado e atualiza ao voltar à tela. A suíte completa continua conferindo funções anteriores e atualização sobre o app existente.
+
+Mantém motores de áudio/vídeo, formatos, OCR local, PDFs, voz, YouTube, proteção de anúncios, downloads, conversões, Conecta, aparências, listas e dados existentes. Não reduz compatibilidade removendo bibliotecas, modelo de OCR ou arquiteturas ARM. O foco é reduzir trabalho e criação de views durante o uso; não promete redução do tamanho do APK ou percentual de bateria/RAM em aparelho físico. Sem nova permissão, API paga ou serviço permanente. Instale sobre a versão atual, sem desinstalar.
+
+Recursos anteriores — proteção de anúncios no YouTube
 
 YouTube no Onda → Menu → Proteção de anúncios. Proteção local ativada por padrão, com opção de desligar e recarregar se atrapalhar a página. Conta solicitações publicitárias bloqueadas na sessão, não quantidade de anúncios. A preferência fica salva neste celular. Também ignora retornos atrasados da página anterior durante uma nova busca por voz ou texto, preservando a pesquisa solicitada.
 

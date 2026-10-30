@@ -5,23 +5,24 @@ import java.util.Locale;
 
 /** Search accepts accents, punctuation and words in any order. */
 public final class SearchText {
+    private static final java.util.regex.Pattern MARKS=java.util.regex.Pattern.compile("\\p{M}+"), SEPARATORS=java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+"), SPACES=java.util.regex.Pattern.compile("\\s+"), JOINERS=java.util.regex.Pattern.compile("\\b(?:e|and)\\b");
+    public static final class Query {
+        private final String[] words;private Query(String query){String text=catalogTerm(query);words=text.isEmpty()?new String[0]:text.split(" ");}
+        public boolean isEmpty(){return words.length==0;}
+        public boolean matches(CharSequence text){if(words.length==0)return true;String haystack=normalize(text);for(String word:words)if(!haystack.contains(word))return false;return true;}
+    }
+    public static Query prepare(String query){return new Query(query);}
     public static String normalize(CharSequence value) {
         if (value == null) return "";
-        return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}+", "")
-            .toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim().replaceAll("\\s+", " ");
+        String text=MARKS.matcher(Normalizer.normalize(value,Normalizer.Form.NFD)).replaceAll("").toLowerCase(Locale.ROOT);return SPACES.matcher(SEPARATORS.matcher(text).replaceAll(" ").trim()).replaceAll(" ");
     }
-    public static boolean matches(CharSequence value, String query) {
-        String haystack = normalize(value), needle = catalogTerm(query);
-        if (needle.isEmpty()) return true;
-        for (String word : needle.split(" ")) if (!haystack.contains(word)) return false;
-        return true;
-    }
+    public static boolean matches(CharSequence value,String query){return prepare(query).matches(value);}
     public static String spokenQuery(String input){
         if(input==null)return "";
         return input.trim().replaceFirst("(?iu)^(?:busque|buscar|pesquise|pesquisar|procure|procurar)(?:\\s+por)?\\s+(?:(?:a\\s+)?m[úu]sica\\s+|(?:o\\s+)?artista\\s+)?", "").trim();
     }
     public static String catalogTerm(String input){
-        return normalize(input).replaceAll("\\b(?:e|and)\\b", " ").trim().replaceAll("\\s+", " ");
+        return SPACES.matcher(JOINERS.matcher(normalize(input)).replaceAll(" ").trim()).replaceAll(" ");
     }
     public static int relevance(String input,String title,String artist){
         String needle=catalogTerm(input),name=catalogTerm(title),singer=catalogTerm(artist);
