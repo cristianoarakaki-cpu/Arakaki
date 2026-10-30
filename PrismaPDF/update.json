@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 14,
-  "versionName": "1.11.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.11.0/Prisma-PDF.apk",
-  "sha256": "fc7f6ee80696487d2428fa7f69ae9b6cef4c802e84874a0cb4ca546b7530250e",
-  "notes": "Scanner com correção de perspectiva offline por quatro cantos marcados manualmente. Arraste os cantos, toque na foto ou use coordenadas em porcentagem. Prévia da imagem retificada antes de gerar PDF, validação contra cantos cruzados e preservação dos ajustes por foto. Mantém o recorte retangular e os filtros.",
+  "versionCode": 15,
+  "versionName": "1.12.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.12.0/Prisma-PDF.apk",
+  "sha256": "7100fcc0f35f1e4fe61ee3cd8c1ef7c31f13a38728a0197e260a49290dbba56f",
+  "notes": "Scanner com sugestão automática de quatro cantos offline para papel claro sobre fundo contrastante. Revise a marcação e escolha Usar estes cantos ou Descartar; os ajustes atuais só mudam ao aceitar. Falta de contraste, papel fora da foto ou áreas ambíguas mantêm o ajuste manual. Correção de perspectiva e prévia continuam disponíveis.",
   "downloadAvailable": true
 }
