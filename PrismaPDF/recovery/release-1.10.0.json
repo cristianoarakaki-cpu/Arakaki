@@ -1,0 +1,132 @@
+{
+  "release": {
+    "packageName": "com.arakaki.prismapdf",
+    "versionCode": 13,
+    "versionName": "1.10.0",
+    "notes": "Scanner offline: fotografe com a câmera do aparelho ou escolha imagens, revise até 20 fotos, faça recorte retangular manual, gire e escolha filtros colorido/cinza/preto e branco por foto. Gera PDF A4 em proporção original. Sem correção de perspectiva nesta versão. Cancelar a câmera preserva a seleção; o Prisma não envia as fotos para servidores.",
+    "size": 14728247,
+    "sha256": "9e35827375e3a9e223f23c41793ae48b9af412d23fa912d2e42ea8bd9f08906f",
+    "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
+    "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.10.0/Prisma-PDF.apk",
+    "sourceBuildCommit": "d1c1914f4f43839d97e0b64371c19fd2185568f6",
+    "sourceValidationRun": 41041458754
+  },
+  "chunks": [
+    {
+      "name": "Prisma-PDF.apk.part000",
+      "gitSha": "adbc38ada618581aa6abcc91ef20d3f401689de8"
+    },
+    {
+      "name": "Prisma-PDF.apk.part001",
+      "gitSha": "3fd975c6561b96da58e5885da15464c45eb8f5f0"
+    },
+    {
+      "name": "Prisma-PDF.apk.part002",
+      "gitSha": "24ee4c9ba7345436cf887172b3445fbc924d3c7b"
+    },
+    {
+      "name": "Prisma-PDF.apk.part003",
+      "gitSha": "df2f79e7395911985e24c1e467ddebac5032390b"
+    },
+    {
+      "name": "Prisma-PDF.apk.part004",
+      "gitSha": "da9d40b47c77a7ad1bdbde270e2ea29d8b9c7534"
+    },
+    {
+      "name": "Prisma-PDF.apk.part005",
+      "gitSha": "dbc0f159371372c94dc9743a5219da905e7814b4"
+    },
+    {
+      "name": "Prisma-PDF.apk.part006",
+      "gitSha": "6e17d9c1800f6174eded3f5191122fe3bb96c62d"
+    },
+    {
+      "name": "Prisma-PDF.apk.part007",
+      "gitSha": "f50b08375ff4790bc6de352a9d5ddb80e78d3f84"
+    },
+    {
+      "name": "Prisma-PDF.apk.part008",
+      "gitSha": "3a804e2cc43ac9bb167cd5c1099552f797a74f6a"
+    },
+    {
+      "name": "Prisma-PDF.apk.part009",
+      "gitSha": "9d53dd28fe484e2f5b1cfc4fad295c4265dfc09f"
+    },
+    {
+      "name": "Prisma-PDF.apk.part010",
+      "gitSha": "84c04ce0e695261f9534ac6d5a65a21a4a99c8a9"
+    },
+    {
+      "name": "Prisma-PDF.apk.part011",
+      "gitSha": "9d37a4be1effd807b87161842247cbb184903c27"
+    },
+    {
+      "name": "Prisma-PDF.apk.part012",
+      "gitSha": "cb20097061f71b09545f18c1fe09467f62bd05f2"
+    },
+    {
+      "name": "Prisma-PDF.apk.part013",
+      "gitSha": "669ee72d3cf24bd240329209e5192c2a9ee17b24"
+    },
+    {
+      "name": "Prisma-PDF.apk.part014",
+      "gitSha": "54da4658a1c84ef07d5f7515a396e5f9445c8371"
+    },
+    {
+      "name": "Prisma-PDF.apk.part015",
+      "gitSha": "b83a816fa2617161f8b98313bdfc53e845f2432e"
+    },
+    {
+      "name": "Prisma-PDF.apk.part016",
+      "gitSha": "1590e279d1de6909fe0fa15af500fae7a3c89d00"
+    },
+    {
+      "name": "Prisma-PDF.apk.part017",
+      "gitSha": "49b730ddc46e35ac4bbb57bca60f371c3e8dab62"
+    },
+    {
+      "name": "Prisma-PDF.apk.part018",
+      "gitSha": "1f0aeaaeadece72790dd7c9ae6e8bb2e5682c395"
+    },
+    {
+      "name": "Prisma-PDF.apk.part019",
+      "gitSha": "42da197bb243bc273f1d844504f0a944ee43a26d"
+    },
+    {
+      "name": "Prisma-PDF.apk.part020",
+      "gitSha": "3418bb7721c99e17b4c83dcf50d058ed80f1963a"
+    },
+    {
+      "name": "Prisma-PDF.apk.part021",
+      "gitSha": "9691c4bf26c1bd23a147c6b1fdd5d946ab672a38"
+    },
+    {
+      "name": "Prisma-PDF.apk.part022",
+      "gitSha": "b8570cfa0f4dba84f9af1ac943ec8320c04f769b"
+    },
+    {
+      "name": "Prisma-PDF.apk.part023",
+      "gitSha": "e39f8c38a726aedd94f04862a10623738cedeac7"
+    },
+    {
+      "name": "Prisma-PDF.apk.part024",
+      "gitSha": "e8bf56b2396dd95208fa97ce7c8790609459828a"
+    },
+    {
+      "name": "Prisma-PDF.apk.part025",
+      "gitSha": "4d0bfc42e24723657b43e408688252ad622e8da7"
+    },
+    {
+      "name": "Prisma-PDF.apk.part026",
+      "gitSha": "f803c9aec4b7a4ee9cf9fd0c48cae82bc98efe1a"
+    },
+    {
+      "name": "Prisma-PDF.apk.part027",
+      "gitSha": "9fb9fc0beea8c3ffbc283639e37f9578a5d851f2"
+    },
+    {
+      "name": "Prisma-PDF.apk.part028",
+      "gitSha": "2bbb3b82599717bbc26a6a9756cd47f799ffffa8"
+    }
+  ]
+}

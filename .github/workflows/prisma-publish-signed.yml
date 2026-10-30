@@ -23,8 +23,14 @@ jobs:
           fi
           test -x "$BT/apksigner" && test -x "$BT/aapt" && test -x "$BT/zipalign"
           echo "PRISMA_PUBLISH_TOOLS=$BT" >> "$GITHUB_ENV"
+      - name: Recuperar metadados de upload assinado se necessário
+        run: python3 PrismaPDF/recovery/recover.py prepare
       - name: Conferir APK assinado e identidade permanente
         run: python3 PrismaPDF/tools/publish_signed.py prepare "$PRISMA_PUBLISH_TOOLS"
+      - name: Persistir metadados após conferir o APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 PrismaPDF/recovery/recover.py persist
       - name: Publicar download externo e ativar atualizações
         env:
           GH_TOKEN: ${{ github.token }}
