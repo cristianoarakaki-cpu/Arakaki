@@ -63,9 +63,9 @@ adb('install','-r','Onda/app/build/outputs/apk/debug/app-debug.apk')
 shell('pm','grant',PACKAGE,'android.permission.READ_EXTERNAL_STORAGE')
 # Previous SAF-copy fixtures can be indexed after their documents were removed.
 # Remove only this test's generated names from the fresh emulator's MediaStore.
-cleanup=shell('content','delete','--uri','content://media/external/audio/media','--where',"_display_name LIKE 'Favorite-native-%'").decode()
+cleanup=shell('content','delete','--uri','content://media/external/audio/media','--where',"(_display_name LIKE 'Favorite-native-%' OR _display_name LIKE 'Auto-native-%')").decode()
 assert 'Exception' not in cleanup and 'Error' not in cleanup,cleanup
-leftovers=shell('content','query','--uri','content://media/external/audio/media','--projection','_id:_display_name','--where',"_display_name LIKE 'Favorite-native-%'").decode()
+leftovers=shell('content','query','--uri','content://media/external/audio/media','--projection','_id:_display_name','--where',"(_display_name LIKE 'Favorite-native-%' OR _display_name LIKE 'Auto-native-%')").decode()
 assert 'Exception' not in leftovers and 'Error' not in leftovers,leftovers
 assert 'Row:' not in leftovers,'Favorite-copy test fixtures were not cleaned: '+leftovers
 shell('mkdir','-p','/sdcard/Music/OndaDemo')

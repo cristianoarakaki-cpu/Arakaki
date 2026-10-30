@@ -57,10 +57,9 @@ if playlist=='items-found':
  tree=nodes();button=next(n.get('text') for n in tree.iter('node') if n.get('text','').startswith('Baixar ('))
  assert button!='Baixar (0)'
  tap(button);time.sleep(.5);nodes();capture('04-format-picker')
- tap('MP3 • áudio a 192 kbps');time.sleep(.5)
- tree=nodes();capture('04b-folder-confirmation')
- assert any(n.get('text','').casefold()=='escolher pasta' for n in tree.iter('node'))
- tap('Cancelar')
+ tree=nodes();assert any(n.get('text')=='MP3 • áudio a 192 kbps' for n in tree.iter('node'))
+ assert any(n.get('text')=='AAC • áudio sem recodificar' for n in tree.iter('node'))
+ adb('shell','input','keyevent','4');time.sleep(.3)
  tap('Limpar');time.sleep(.5)
  assert any(n.get('text')=='Baixar (0)' and n.get('enabled')=='false' for n in nodes().iter('node'))
  import re

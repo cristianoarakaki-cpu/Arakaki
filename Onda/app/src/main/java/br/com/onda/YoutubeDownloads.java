@@ -8,9 +8,10 @@ import java.util.*;
 
 final class YoutubeDownloads {
  static final class Option {
-  final String title,first,second,extension,mime,referer;final boolean original;
+  final String title,first,second,extension,mime,referer;final boolean original,combinedAudio;
   Option(String title,String first,String second,String extension,String mime){this(title,first,second,extension,mime,false,"");}
-  Option(String title,String first,String second,String extension,String mime,boolean original,String referer){this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;this.original=original;this.referer=referer;}
+  Option(String title,String first,String second,String extension,String mime,boolean original,String referer){this(title,first,second,extension,mime,original,referer,false);}
+  Option(String title,String first,String second,String extension,String mime,boolean original,String referer,boolean combinedAudio){this.combinedAudio=combinedAudio;this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;this.original=original;this.referer=referer;}
  }
  static final class Result {final String title;final List<Option> options;Result(String t,List<Option> o){title=t;options=o;}}
  private static boolean ready;
@@ -25,8 +26,9 @@ final class YoutubeDownloads {
   if(audio!=null)options.add(new Option("Áudio AAC • sem recodificar",audio.getContent(),null,"aac","audio/aac"));
   if(audio!=null)options.add(new Option("Áudio M4A • "+audio.getAverageBitrate()+" kbps",audio.getContent(),null,"m4a","audio/mp4"));
   Set<String> resolutions=new HashSet<>();
-  for(VideoStream v:info.getVideoStreams())if(usable(v)&&v.getFormat()==MediaFormat.MPEG_4&&!v.isVideoOnly()&&resolutions.add(v.getResolution()))options.add(new Option("Vídeo MP4 • "+v.getResolution()+" • com som",v.getContent(),null,"mp4","video/mp4"));
+  for(VideoStream v:info.getVideoStreams())if(usable(v)&&v.getFormat()==MediaFormat.MPEG_4&&!v.isVideoOnly()&&resolutions.add(v.getResolution()))options.add(new Option("Vídeo MP4 • "+v.getResolution()+" • com som",v.getContent(),null,"mp4","video/mp4",false,"",true));
   if(audio!=null)for(VideoStream v:info.getVideoOnlyStreams())if(usable(v)&&v.getFormat()==MediaFormat.MPEG_4&&v.getCodec()!=null&&v.getCodec().startsWith("avc")&&resolutions.add(v.getResolution()))options.add(new Option("Vídeo MP4 • "+v.getResolution()+" • juntar áudio",v.getContent(),audio.getContent(),"mp4","video/mp4"));
+  if(audio==null){Option combined=combinedAudioSource(options);if(combined!=null){options.add(0,audioFromVideo(combined,"m4a"));options.add(0,audioFromVideo(combined,"aac"));options.add(0,audioFromVideo(combined,"mp3"));}}
   if(options.isEmpty())throw new Exception("Nenhum formato M4A/MP4 compatível disponível para este vídeo.");
   ExtractorHttp.remaining();return new Result(info.getName(),options);
   }finally{ExtractorHttp.end();}
@@ -42,9 +44,13 @@ final class YoutubeDownloads {
    if(items.isEmpty())throw new Exception("Playlist privada, vazia ou sem vídeos compatíveis.");return new Playlist(info.getName(),items,Page.isValid(next)||info.getStreamCount()>items.size());
   }finally{ExtractorHttp.end();}
  }
+ private static int height(Option option){java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(\\d+)p").matcher(option.title);return matcher.find()?Integer.parseInt(matcher.group(1)):0;}
+ private static Option combinedAudioSource(List<Option> options){Option best=null;int rank=Integer.MAX_VALUE;for(Option option:options)if(option.extension.equals("mp4")&&option.combinedAudio){int h=height(option),score=h>0?h:Integer.MAX_VALUE;if(best==null||score<rank){best=option;rank=score;}}return best;}
+ private static Option audioFromVideo(Option video,String format){return new Option("Áudio "+format.toUpperCase(Locale.ROOT)+" • extrair do vídeo"+(format.equals("mp3")?" • 192 kbps":""),video.first,null,format,MediaDownloads.mime(format),false,video.referer);}
  static Option choose(Result result,String format)throws Exception{
-  if("mp3".equals(format)||"m4a".equals(format)||"aac".equals(format)){for(Option o:result.options)if(o.extension.equals(format))return o;}
-  if("mp4".equals(format)){Option best=null;int bestHeight=0;for(Option o:result.options)if(o.extension.equals("mp4")){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(\\d+)p").matcher(o.title);int h=m.find()?Integer.parseInt(m.group(1)):0;if(h>0&&h<=720&&h>bestHeight){best=o;bestHeight=h;}}if(best!=null)return best;}
-  throw new Exception("Formato escolhido indisponível para este vídeo.");
+  if("mp3".equals(format)||"m4a".equals(format)||"aac".equals(format)){for(Option option:result.options)if(option.extension.equals(format))return option;Option combined=combinedAudioSource(result.options);if(combined!=null)return audioFromVideo(combined,format);}
+  if("mp4".equals(format)){Option best=null;int bestHeight=0;for(Option option:result.options)if(option.extension.equals("mp4")){int h=height(option);if(h>0&&h<=720&&h>bestHeight){best=option;bestHeight=h;}}if(best!=null)return best;}
+  java.util.LinkedHashSet<String> available=new java.util.LinkedHashSet<>();for(Option option:result.options){int h=height(option);available.add(option.extension.toUpperCase(Locale.ROOT)+(option.extension.equals("mp4")&&h>0?" "+h+"p":""));if(available.size()>=8)break;}
+  throw new Exception(("mp4".equals(format)?"MP4 até 720p":String.valueOf(format).toUpperCase(Locale.ROOT))+" indisponível para este vídeo. Disponíveis: "+(available.isEmpty()?"nenhum formato compatível":String.join(", ",available))+". Analise o link individual para escolher uma opção disponível.");
  }
 }

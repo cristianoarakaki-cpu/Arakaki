@@ -1,3 +1,17 @@
+## Onda Música 0.47.0 — Destino automático e seleção de áudio
+
+Downloads → Destino → Salvar automaticamente nas pastas do Onda. Escolher o formato inicia a gravação no destino padrão, sem a confirmação adicional de salvar. Para playlists, marcar os vídeos, tocar Baixar e escolher o formato usa Onda/Áudios ou Onda/Vídeos automaticamente. A primeira autorização de pasta pelo Android agora é guardada também quando a seleção foi feita pelo fluxo da playlist; antes ela valia para aquela operação sem virar o padrão do Onda. Dados e permissões válidos sobrevivem à atualização.
+
+Se não houver configuração, o app tenta recuperar somente a autorização ligada ao último download concluído. Não escolhe uma pasta aleatória entre permissões de outros recursos. Sem essa referência, pede uma pasta uma vez; recusas ou acesso revogado podem exigir nova autorização. Selecionar uma pasta já chamada Onda reutiliza a própria pasta, evitando Onda/Onda. Não move, apaga nem reorganiza arquivos anteriores. Autorizações de arquivo avulso não concedem automaticamente acesso à pasta inteira.
+
+O botão Destino oferece Outro local no próximo download, Perguntar o local a cada download e Autorizar ou mudar a pasta do Onda. O desvio de uma operação não desativa o padrão automático. Uma escolha manual permanente anterior é respeitada; use a opção de salvar automaticamente para ativar. Se o processo perder o formato pendente durante a autorização, guarda a pasta e solicita escolher o formato novamente, sem pedir a pasta outra vez.
+
+Áudio do YouTube: se não houver M4A separado, mas houver um MP4 progressivo com som, o app oferece MP3, M4A ou AAC extraídos desse vídeo. Escolhe a menor resolução conhecida para reduzir transferência; a saída continua no formato solicitado. Não trata vídeo sem som como fonte de áudio e não troca MP3 por MP4 silenciosamente. Ainda depende de AAC compatível na fonte e dos limites de tamanho/conversão. Quando não há opção, o erro informa o formato solicitado e as opções disponíveis. Se a playlist falha sem concluir arquivos, a primeira causa aparece também no resumo. A subpasta de uma playlist só é criada após encontrar o primeiro formato utilizável.
+
+Cabeçalho Downloads ajustado para o botão Central não quebrar sua palavra. Introdução reduzida e controle de destino visível. Nenhum serviço novo, análise contínua, permissão ampla de armazenamento ou API paga. Testes com pasta real, primeira autorização lembrada, segundo download sem seletor, restauração de autorização anterior, destino alternativo único e persistência após falha. Mantém OCR, YouTube, aparências e funções anteriores. Não garante desbloqueio de provedores nem foi medido consumo em aparelho físico.
+
+Instale sobre a versão atual, sem desinstalar.
+
 ## Onda Música 0.46.0 — YouTube no Onda, páginas públicas e AAC
 
 Downloads agora tem abas Links e YouTube. A aba YouTube abre o site móvel oficial dentro do Onda, com pesquisa e navegação do próprio site. Escolha um vídeo ou playlist e toque Ver formatos para baixar: o endereço passa para o analisador do Onda. Também há atalho YouTube no Onda em Explorar. A página usa Android System WebView e pode exigir atualização desse componente. Navegação restrita aos domínios oficiais do YouTube; login externo pode ser feito no navegador. Reprodução depende de toque, sem autoplay forçado.

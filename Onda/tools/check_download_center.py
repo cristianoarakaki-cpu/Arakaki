@@ -52,7 +52,7 @@ try:
   if 'Escolha um formato para baixar' in status:break
   assert 'Não foi possível analisar' not in status,status
  else:raise AssertionError('Direct link timeout')
- tap('MP4 • arquivo original');assert any('Onda/Vídeos' in n.attrib.get('text','') for n in nodes());capture('72-pasta-onda-confirmacao');tap('Salvar na pasta Onda')
+ tap('MP4 • arquivo original');assert not any(n.attrib.get('text')=='Salvar download' for n in nodes());capture('72-pasta-onda-automatica')
  until=time.monotonic()+95
  while time.monotonic()<until:
   time.sleep(.5);status=prefs('downloads').get('status','')

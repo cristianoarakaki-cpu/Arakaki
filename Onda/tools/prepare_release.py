@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube no Onda, páginas públicas e AAC
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Destino automático e seleção de áudio
+
+Downloads → Destino → Salvar automaticamente nas pastas do Onda. Com a autorização de pasta guardada, escolher o formato salva direto em Onda/Áudios ou Onda/Vídeos, sem perguntar a pasta ou confirmar novamente. A primeira escolha de pasta para playlists agora também vira o padrão, inclusive se a transferência falhar. Sem configuração, tenta recuperar apenas a autorização associada ao último download concluído; caso não exista, o Android pede uma pasta uma vez.
+
+Outro local no próximo download é opcional e não desativa o padrão. Também pode pedir local sempre ou autorizar/mudar a pasta. Preferência manual anterior é respeitada: ative o automático no botão Destino. Uma pasta já chamada Onda é reutilizada; arquivos anteriores não são movidos ou apagados. Acesso revogado pode exigir nova autorização. Cabeçalho corrigido para Central caber, com introdução menor e destino visível.
+
+MP3/M4A/AAC podem aproveitar um MP4 com som quando não há áudio M4A separado, usando a menor resolução conhecida. Não usa vídeo silencioso nem troca o formato solicitado. Extração depende de AAC compatível e dos limites já existentes. Falhas agora dizem qual formato faltou e quais opções existem; a primeira causa aparece no resumo quando nada conclui. Subpasta da playlist só é criada após encontrar formato utilizável.
+
+Testes de pasta real, autorização lembrada, próximo download sem seletor, recuperação do destino, outro local por uma operação e persistência após falha. Sem nova permissão, serviço de varredura ou API paga. Operações de pasta só durante uso explícito; sem medição de bateria física. Instale sobre a versão existente, sem desinstalar.
+
+Recursos anteriores — YouTube no Onda, páginas públicas e AAC
 
 Downloads → abas Links e YouTube. Navegue pelo site móvel oficial dentro do app e toque Ver formatos para baixar ao escolher vídeo ou playlist. O botão transfere o endereço ao analisador. Atalho em Explorar. Android System WebView necessário. A página é pausada e destruída ao sair da tela para evitar navegador e mídia ocultos; voltar recarrega o último endereço.
 
