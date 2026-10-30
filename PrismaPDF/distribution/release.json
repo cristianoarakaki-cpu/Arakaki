@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 13,
-  "versionName": "1.10.0",
-  "notes": "Scanner offline: fotografe com a câmera do aparelho ou escolha imagens, revise até 20 fotos, faça recorte retangular manual, gire e escolha filtros colorido/cinza/preto e branco por foto. Gera PDF A4 em proporção original. Sem correção de perspectiva nesta versão. Cancelar a câmera preserva a seleção; o Prisma não envia as fotos para servidores.",
-  "size": 14728247,
-  "sha256": "9e35827375e3a9e223f23c41793ae48b9af412d23fa912d2e42ea8bd9f08906f",
+  "versionCode": 14,
+  "versionName": "1.11.0",
+  "notes": "Scanner com correção de perspectiva offline por quatro cantos marcados manualmente. Arraste os cantos, toque na foto ou use coordenadas em porcentagem. Prévia da imagem retificada antes de gerar PDF, validação contra cantos cruzados e preservação dos ajustes por foto. Mantém o recorte retangular e os filtros.",
+  "size": 14732408,
+  "sha256": "fc7f6ee80696487d2428fa7f69ae9b6cef4c802e84874a0cb4ca546b7530250e",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.10.0/Prisma-PDF.apk",
-  "sourceBuildCommit": "d1c1914f4f43839d97e0b64371c19fd2185568f6",
-  "sourceValidationRun": 41041458754
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.11.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "fb720b030b0672452f0fbbd5a36817eb526f5693",
+  "sourceValidationRun": 41050309049
 }
