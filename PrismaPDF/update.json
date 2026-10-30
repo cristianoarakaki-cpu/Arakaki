@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 12,
-  "versionName": "1.9.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.9.0/Prisma-PDF.apk",
-  "sha256": "228e6e62fe243c56cc61ffa685fd276a0be598d57574692d55e7c9f288d3b68f",
-  "notes": "Nova assinatura desenhada offline: desenhe com o dedo, desfaça traços, escolha a página e ajuste tamanho e posição na prévia. Gera cópia preservando o texto, inclusive em páginas giradas ou recortadas. O desenho não é salvo como modelo. Assinatura visual, sem certificado digital.",
+  "versionCode": 13,
+  "versionName": "1.10.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.10.0/Prisma-PDF.apk",
+  "sha256": "9e35827375e3a9e223f23c41793ae48b9af412d23fa912d2e42ea8bd9f08906f",
+  "notes": "Scanner offline: fotografe com a câmera do aparelho ou escolha imagens, revise até 20 fotos, faça recorte retangular manual, gire e escolha filtros colorido/cinza/preto e branco por foto. Gera PDF A4 em proporção original. Sem correção de perspectiva nesta versão. Cancelar a câmera preserva a seleção; o Prisma não envia as fotos para servidores.",
   "downloadAvailable": true
 }
