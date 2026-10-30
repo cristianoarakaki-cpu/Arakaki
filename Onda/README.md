@@ -1,3 +1,11 @@
+## Onda Música 0.48.0 — Central de downloads organizada
+
+Central de downloads com busca local por nome, formato ou origem, ignorando acentos e maiúsculas. Filtros de status combinados com áudio/vídeo e ordenação por data, nome ou bytes transferidos, acessíveis no menu sem encher a tela. Busca e filtros são preservados ao recriar a tela. Até 200 registros já existentes; não varre arquivos do celular.
+
+Compartilhar arquivo nos registros concluídos usa o seletor do Android, com acesso temporário somente de leitura ao arquivo escolhido. Verifica acesso antes de compartilhar; arquivos removidos ou com autorização revogada mostram orientação. Não envia links temporários de download nem compartilha pastas inteiras.
+
+A Central escuta mudanças do histórico enquanto visível. A atualização periódica só roda durante uma operação ativa e para ao sair da tela. Sem nova permissão, rede de busca, serviço permanente ou medição de bateria física. Mantém destino automático e demais recursos. Instale sobre a versão atual, sem desinstalar.
+
 ## Onda Música 0.47.0 — Destino automático e seleção de áudio
 
 Downloads → Destino → Salvar automaticamente nas pastas do Onda. Escolher o formato inicia a gravação no destino padrão, sem a confirmação adicional de salvar. Para playlists, marcar os vídeos, tocar Baixar e escolher o formato usa Onda/Áudios ou Onda/Vídeos automaticamente. A primeira autorização de pasta pelo Android agora é guardada também quando a seleção foi feita pelo fluxo da playlist; antes ela valia para aquela operação sem virar o padrão do Onda. Dados e permissões válidos sobrevivem à atualização.

@@ -42,8 +42,18 @@ try:
  folder=json.loads(shell('run-as',P,'cat','files/onda-folders-tests.json'))
  writeprefs('onda_folders',prefsxml({'tree':folder['tree'],'enabled':True}))
  entry=dict(id=str(uuid.uuid4()),title='Exemplo para tentar novamente',source=URL,format='mp4',state='failed',detail='Conexão interrompida no teste',time=int(time.time()*1000),bytes=50,expected=100)
- writeprefs('download_history',prefsxml({'data':json.dumps(dict(version=1,items=[entry]))}))
+ audio=dict(entry,id=str(uuid.uuid4()),title='Canção de teste MP3',format='mp3',time=entry['time']-1000)
+ writeprefs('download_history',prefsxml({'data':json.dumps(dict(version=1,items=[audio,entry]))}))
  shell('am','start','-W','-n',P+'/br.com.onda.DownloadsActivity');time.sleep(.5);tap('Central');time.sleep(.3)
+ tap('Buscar no histórico de downloads',True);shell('input','text','cancao');shell('input','keyevent','66');time.sleep(.4)
+ ns=nodes();assert any(n.attrib.get('text')=='Canção de teste MP3' for n in ns);assert not any(n.attrib.get('text')=='Exemplo para tentar novamente' for n in ns)
+ tap('Buscar no histórico de downloads',True);shell('input','keyevent','123')
+ for _ in range(6):shell('input','keyevent','67')
+ shell('input','keyevent','4');time.sleep(.3)
+ tap('Menu da central',True);tap('Tipo de arquivo');tap('Somente vídeo');ns=nodes();assert not any(n.attrib.get('text')=='Canção de teste MP3' for n in ns);assert any(n.attrib.get('text')=='Exemplo para tentar novamente' for n in ns)
+ tap('Menu da central',True);tap('Tipo de arquivo');tap('Todos os tipos')
+ tap('Menu da central',True);tap('Ordenar downloads');tap('Nome A–Z');ns=nodes();names=[n.attrib.get('text') for n in ns if n.attrib.get('text') in ['Canção de teste MP3','Exemplo para tentar novamente']];assert names==['Canção de teste MP3','Exemplo para tentar novamente'],names
+ capture('88-central-busca-e-filtros')
  tap('Exemplo para tentar novamente');tap('Tentar novamente')
  assert any(n.attrib.get('content-desc')=='Link do vídeo' and n.attrib.get('text')==URL for n in nodes())
  tap('Analisar link');until=time.monotonic()+95
@@ -63,6 +73,7 @@ try:
  assert complete['source']==URL and complete['bytes']>0
  assert '/Onda/Vídeos/' in complete['uri'].replace('%2F','/').replace('%C3%AD','í'),complete['uri']
  tap('Central');time.sleep(.5);assert any(n.attrib.get('text')=='Concluído • MP4 • '+time.strftime('%d/%m %H:%M',time.gmtime(complete['time']/1000)) for n in nodes()) or any('Concluído • MP4' in n.attrib.get('text','') for n in nodes());capture('73-central-downloads')
+ tap(complete['title']);assert any(n.attrib.get('text')=='Compartilhar arquivo' for n in nodes());tap('Fechar')
  tap('Menu da central',True);tap('Arquivos do Onda');tap('▸ Vídeos')
  files=nodes();video=next(n.attrib.get('text') for n in files if n.attrib.get('text','').startswith('download') and n.attrib.get('text','').endswith('.mp4'));tap(video);tap('Converter áudio')
  until=time.monotonic()+30
@@ -83,7 +94,7 @@ try:
  capture('74-biblioteca-artistas');tap('Menu da biblioteca',True);tap('Organizar biblioteca');assert any(n.attrib.get('text')=='Copiar favoritas para a pasta do Onda' for n in nodes());capture('75-organizar-e-copiar-favoritas');tap('Fechar')
  tap('Menu da biblioteca',True);tap('Controles de áudio');tap('Velocidade de áudio');tap('1,25×');time.sleep(.4);speed=ET.fromstring(shell('run-as',P,'cat','shared_prefs/playback_tools.xml'));assert any(n.attrib.get('name')=='speed' and n.attrib.get('value')=='3' for n in speed);capture('78-controles-audio')
  (OUT/'evolution-ui-tests.json').write_text(json.dumps(dict(folderNavigation=True,localAacInspection=True,localM4aConversion=True,audioSpeedSetting=True),indent=2))
- (OUT/'download-center-tests.json').write_text(json.dumps(dict(retryReanalysesSource=True,savesInOndaVideoFolder=True,completedRecord=True,libraryArtistSort=True,folderNativeChecks=folder),indent=2,ensure_ascii=False))
+ (OUT/'download-center-tests.json').write_text(json.dumps(dict(accentInsensitiveSearch=True,audioVideoFilters=True,titleOrdering=True,completedShareAction=True,retryReanalysesSource=True,savesInOndaVideoFolder=True,completedRecord=True,libraryArtistSort=True,folderNativeChecks=folder),indent=2,ensure_ascii=False))
 except Exception:
  capture('download-center-failure');(OUT/'download-center-logcat.txt').write_bytes(adb('logcat','-d'));raise
 finally:
