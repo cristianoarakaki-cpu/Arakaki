@@ -1,5 +1,5 @@
 {
-  "versionCode": 14,
-  "versionName": "1.11.0",
-  "notes": "Scanner com correção de perspectiva offline por quatro cantos marcados manualmente. Arraste os cantos, toque na foto ou use coordenadas em porcentagem. Prévia da imagem retificada antes de gerar PDF, validação contra cantos cruzados e preservação dos ajustes por foto. Mantém o recorte retangular e os filtros."
+  "versionCode": 15,
+  "versionName": "1.12.0",
+  "notes": "Scanner com sugestão automática de quatro cantos offline para papel claro sobre fundo contrastante. Revise a marcação e escolha Usar estes cantos ou Descartar; os ajustes atuais só mudam ao aceitar. Falta de contraste, papel fora da foto ou áreas ambíguas mantêm o ajuste manual. Correção de perspectiva e prévia continuam disponíveis."
 }

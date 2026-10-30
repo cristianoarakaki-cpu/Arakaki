@@ -27,6 +27,8 @@ jobs:
           node --check PrismaPDF/assets/signature.js
           node --check PrismaPDF/assets/scanner.js
           node --check PrismaPDF/assets/scan-core.js
+          node --check PrismaPDF/assets/scan-detect.js
+          node PrismaPDF/tools/test_scan_detect.cjs
           node PrismaPDF/tools/test_scan.cjs
           node --check PrismaPDF/assets/compression.js
           node --check PrismaPDF/assets/compression-core.js
