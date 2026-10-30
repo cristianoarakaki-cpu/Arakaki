@@ -22,6 +22,7 @@ final class YoutubeDownloads {
   List<Option> options=new ArrayList<>();AudioStream audio=null;
   for(AudioStream a:info.getAudioStreams())if(usable(a)&&a.getFormat()==MediaFormat.M4A&&(audio==null||a.getAverageBitrate()>audio.getAverageBitrate()))audio=a;
   if(audio!=null){options.add(new Option("Áudio MP3 • 192 kbps • converter",audio.getContent(),null,"mp3","audio/mpeg"));}
+  if(audio!=null)options.add(new Option("Áudio AAC • sem recodificar",audio.getContent(),null,"aac","audio/aac"));
   if(audio!=null)options.add(new Option("Áudio M4A • "+audio.getAverageBitrate()+" kbps",audio.getContent(),null,"m4a","audio/mp4"));
   Set<String> resolutions=new HashSet<>();
   for(VideoStream v:info.getVideoStreams())if(usable(v)&&v.getFormat()==MediaFormat.MPEG_4&&!v.isVideoOnly()&&resolutions.add(v.getResolution()))options.add(new Option("Vídeo MP4 • "+v.getResolution()+" • com som",v.getContent(),null,"mp4","video/mp4"));
@@ -42,7 +43,7 @@ final class YoutubeDownloads {
   }finally{ExtractorHttp.end();}
  }
  static Option choose(Result result,String format)throws Exception{
-  if("mp3".equals(format)||"m4a".equals(format)){for(Option o:result.options)if(o.extension.equals(format))return o;}
+  if("mp3".equals(format)||"m4a".equals(format)||"aac".equals(format)){for(Option o:result.options)if(o.extension.equals(format))return o;}
   if("mp4".equals(format)){Option best=null;int bestHeight=0;for(Option o:result.options)if(o.extension.equals("mp4")){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(\\d+)p").matcher(o.title);int h=m.find()?Integer.parseInt(m.group(1)):0;if(h>0&&h<=720&&h>bestHeight){best=o;bestHeight=h;}}if(best!=null)return best;}
   throw new Exception("Formato escolhido indisponível para este vídeo.");
  }

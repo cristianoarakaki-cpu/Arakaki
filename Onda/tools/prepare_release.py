@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — OCR local e conferência de boletos
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube no Onda, páginas públicas e AAC
+
+Downloads → abas Links e YouTube. Navegue pelo site móvel oficial dentro do app e toque Ver formatos para baixar ao escolher vídeo ou playlist. O botão transfere o endereço ao analisador. Atalho em Explorar. Android System WebView necessário. A página é pausada e destruída ao sair da tela para evitar navegador e mídia ocultos; voltar recarrega o último endereço.
+
+Mais links: páginas HTTPS públicas com arquivos MP4, MP3, M4A e AAC declarados em video/audio/source, Open Graph e dados estruturados. Até 1 MB de página, 6 candidatos conferidos e 3 fontes oferecidas, sem executar scripts ou usar cookies de login. Arquivos reais validados antes de salvar. Limites, reconexões, cancelamento, pastas e Central mantidos.
+
+Áudio: MP3 (192 kbps), M4A e novo AAC-LC em ADTS, que preserva os pacotes sem recodificar. AAC também em playlists e na pasta Onda/Áudios. Extrações dependem da faixa e formato disponíveis; conversão não aumenta qualidade. M4A/AAC evitam codificar MP3.
+
+Não baixa de qualquer site: sem DRM, login/verificações, HLS/DASH ou players dinâmicos sem arquivo declarado. YouTube/TikTok podem bloquear a análise por rede/região, mesmo quando o vídeo toca no site. Sem API paga ou nova permissão. Testes de pacotes AAC, download real, análise pública, fluxo da aba e encerramento do navegador no Android. Economia de bateria não foi medida em aparelho físico.
+
+Recursos anteriores — OCR local e conferência de boletos
 
 PDF → Menu → Texto da página usa texto original primeiro e OCR se a página for imagem. OCR da página também lê partes digitalizadas em páginas mistas. Modelo português incluído, sem enviar documentos ou baixar modelo no celular. Texto reconhecido é selecionável/copiável, com identificação de OCR para revisão.
 

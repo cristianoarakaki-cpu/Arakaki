@@ -31,7 +31,7 @@ final class ResilientDownload {
   return network||e instanceof Changed||(e instanceof HttpFailure&&(((HttpFailure)e).status==408||((HttpFailure)e).status==500||((HttpFailure)e).status==502||((HttpFailure)e).status==503||((HttpFailure)e).status==504));
  }
  static void fetch(String link,File target,long maxBytes,String agent,Control control)throws IOException {fetch(link,target,maxBytes,agent,control,"");}
- static void fetch(String link,File target,long maxBytes,String agent,Control control,String referer)throws IOException {fetch(link,target,maxBytes,agent,control,url->{HttpURLConnection c=PublicMediaHttp.open(url);if(referer!=null&&!referer.isEmpty()){try{c.setRequestProperty("Referer",MediaLinks.tiktok(referer));}catch(Exception e){c.disconnect();throw new IOException("Origem do vídeo inválida",e);}}return c;},Thread::sleep);}
+ static void fetch(String link,File target,long maxBytes,String agent,Control control,String referer)throws IOException {fetch(link,target,maxBytes,agent,control,url->{HttpURLConnection c=PublicMediaHttp.open(url);if(referer!=null&&!referer.isEmpty()){try{c.setRequestProperty("Referer",MediaLinks.referer(referer));}catch(Exception e){c.disconnect();throw new IOException("Origem do vídeo inválida",e);}}return c;},Thread::sleep);}
  static void fetch(String link,File target,long maxBytes,String agent,Control control,Factory factory,Sleeper sleeper)throws IOException {
   URL initial=new URL(link);https(initial);if(maxBytes<=0||maxBytes>MAX)throw new IOException("Limite de tamanho atingido");
   try(RandomAccessFile fresh=new RandomAccessFile(target,"rw")){fresh.setLength(0);}long expected=-1;String validator=null;boolean useEtag=false;int failures=0,requests=0;

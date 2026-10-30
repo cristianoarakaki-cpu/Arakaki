@@ -1,3 +1,17 @@
+## Onda Música 0.46.0 — YouTube no Onda, páginas públicas e AAC
+
+Downloads agora tem abas Links e YouTube. A aba YouTube abre o site móvel oficial dentro do Onda, com pesquisa e navegação do próprio site. Escolha um vídeo ou playlist e toque Ver formatos para baixar: o endereço passa para o analisador do Onda. Também há atalho YouTube no Onda em Explorar. A página usa Android System WebView e pode exigir atualização desse componente. Navegação restrita aos domínios oficiais do YouTube; login externo pode ser feito no navegador. Reprodução depende de toque, sem autoplay forçado.
+
+A página WebView é pausada e destruída ao sair da tela; voltar recarrega o último endereço, sem garantir a posição do vídeo. Sem navegador, vídeos ou scripts ocultos em segundo plano, serviço adicional de varredura ou nova permissão. O site oficial usa rede e processamento enquanto estiver aberto. Downloads continuam sendo solicitados explicitamente e usam a Central e o serviço já existente.
+
+O analisador também aceita páginas HTTPS públicas que declarem arquivos MP4, MP3, M4A ou AAC em tags video/audio/source, metadados Open Graph ou dados estruturados VideoObject/AudioObject. Não executa scripts da página. Lê até 1 MB de HTML, considera até 12 declarações, confere até 6 candidatos (prefixo de até 64 KB) e oferece até 3 fontes acessíveis. Cada fonte tem opções identificadas; extração de áudio depende de faixa AAC compatível. Mantém validação do arquivo real antes de salvar, limite de tamanho, cancelamento e reconexões. Usa o referer da página, sem cookies de login, servidores de download terceirizados ou solução de desafios.
+
+Novo formato de áudio AAC (.aac, ADTS): extrai pacotes AAC-LC mono/estéreo sem recodificar. MP3 a 192 kbps e M4A continuam disponíveis quando compatíveis, inclusive em playlists; AAC também pode ser escolhido na fila e salvo em Onda/Áudios. M4A/AAC evitam a conversão MP3, mas não melhoram a qualidade da fonte. Tipos AAC incompatíveis são recusados com orientação para usar M4A.
+
+A atualização não permite baixar de qualquer site. Conteúdo protegido por DRM, players dinâmicos sem arquivo declarado, streams HLS/DASH, lives e páginas que exigem login/verificação não são suportados. A disponibilidade do YouTube e TikTok continua dependente do provedor, da região e da rede; verificação anti-bot pode impedir formatos mesmo quando o vídeo toca no site oficial. A versão do NewPipe Extractor continua v0.26.5, última release pública consultada nesta atualização. Sem API paga. Testes incluem preservação de cada pacote AAC, arquivo AAC reconhecido pelo Android, serviço real de download, parser com fontes falsas e limites, navegação e encerramento do WebView e página pública real de teste.
+
+Instale sobre a versão existente, sem desinstalar. Mantém OCR, aparências, pastas, favoritos e demais recursos. Não há medição de consumo em aparelho físico.
+
 ## Onda Música 0.45.0 — OCR local e conferência de boletos
 
 PDF → Menu → Texto da página: usa o texto original primeiro; se estiver vazio, reconhece a imagem por OCR. OCR da página permite ler também partes digitalizadas de páginas que já têm texto. Modelo rápido em português incluído no APK, sem baixar modelo no celular nem enviar documentos. Texto reconhecido é identificado como OCR e pode ser selecionado ou copiado; não modifica o PDF nem cria uma camada de texto sobre a página.

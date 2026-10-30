@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -147,6 +147,12 @@ jobs:
           script: |
             python Onda/tools/check_upgrade.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -e class br.com.onda.DownloadExpansionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-download-expansion-tests.txt
+            cat /tmp/onda-download-expansion-tests.txt
+            python -c 's=open("/tmp/onda-download-expansion-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/youtube-ui.png > Onda/ui-preview/85-youtube-tab.png
+            adb shell am force-stop br.com.onda.musica
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class br.com.onda.PdfOcrTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-ocr-tests.txt
             cat /tmp/onda-ocr-tests.txt
             python -c 's=open("/tmp/onda-ocr-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
@@ -157,6 +163,7 @@ jobs:
             python -c 's=open("/tmp/onda-original-media-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             python Onda/tools/check_media_links.py
+            python Onda/tools/check_public_downloads.py
             adb shell am instrument -w -e class br.com.onda.TiktokDownloadTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-tiktok-download-tests.txt
             cat /tmp/onda-tiktok-download-tests.txt
             adb exec-out run-as br.com.onda.musica cat files/tiktok-download-tests.json > Onda/ui-preview/tiktok-download-tests.json
@@ -211,7 +218,7 @@ jobs:
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.DownloadExpansionTest,br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (30 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
@@ -241,6 +248,7 @@ jobs:
             /tmp/onda-evolution-tests.txt
             /tmp/onda-appearance-tests.txt
             /tmp/onda-ocr-tests.txt
+            /tmp/onda-download-expansion-tests.txt
             /tmp/onda-memory-tests.txt
             Onda/app/build/reports/
 
@@ -253,18 +261,6 @@ jobs:
           ONDA_TAG: ${{ steps.update_release.outputs.tag }}
           ONDA_VERSION: ${{ steps.update_release.outputs.version }}
         run: |
-          CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
-            BUILT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$GITHUB_SHA" --jq '.tree[] | select(.path == "Onda") | .sha')
-            CURRENT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$CURRENT_HEAD" --jq '.tree[] | select(.path == "Onda") | .sha')
-            BUILT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$GITHUB_SHA" --jq '.sha')
-            CURRENT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$CURRENT_HEAD" --jq '.sha')
-            if [ -z "$BUILT_ONDA" ] || [ -z "$BUILT_WORKFLOW" ] || [ "$BUILT_ONDA" != "$CURRENT_ONDA" ] || [ "$BUILT_WORKFLOW" != "$CURRENT_WORKFLOW" ]; then
-              echo "Onda ou sua verificação mudou: a publicação aguarda o build atualizado."
-              exit 0
-            fi
-            echo "Somente outros projetos mudaram; o Onda publicado corresponde exatamente ao código testado."
-          fi
           if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
             echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
           else
@@ -272,5 +268,17 @@ jobs:
             curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
             curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
             sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
-            gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$GITHUB_SHA" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md
+            CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
+              BUILT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$GITHUB_SHA" --jq '.tree[] | select(.path == "Onda") | .sha')
+              CURRENT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$CURRENT_HEAD" --jq '.tree[] | select(.path == "Onda") | .sha')
+              BUILT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$GITHUB_SHA" --jq '.sha')
+              CURRENT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$CURRENT_HEAD" --jq '.sha')
+              if [ -z "$BUILT_ONDA" ] || [ -z "$BUILT_WORKFLOW" ] || [ "$BUILT_ONDA" != "$CURRENT_ONDA" ] || [ "$BUILT_WORKFLOW" != "$CURRENT_WORKFLOW" ]; then
+                echo "Onda ou sua verificação mudou: a publicação aguarda o build atualizado."
+                exit 0
+              fi
+              echo "Somente outros projetos mudaram; o Onda publicado corresponde exatamente ao código testado."
+            fi
+            gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md
           fi
