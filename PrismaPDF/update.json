@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 10,
-  "versionName": "1.8.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.8.0/Prisma-PDF.apk",
-  "sha256": "332a3928208601672e1efa4401d2dc7057fb7a50787e595e6176ba2451950001",
-  "notes": "Novas ferramentas offline: Organizar PDF com miniaturas, arrastar ou mover por setas, girar, remover, desfazer e restaurar páginas. Comprimir PDF com níveis suave/equilibrado/forte, recompressão de imagens compatíveis preservando texto e comparação real de tamanho. Só oferece cópia comprimida quando ela fica menor.",
+  "versionCode": 11,
+  "versionName": "1.8.1",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.8.1/Prisma-PDF.apk",
+  "sha256": "a252aa7ad7dc8cf85a8e86dc98fa2e5ce883af0b7c73a2563eb8973cb5b4b37c",
+  "notes": "Novas ferramentas offline: Organizar PDF com miniaturas, arrastar ou mover por setas, girar, remover, desfazer e restaurar páginas. Comprimir PDF com níveis suave/equilibrado/forte, recompressão de imagens compatíveis preservando texto e comparação real de tamanho. Só oferece cópia comprimida quando ela fica menor. A prévia de leitura preserva a organização, as marcações e os resultados ao voltar para a ferramenta.",
   "downloadAvailable": true
 }
