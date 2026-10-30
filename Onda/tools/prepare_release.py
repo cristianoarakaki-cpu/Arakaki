@@ -31,7 +31,7 @@ manifest = {
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 (output / 'notes.md').write_text(f"""Onda Música {version_name} — Proteção de anúncios no YouTube
 
-YouTube no Onda → Menu → Proteção de anúncios. Proteção local ativada por padrão, com opção de desligar e recarregar se atrapalhar a página. Conta solicitações publicitárias bloqueadas na sessão, não quantidade de anúncios. A preferência fica salva neste celular.
+YouTube no Onda → Menu → Proteção de anúncios. Proteção local ativada por padrão, com opção de desligar e recarregar se atrapalhar a página. Conta solicitações publicitárias bloqueadas na sessão, não quantidade de anúncios. A preferência fica salva neste celular. Também ignora retornos atrasados da página anterior durante uma nova busca por voz ou texto, preservando a pesquisa solicitada.
 
 Bloqueia subrecursos de seis domínios exclusivos de publicidade e seus subdomínios, respeitando limites de nome; não bloqueia a página principal, youtube.com, youtubei.googleapis.com, googlevideo.com ou ytimg.com. Uma folha de estilo local oculta cartões patrocinados móveis conhecidos. Não altera respostas do player, não pula vídeos, não automatiza botões, não burla verificações e não garante remover anúncios inseridos no próprio fluxo do vídeo. O YouTube pode alterar o site ou restringir reprodução com bloqueadores.
 
