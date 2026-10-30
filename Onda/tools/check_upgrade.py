@@ -43,12 +43,12 @@ for name,values in seeds.items():shell('run-as',PACKAGE,'sh','-c','cat > shared_
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1);shell('am','force-stop',PACKAGE)
 for name,values in seeds.items():assert read(name)==values,('Old Onda did not retain its seed',name)
 adb('install','-r',str(current));new_info=shell('dumpsys','package',PACKAGE).decode()
-assert re.search(r'versionCode=61\b',new_info),'The main Onda was not upgraded'
+assert re.search(r'versionCode=62\b',new_info),'The main Onda was not upgraded'
 assert re.search(r'userId=(\d+)',old_info).group(1)==re.search(r'userId=(\d+)',new_info).group(1),'App UID changed'
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1);shell('am','force-stop',PACKAGE)
 for name,values in seeds.items():assert read(name)==values,('Upgrade lost data',name)
 output=Path('Onda/ui-preview');output.mkdir(exist_ok=True,parents=True)
-(output/'upgrade-tests.json').write_text(json.dumps({'from':'0.21.1','to':'0.51.0','installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
+(output/'upgrade-tests.json').write_text(json.dumps({'from':'0.21.1','to':'0.52.0','installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
 print('Real Onda upgrade passed: favorites, playlists, voice phrases and sound settings retained.')
 # Reset only the emulator test fixture, so the existing regression suite starts in its normal state.
 shell('pm','clear',PACKAGE)

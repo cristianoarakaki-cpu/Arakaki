@@ -33,6 +33,7 @@ public class PlaybackService extends MediaSessionService {
         soundRoutes=new SoundRoutes(()->{if(player!=null&&!destroyed)applySound();},speech);
         player=new ExoPlayer.Builder(this,soundRoutes.renderers(this)).build();player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);applySpeech();player.setPlaybackParameters(new PlaybackParameters(AudioPlaybackOptions.SPEEDS[AudioPlaybackOptions.saved(this)],1f));
         player.addListener(new Player.Listener(){
+            @Override public void onPlayerError(PlaybackException error){MediaItem item=player.getCurrentMediaItem();if(error.errorCode==PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED&&item!=null&&item.localConfiguration!=null)HiddenMedia.hide(PlaybackService.this,"audio",item.localConfiguration.uri);}
             @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
             @Override public void onPositionDiscontinuity(Player.PositionInfo oldPosition,Player.PositionInfo newPosition,int reason){
                 MediaItem old=oldPosition.mediaItem,next=newPosition.mediaItem;

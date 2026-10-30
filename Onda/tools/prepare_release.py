@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Biblioteca mais leve e menos trabalho em repouso
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — MP3 de alta taxa, mais fontes e listas organizadas
+
+MP3 em 128, 192, 256 ou 320 kbps, com escolha em Conversor local e Downloads → Qualidade MP3. Padrão preservado em 192 kbps; preferência salva no celular e capturada por operação, também em novas conversões de downloads/playlists. Arquivos MP3 originais baixados sem conversão mantêm sua taxa. kbps é a taxa de dados, diferente de Hz. Taxas maiores não recuperam qualidade perdida e geram arquivos maiores. Para fontes abaixo de 32 kHz, LAME reamostra a saída para 44,1 kHz ao escolher 256/320 kbps, pois essas taxas exigem MPEG-1; isso não cria detalhes novos.
+
+Conversão local antes restrita a AAC agora aceita faixas mono/estéreo AAC, MP3, FLAC, Opus, Vorbis e outros formatos quando MediaExtractor e um decoder do Android reconhecem o arquivo. WAV PCM de 16 bits tem caminho direto para LAME. O seletor prefere AAC quando disponível para manter a extração M4A sem recodificação; o botão M4A fica desativado nas demais fontes. Sem suporte prometido a todos os codecs, DRM ou áudio multicanal. O tocador de música passa a permitir tentativa de outro decoder disponível quando a inicialização falha; mantém Media3 e o motor LibVLC existente de vídeo, incluindo fallback de hardware para software. Não adiciona um pacote pesado de codecs, nem muda o motor de reprodução.
+
+Arquivos locais com erro explícito de formato não suportado pelo decoder de áudio são ocultados da biblioteca principal. Outros erros oferecem Ocultar da lista sem classificar automaticamente falhas de acesso como incompatibilidade. Vídeos oferecem ocultação após falha também na tentativa por software, já que o evento genérico do LibVLC não distingue com certeza um codec ausente de arquivo danificado. Nada é apagado, e favoritas/listas/filas existentes são preservadas. Organizar biblioteca → Arquivos ocultos / incompatíveis ou o mesmo item no menu de vídeos permite restaurar todas as referências de cada tipo. Até 200 por tipo; não aplica a busca unificada ou listas salvas. Reabra um arquivo pelo Android ou restaure após substituí-lo/atualizar codecs. Sem varredura de codecs, processamento contínuo ou serviços novos.
+
+Validação nativa dedicada verifica quadros MP3 reais em 256/320 kbps e áudio PCM audível de MP4/AAC, FLAC, WAV16, MP3, Opus, Vorbis, AAC de 22,05 kHz e AAC estéreo de 48 kHz; conversão pelo serviço em 320 kbps; estado do seletor e botão M4A; ocultação/restauração nas duas listas, limite e preservação de favoritos. A suíte anterior, a biblioteca de 3.000 músicas e a instalação sobre a versão anterior continuam obrigatórias. Limites de 512 MB e 30 minutos por conversão, cancelamento, originais e pastas existentes mantidos. Economia de bateria não medida em aparelho físico.
+
+Instale sobre o app atual, sem desinstalar. Mantém PDFs/OCR, áudio/vídeo em segundo plano, voz, YouTube, proteção de anúncios, downloads, conversões, Conecta, temas, listas e demais funções anteriores.
+
+Recursos anteriores — biblioteca mais leve e menos trabalho em repouso
 
 Biblioteca principal com lista nativa que reutiliza cartões conforme a rolagem. Mantém todos os registros carregados, a ordem, os grupos de artista/álbum, favoritas, filtro Downloads do Onda, busca por campos, destaque da música atual, toque para reproduzir a seleção completa e toque longo para organizar a fila. Não limita a lista aos itens visíveis.
 

@@ -1,0 +1,46 @@
+package br.com.onda;
+import android.app.*;
+import android.content.*;
+import android.net.Uri;
+import android.os.*;
+import android.widget.*;
+import androidx.media3.common.*;
+import org.junit.*;
+import static org.junit.Assert.*;
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+@androidx.media3.common.util.UnstableApi
+public class CodecEvolutionTest {
+ private final Instrumentation ins=getInstrumentation();private final Context c=ins.getTargetContext();private Activity activity;private final List<File> files=new ArrayList<>();private final Map<String,Map<String,?>> saved=new HashMap<>();
+ private Object get(Object o,String n)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);return f.get(o);}
+ private void render()throws Exception{Method m=activity.getClass().getDeclaredMethod("render");m.setAccessible(true);m.invoke(activity);}
+ private interface Check{boolean ok()throws Exception;}
+ private void waitFor(Check check)throws Exception{long end=SystemClock.elapsedRealtime()+20000;while(SystemClock.elapsedRealtime()<end){boolean[] ok={false};ins.runOnMainSync(()->{try{ok[0]=check.ok();}catch(Exception e){throw new RuntimeException(e);}});if(ok[0])return;Thread.sleep(100);}throw new AssertionError("Native codec UI timed out");}
+ private File temp(String suffix)throws Exception{File f=File.createTempFile("onda-codec-",suffix,c.getCacheDir());files.add(f);return f;}
+ private File fixture(String name)throws Exception{File f=temp(".input");try(InputStream in=ins.getContext().getAssets().open(name);OutputStream out=new FileOutputStream(f)){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}return f;}
+ private void rate(File mp3,int expected)throws Exception{byte[] b=new byte[8192];int n;try(InputStream in=new FileInputStream(mp3)){n=in.read(b);}int[] table={0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0};for(int i=0;i<n-4;i++)if((b[i]&255)==255&&(b[i+1]&0xFE)==0xFA){assertEquals("Real MPEG-1 Layer III frame bit rate",expected,table[(b[i+2]>>>4)&15]);return;}fail("No MPEG-1 Layer III header");}
+ @Before public void before(){for(String n:Arrays.asList("library","hidden_media","conversion","downloads","downloaded_audio"))saved.put(n,c.getSharedPreferences(n,0).getAll());c.getSharedPreferences("hidden_media",0).edit().clear().commit();c.getSharedPreferences("downloads",0).edit().clear().commit();c.getSharedPreferences("library",0).edit().putInt("sort_order",0).putBoolean("downloads_only",false).commit();}
+ @After public void after()throws Exception{c.stopService(new Intent(c,MediaDownloadService.class));long end=SystemClock.elapsedRealtime()+5000;while(MediaDownloadService.activeDownload&&SystemClock.elapsedRealtime()<end)Thread.sleep(50);if(activity!=null){ins.runOnMainSync(()->activity.finish());ins.waitForIdleSync();}for(File f:files)f.delete();for(Map.Entry<String,Map<String,?>> entry:saved.entrySet()){SharedPreferences.Editor e=c.getSharedPreferences(entry.getKey(),0).edit().clear();for(Map.Entry<String,?> item:entry.getValue().entrySet()){Object v=item.getValue();String k=item.getKey();if(v instanceof String)e.putString(k,(String)v);else if(v instanceof Boolean)e.putBoolean(k,(Boolean)v);else if(v instanceof Integer)e.putInt(k,(Integer)v);else if(v instanceof Long)e.putLong(k,(Long)v);else if(v instanceof Float)e.putFloat(k,(Float)v);else if(v instanceof Set)e.putStringSet(k,new HashSet<>((Set<String>)v));}e.commit();}}
+ @Test public void highRateMp3FromSixFormatsAndLowRateSourceContainsRealAudio()throws Exception{
+  String[] sources={"combined.mp4","audio-flac.flac","audio-pcm.wav","audio-lossy.mp3","audio-opus.ogg","audio-vorbis.ogg","audio-low.m4a","audio-stereo.m4a"};
+  for(String name:sources){File source=fixture(name),out=temp(".mp3");long length=source.length();LocalAudio.inspect(c,Uri.fromFile(source));for(int kbps:new int[]{256,320}){LocalAudio.convert(source,out,"mp3",kbps,()->{});rate(out,kbps);new Mp3ConverterTest().verify(out,name.contains("stereo")?2:1);assertEquals(length,source.length());}if(!name.endsWith("m4a")&&!name.endsWith("mp4"))assertFalse(LocalAudio.canExtractAac(c,Uri.fromFile(source)));}
+  File source=fixture("audio.m4a"),out=temp(".mp3");try{Mp3Converter.convert(source,out,999,()->{});fail("Invalid bit rate accepted");}catch(IOException expected){}
+  try(OutputStream report=new FileOutputStream(new File(c.getFilesDir(),"codec-tests.json"))){report.write("{\"bitrates\":[256,320],\"realMp3Frames\":true,\"audibleDecodedPcm\":true,\"sources\":[\"MP4/AAC\",\"FLAC\",\"WAV16\",\"MP3\",\"Opus\",\"Vorbis\",\"AAC22050\",\"AACstereo48000\"]}".getBytes("UTF-8"));}
+ }
+ @Test public void localServiceHonors320KbpsAndConverterKeepsAacExtractionDisabledForFlac()throws Exception{
+  File source=fixture("audio-flac.flac"),out=temp(".mp3");Mp3Quality.save(c,320);activity=ins.startActivitySync(new Intent(c,LocalConverterActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("local_source",Uri.fromFile(source).toString()));waitFor(()->((Button)get(activity,"mp3")).isEnabled());ins.runOnMainSync(()->{try{assertEquals(320,get(activity,"bitrate"));assertTrue(((Button)get(activity,"mp3")).getText().toString().contains("320"));assertFalse(((Button)get(activity,"m4a")).isEnabled());activity.finish();}catch(Exception e){throw new RuntimeException(e);}});ins.waitForIdleSync();activity=null;
+  Intent job=new Intent(c,MediaDownloadService.class).putExtra("conversion_source",Uri.fromFile(source).toString()).putExtra("destination",Uri.fromFile(out).toString()).putExtra("format","mp3").putExtra("mp3_kbps",320).putExtra("title","Codec native");ins.runOnMainSync(()->c.startForegroundService(job));long end=SystemClock.elapsedRealtime()+60000;String status="";while(SystemClock.elapsedRealtime()<end){status=c.getSharedPreferences("downloads",0).getString("status","");if(!MediaDownloadService.activeDownload&&status.startsWith("Conversão concluída"))break;if(!MediaDownloadService.activeDownload&&status.startsWith("Operação interrompida"))fail(status);Thread.sleep(100);}assertTrue(status,status.startsWith("Conversão concluída"));rate(out,320);new Mp3ConverterTest().verify(out,1);assertTrue(source.exists());
+ }
+ @Test public void hiddenFilesAreReversibleInBothListsAndDoNotRemoveFavorites()throws Exception{
+  Uri audio=Uri.parse("content://br.com.onda.codec/audio"),video=Uri.parse("content://br.com.onda.codec/video");Set<String> favorites=new HashSet<>(c.getSharedPreferences("library",0).getStringSet("favorites",Collections.emptySet()));
+  activity=ins.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));waitFor(()->(Boolean)get(activity,"libraryReady")&&get(activity,"player")!=null);
+  ins.runOnMainSync(()->{try{List<MediaItem> songs=(List<MediaItem>)get(activity,"songs");songs.clear();songs.add(new MediaItem.Builder().setMediaId("codec-ui").setUri(audio).setMediaMetadata(new MediaMetadata.Builder().setTitle("Codec fixture").build()).build());render();assertTrue(((List<MediaItem>)get(activity,"visibleSongs")).stream().anyMatch(i->i.mediaId.equals("codec-ui")));HiddenMedia.hide(c,"audio",audio);render();assertFalse(((List<MediaItem>)get(activity,"visibleSongs")).stream().anyMatch(i->i.mediaId.equals("codec-ui")));HiddenMedia.restore(c,"audio");render();assertTrue(((List<MediaItem>)get(activity,"visibleSongs")).stream().anyMatch(i->i.mediaId.equals("codec-ui")));activity.finish();}catch(Exception e){throw new RuntimeException(e);}});ins.waitForIdleSync();
+  activity=ins.startActivitySync(new Intent(c,VideoActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));ins.waitForIdleSync();((ExecutorService)get(activity,"scanner")).submit(()->{}).get(15,TimeUnit.SECONDS);ins.waitForIdleSync();
+  ins.runOnMainSync(()->{try{List<VideoStore.Item> videos=(List<VideoStore.Item>)get(activity,"videos");videos.clear();videos.add(new VideoStore.Item(video,"Codec video","codec.mkv",3000,100));render();assertEquals(1,((List<?>)get(activity,"visible")).size());HiddenMedia.hide(c,"video",video);render();assertEquals(0,((List<?>)get(activity,"visible")).size());HiddenMedia.restore(c,"video");render();assertEquals(1,((List<?>)get(activity,"visible")).size());}catch(Exception e){throw new RuntimeException(e);}});
+  assertEquals(favorites,c.getSharedPreferences("library",0).getStringSet("favorites",Collections.emptySet()));HiddenMedia.hide(c,"audio",Uri.parse("https://example.com/song"));assertTrue(HiddenMedia.read(c,"audio").isEmpty());for(int i=0;i<205;i++)HiddenMedia.hide(c,"audio",Uri.parse("content://br.com.onda.codec/"+i));assertEquals(200,HiddenMedia.read(c,"audio").size());HiddenMedia.hide(c,"video",video);HiddenMedia.restore(c,"audio");assertTrue(HiddenMedia.read(c,"audio").isEmpty());assertTrue(HiddenMedia.read(c,"video").contains(video.toString()));
+ }
+}

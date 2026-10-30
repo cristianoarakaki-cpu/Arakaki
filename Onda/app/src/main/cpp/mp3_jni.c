@@ -3,9 +3,9 @@
 #include "lame.h"
 static void fail(JNIEnv *env,const char *message){(*env)->ThrowNew(env,(*env)->FindClass(env,"java/io/IOException"),message);}
 JNIEXPORT jlong JNICALL Java_br_com_onda_Mp3Converter_open(JNIEnv *env,jclass type,jint rate,jint channels,jint bitrate){
- if((channels!=1&&channels!=2)||rate<8000||rate>48000||(bitrate!=128&&bitrate!=192)){fail(env,"Formato PCM incompatível");return 0;}
+ if((channels!=1&&channels!=2)||rate<8000||rate>192000||(bitrate!=128&&bitrate!=192&&bitrate!=256&&bitrate!=320)){fail(env,"Formato PCM incompatível");return 0;}
  lame_t g=lame_init();if(!g){fail(env,"Não foi possível iniciar o MP3");return 0;}
- lame_set_in_samplerate(g,rate);lame_set_num_channels(g,channels);lame_set_brate(g,bitrate);lame_set_quality(g,3);lame_set_mode(g,channels==1?MONO:JOINT_STEREO);lame_set_bWriteVbrTag(g,0);
+ lame_set_in_samplerate(g,rate);lame_set_num_channels(g,channels);lame_set_brate(g,bitrate);lame_set_VBR(g,vbr_off);if(bitrate>=256&&rate<32000)lame_set_out_samplerate(g,44100);lame_set_quality(g,3);lame_set_mode(g,channels==1?MONO:JOINT_STEREO);lame_set_bWriteVbrTag(g,0);
  if(lame_init_params(g)<0){lame_close(g);fail(env,"Não foi possível configurar o MP3");return 0;}
  return (jlong)(intptr_t)g;
 }

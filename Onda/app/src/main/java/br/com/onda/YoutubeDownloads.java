@@ -22,7 +22,7 @@ final class YoutubeDownloads {
   if(info.getStreamType()!=StreamType.VIDEO_STREAM||info.getDuration()<=0)throw new Exception("Esta versão aceita vídeos gravados, sem transmissão ao vivo.");
   List<Option> options=new ArrayList<>();AudioStream audio=null;
   for(AudioStream a:info.getAudioStreams())if(usable(a)&&a.getFormat()==MediaFormat.M4A&&(audio==null||a.getAverageBitrate()>audio.getAverageBitrate()))audio=a;
-  if(audio!=null){options.add(new Option("Áudio MP3 • 192 kbps • converter",audio.getContent(),null,"mp3","audio/mpeg"));}
+  if(audio!=null){options.add(new Option("Áudio MP3 • taxa configurada • converter",audio.getContent(),null,"mp3","audio/mpeg"));}
   if(audio!=null)options.add(new Option("Áudio AAC • sem recodificar",audio.getContent(),null,"aac","audio/aac"));
   if(audio!=null)options.add(new Option("Áudio M4A • "+audio.getAverageBitrate()+" kbps",audio.getContent(),null,"m4a","audio/mp4"));
   Set<String> resolutions=new HashSet<>();
@@ -46,7 +46,7 @@ final class YoutubeDownloads {
  }
  private static int height(Option option){java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(\\d+)p").matcher(option.title);return matcher.find()?Integer.parseInt(matcher.group(1)):0;}
  private static Option combinedAudioSource(List<Option> options){Option best=null;int rank=Integer.MAX_VALUE;for(Option option:options)if(option.extension.equals("mp4")&&option.combinedAudio){int h=height(option),score=h>0?h:Integer.MAX_VALUE;if(best==null||score<rank){best=option;rank=score;}}return best;}
- private static Option audioFromVideo(Option video,String format){return new Option("Áudio "+format.toUpperCase(Locale.ROOT)+" • extrair do vídeo"+(format.equals("mp3")?" • 192 kbps":""),video.first,null,format,MediaDownloads.mime(format),false,video.referer);}
+ private static Option audioFromVideo(Option video,String format){return new Option("Áudio "+format.toUpperCase(Locale.ROOT)+" • extrair do vídeo"+(format.equals("mp3")?" • taxa configurada":""),video.first,null,format,MediaDownloads.mime(format),false,video.referer);}
  static Option choose(Result result,String format)throws Exception{
   if("mp3".equals(format)||"m4a".equals(format)||"aac".equals(format)){for(Option option:result.options)if(option.extension.equals(format))return option;Option combined=combinedAudioSource(result.options);if(combined!=null)return audioFromVideo(combined,format);}
   if("mp4".equals(format)){Option best=null;int bestHeight=0;for(Option option:result.options)if(option.extension.equals("mp4")){int h=height(option);if(h>0&&h<=720&&h>bestHeight){best=option;bestHeight=h;}}if(best!=null)return best;}

@@ -22,7 +22,7 @@ final class SoundRoutes {
                     main.post(()->attach(created));return created;
                 }).build();
         }
-    };}
+    }.setEnableDecoderFallback(true);}
     private void attach(AudioTrack value){if(closed)return;detach();track=value;
         try{track.addOnRoutingChangedListener(listener,main);}catch(RuntimeException ignored){}
         refresh();
