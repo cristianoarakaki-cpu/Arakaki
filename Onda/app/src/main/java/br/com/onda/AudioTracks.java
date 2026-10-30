@@ -12,6 +12,7 @@ final class AudioTracks {
    return new MediaCodecList(MediaCodecList.REGULAR_CODECS).findDecoderForFormat(f)!=null;
   }catch(RuntimeException e){return false;}
  }
+ static int aacTrack(MediaExtractor ex){for(int i=0;i<ex.getTrackCount();i++)if(aac(ex.getTrackFormat(i)))return i;return -1;}
  static int select(MediaExtractor ex)throws IOException{
   // Prefer AAC to keep the existing lossless M4A extraction choice consistent.
   int other=-1;for(int i=0;i<ex.getTrackCount();i++){MediaFormat f=ex.getTrackFormat(i);if(supported(f)){if(aac(f))return i;if(other<0)other=i;}}

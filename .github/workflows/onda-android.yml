@@ -129,6 +129,7 @@ jobs:
           run("-i",str(root/"audio.m4a"),"-c:a","libopus",str(root/"audio-opus.ogg"))
           run("-i",str(root/"audio.m4a"),"-c:a","libvorbis",str(root/"audio-vorbis.ogg"))
           run("-i",str(root/"audio.m4a"),"-ar","22050","-c:a","aac",str(root/"audio-low.m4a"))
+          run("-i",str(root/"audio.m4a"),"-ac","6","-c:a","aac",str(root/"audio-surround.m4a"))
           PY
           python - <<'PYVOICE'
           import wave,math,struct
