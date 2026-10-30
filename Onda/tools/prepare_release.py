@@ -29,7 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Central de downloads organizada
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Busca por voz no YouTube
+
+Downloads → YouTube: novo campo de busca e microfone do Onda. Toque no microfone, diga o nome da música ou artista e veja os resultados do site oficial dentro da própria aba. Pode digitar ou corrigir o texto e buscar pelo botão ou teclado. Não inicia reprodução ou download automaticamente.
+
+Usa o diálogo de reconhecimento de fala do Android em português do Brasil, somente ao tocar. Sem API paga ou nova permissão de gravação para o Onda; disponibilidade e eventual uso da internet dependem do serviço de voz instalado no aparelho. Se não existir serviço compatível, permite digitar ou usar o microfone do teclado. Cancelar não faz pesquisa. Termos limitados a 160 caracteres, com acentos e símbolos codificados no endereço HTTPS oficial.
+
+A pesquisa é mantida ao recriar a tela; o resultado da voz também é aplicado se o navegador tiver sido encerrado durante o diálogo. Preserva encerramento do WebView ao sair, bloqueio de acesso a arquivos e reprodução por gesto do usuário. Sem escuta contínua, serviço novo em segundo plano ou medição de bateria física. Mantém Central organizada, destino automático e funções anteriores. Instale sobre a versão atual, sem desinstalar.
+
+Recursos anteriores — Central de downloads organizada
 
 Central de downloads com busca local por nome, formato ou origem, ignorando acentos e maiúsculas. Filtros de status combinados com áudio/vídeo e ordenação por data, nome ou bytes transferidos, acessíveis no menu sem encher a tela. Busca e filtros são preservados ao recriar a tela. Até 200 registros já existentes; não varre arquivos do celular.
 

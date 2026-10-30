@@ -10,14 +10,17 @@ import java.util.ArrayList;
 final class VoiceSearch {
     static final int REQUEST=7301;
     static void start(Activity activity,boolean local){
+        start(activity,local,"Diga: toque as favoritas, próxima música ou ajuda");
+    }
+    static boolean start(Activity activity,boolean local,String prompt){
         Intent intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE,"pt-BR")
             .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3)
-            .putExtra(RecognizerIntent.EXTRA_PROMPT,"Diga: toque as favoritas, próxima música ou ajuda")
+            .putExtra(RecognizerIntent.EXTRA_PROMPT,prompt)
             .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,local);
-        try{activity.startActivityForResult(intent,REQUEST);}
-        catch(ActivityNotFoundException|SecurityException e){Toast.makeText(activity,"Reconhecimento de voz indisponível neste celular. Você pode digitar a busca ou usar o microfone do teclado.",Toast.LENGTH_LONG).show();}
+        try{activity.startActivityForResult(intent,REQUEST);return true;}
+        catch(ActivityNotFoundException|SecurityException e){Toast.makeText(activity,"Reconhecimento de voz indisponível neste celular. Você pode digitar a busca ou usar o microfone do teclado.",Toast.LENGTH_LONG).show();return false;}
     }
     static void help(Activity activity){
         new android.app.AlertDialog.Builder(activity).setTitle("Comandos de voz")
