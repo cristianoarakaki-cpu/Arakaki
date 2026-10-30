@@ -151,7 +151,8 @@ jobs:
             cat /tmp/onda-download-expansion-tests.txt
             adb exec-out run-as br.com.onda.musica cat files/youtube-ui.png > Onda/ui-preview/85-youtube-tab.png || true
             adb exec-out run-as br.com.onda.musica cat files/youtube-voice-ui.png > Onda/ui-preview/89-youtube-voz.png || true
-            python -c 's=open("/tmp/onda-download-expansion-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/youtube-protection-ui.png > Onda/ui-preview/90-youtube-protecao.png || true
+            python -c 's=open("/tmp/onda-download-expansion-tests.txt").read(); assert "OK (8 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class br.com.onda.PdfOcrTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-ocr-tests.txt

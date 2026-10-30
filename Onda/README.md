@@ -1,3 +1,11 @@
+## Onda Música 0.50.0 — Proteção de anúncios no YouTube
+
+YouTube no Onda → Menu → Proteção de anúncios. Proteção local ativada por padrão, com opção de desligar e recarregar se atrapalhar a página. Conta solicitações publicitárias bloqueadas na sessão, não quantidade de anúncios. A preferência fica salva neste celular.
+
+Bloqueia subrecursos de seis domínios exclusivos de publicidade e seus subdomínios, respeitando limites de nome; não bloqueia a página principal, youtube.com, youtubei.googleapis.com, googlevideo.com ou ytimg.com. Uma folha de estilo local oculta cartões patrocinados móveis conhecidos. Não altera respostas do player, não pula vídeos, não automatiza botões, não burla verificações e não garante remover anúncios inseridos no próprio fluxo do vídeo. O YouTube pode alterar o site ou restringir reprodução com bloqueadores.
+
+Implementação própria: não incorpora nem é afiliada ao AdGuard. Sem VPN, certificado instalado, DNS global, servidor intermediário, API paga, lista externa, varredura contínua, timer ou observador de DOM. Regras simples por solicitação e estilo uma vez por carregamento de página. Só na aba YouTube; downloads, navegador externo e demais aplicativos não são filtrados. Mantém busca por voz, encerramento do navegador ao sair e funções anteriores. Economia de bateria não foi medida em aparelho físico. Instale sobre a versão atual, sem desinstalar.
+
 ## Onda Música 0.49.0 — Busca por voz no YouTube
 
 Downloads → YouTube: novo campo de busca e microfone do Onda. Toque no microfone, diga o nome da música ou artista e veja os resultados do site oficial dentro da própria aba. Pode digitar ou corrigir o texto e buscar pelo botão ou teclado. Não inicia reprodução ou download automaticamente.
