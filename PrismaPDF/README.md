@@ -93,3 +93,7 @@ Limitações: preparação e seleção são heurísticas; fotos desfocadas, somb
 Organizador offline com miniaturas (até 100 páginas), arraste por botão dedicado no celular/computador, setas acessíveis, rotação por página, remoção com proteção contra documento vazio, desfazer até 30 alterações e restauração completa. Exporta as páginas na ordem escolhida sem rasterizar o texto. Formulários interativos, marcadores e assinaturas podem ser afetados pela criação de uma nova cópia.
 
 Compressão preservando texto e estrutura das páginas: recomprime XObjects JPEG RGB/cinza sem metadados EXIF/ICC, e Flate RGB/cinza de 8 bits sem preditores, transparência ou máscaras. Perfis suave (até 2400px/.85), equilibrado (1800px/.72), forte (1200px/.5). Não amplia imagens. Imagens incompatíveis/complexas, ícones pequenos e imagens acima de 16MP são mantidos. Decodificação Flate limitada ao tamanho esperado mais um byte para rejeitar dados incompatíveis. Só substitui o stream se a imagem comprimida ficar menor; só oferece resultado se o PDF final ficar menor que a entrada. Mostra antes/depois e redução real, sem garantir um percentual fixo. Não é uma ferramenta de ocultação; conteúdo e metadados do PDF não são removidos.
+
+## Versão 1.8.1
+
+Preserva o estado do organizador e da ocultação quando o usuário abre a cópia gerada no leitor e volta à ferramenta. Ordem, giros, marcações e resultados só são descartados ao sair para outra seção ou mudar o arquivo/ferramenta. Teste de abrir a prévia e retornar ao organizador incluído.
