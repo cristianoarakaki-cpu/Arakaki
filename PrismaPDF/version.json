@@ -1,5 +1,5 @@
 {
-  "versionCode": 13,
-  "versionName": "1.10.0",
-  "notes": "Scanner offline: fotografe com a câmera do aparelho ou escolha imagens, revise até 20 fotos, faça recorte retangular manual, gire e escolha filtros colorido/cinza/preto e branco por foto. Gera PDF A4 em proporção original. Sem correção de perspectiva nesta versão. Cancelar a câmera preserva a seleção; o Prisma não envia as fotos para servidores."
+  "versionCode": 14,
+  "versionName": "1.11.0",
+  "notes": "Scanner com correção de perspectiva offline por quatro cantos marcados manualmente. Arraste os cantos, toque na foto ou use coordenadas em porcentagem. Prévia da imagem retificada antes de gerar PDF, validação contra cantos cruzados e preservação dos ajustes por foto. Mantém o recorte retangular e os filtros."
 }
