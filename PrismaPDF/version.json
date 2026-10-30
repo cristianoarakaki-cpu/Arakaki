@@ -1,5 +1,5 @@
 {
-  "versionCode": 9,
-  "versionName": "1.7.0",
-  "notes": "OCR offline aprimorado: maior resolução, ampliação controlada de imagens pequenas, contraste ajustado e comparação de duas leituras no modo reforçado. Giro da imagem para reconhecimento e índices de baixa confiança. Boletos continuam exigindo dígitos verificadores válidos; não há troca automática de letras por números. Ocultação e conferência consideram as duas leituras."
+  "versionCode": 10,
+  "versionName": "1.8.0",
+  "notes": "Novas ferramentas offline: Organizar PDF com miniaturas, arrastar ou mover por setas, girar, remover, desfazer e restaurar páginas. Comprimir PDF com níveis suave/equilibrado/forte, recompressão de imagens compatíveis preservando texto e comparação real de tamanho. Só oferece cópia comprimida quando ela fica menor."
 }
