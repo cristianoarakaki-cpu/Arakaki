@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 11,
-  "versionName": "1.8.1",
-  "notes": "Novas ferramentas offline: Organizar PDF com miniaturas, arrastar ou mover por setas, girar, remover, desfazer e restaurar páginas. Comprimir PDF com níveis suave/equilibrado/forte, recompressão de imagens compatíveis preservando texto e comparação real de tamanho. Só oferece cópia comprimida quando ela fica menor. A prévia de leitura preserva a organização, as marcações e os resultados ao voltar para a ferramenta.",
-  "size": 14719927,
-  "sha256": "a252aa7ad7dc8cf85a8e86dc98fa2e5ce883af0b7c73a2563eb8973cb5b4b37c",
+  "versionCode": 12,
+  "versionName": "1.9.0",
+  "notes": "Nova assinatura desenhada offline: desenhe com o dedo, desfaça traços, escolha a página e ajuste tamanho e posição na prévia. Gera cópia preservando o texto, inclusive em páginas giradas ou recortadas. O desenho não é salvo como modelo. Assinatura visual, sem certificado digital.",
+  "size": 14724088,
+  "sha256": "228e6e62fe243c56cc61ffa685fd276a0be598d57574692d55e7c9f288d3b68f",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.8.1/Prisma-PDF.apk",
-  "sourceBuildCommit": "35ef107f28a40fcd07b596e28def17eebb296ec0",
-  "sourceValidationRun": 40980673739
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.9.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "32e1abc72cd38ff51a514eabfbda25c167012f7b",
+  "sourceValidationRun": 40985612865
 }

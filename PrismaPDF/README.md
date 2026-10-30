@@ -97,3 +97,11 @@ Compressão preservando texto e estrutura das páginas: recomprime XObjects JPEG
 ## Versão 1.8.1
 
 Preserva o estado do organizador e da ocultação quando o usuário abre a cópia gerada no leitor e volta à ferramenta. Ordem, giros, marcações e resultados só são descartados ao sair para outra seção ou mudar o arquivo/ferramenta. Teste de abrir a prévia e retornar ao organizador incluído.
+
+## Versão 1.9.0 — Assinatura desenhada
+
+Assinatura visual offline com dedo ou caneta, desfazer traço e apagar. Seletor de página, ajuste de tamanho e posição por controles ou toque na prévia. O desenho usa PNG transparente e é inserido na página existente, sem rasterizar seu texto. Coordenadas da prévia são convertidas para o espaço PDF, respeitando rotação e origem do recorte. Até 100 páginas no arquivo. Uma página recebe a assinatura por geração; o usuário pode repetir com a cópia para outras páginas.
+
+O desenho permanece somente na memória da sessão, não é salvo como modelo e é descartado ao sair da ferramenta ou trocar o arquivo. Abrir a cópia no leitor e voltar preserva a edição. Mudanças no desenho, página ou posição retiram resultados anteriores para evitar compartilhar cópia desatualizada. Exportar, compartilhar ou guardar é uma ação explícita. Assinatura visual não usa certificado nem comprova identidade; alterações invalidam assinaturas digitais existentes.
+
+Teste de navegador offline: ponteiros reais, desfazer/apagar, seleção de página, quatro rotações com CropBox deslocado, comparação de pixels da cópia com a prévia, texto selecionável preservado, retorno do leitor e descarte do desenho ao sair.
