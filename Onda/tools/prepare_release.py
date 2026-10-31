@@ -41,6 +41,8 @@ Não existe tamanho infinito: precisa haver espaço para a fonte, eventual faixa
 
 Validação inclui transferência real de mais de 513 MiB com buffers fixos e SHA-256 conferido; mais de 512 respostas Range corretas; metadados de arquivo de 5 GiB chegando à verificação de espaço (sem baixar 5 GiB); seleção de 1.500 itens com linhas recicladas, seleção de 5.000 itens acima de 1 MB salva fora do Bundle e recriação da tela preservando marcações; fila de 1.200 itens, cursor de paginação e melhor resolução. A suíte anterior e instalação sobre a versão existente continuam obrigatórias. Não houve teste de download de múltiplos gigabytes de um site real nem medição de bateria em aparelho físico.
 
+Corrige também a leitura de imagens de QR do Conecta: se a detecção normal falhar, tenta o modo de QR puro para códigos digitais sem perspectiva. O caminho da câmera e a verificação do código/certificado permanecem. Teste nativo usa 48 códigos determinísticos diferentes, além dos testes reais de transferência TLS.
+
 Mantém favoritos do YouTube, proteção parcial de anúncios, áudio/vídeo, PDFs/OCR, voz, Bluetooth, temas, pastas e demais funções. Instale sobre a versão atual, sem desinstalar.
 
 Recursos anteriores — favoritos do YouTube e proteção reforçada
