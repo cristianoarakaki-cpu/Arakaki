@@ -145,6 +145,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          avd-name: onda-delete-35
+          disk-size: 2048M
           target: google_apis
           arch: x86_64
           profile: pixel_2
@@ -160,10 +162,15 @@ jobs:
             cat /tmp/onda-delete-35-tests.txt
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
+      - name: Liberar disco após o Android 15
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" delete avd --name onda-delete-35
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --uninstall 'system-images;android-35;google_apis;x86_64'
       - name: Conferir telas no Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
+          disk-size: 2048M
           target: default
           arch: x86_64
           profile: pixel_2
