@@ -29,7 +29,21 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Favoritos do YouTube e proteção reforçada
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — downloads grandes e playlists sem corte fixo
+
+Retira os tetos anteriores de 512 MB por arquivo, 30 minutos por arquivo e 2 horas por fila no download, extração AAC e conversor local. A transferência usa buffers fixos e contadores de 64 bits, sem carregar o arquivo inteiro na memória. Mantém reconexões HTTP Range validadas, cancelamento, limpeza de temporários/saídas incompletas e arquivos concluídos. Retira também o teto global de 512 requisições de partes, que poderia interromper arquivos grandes. Prazos de conexão/leitura e detecção de decoder travado continuam sendo tratamento de falhas de comunicação, não limite de duração da mídia.
+
+Playlists e Mixes: carrega a primeira página disponibilizada pelo YouTube e oferece Carregar mais vídeos, sem cortar a seleção em 100 ou 50 itens. Selecionar tudo marca os itens já carregados; novas páginas preservam as marcações anteriores. A navegação por páginas é explícita para evitar varrer indefinidamente Mixes dinâmicos e gastar bateria. Para incluir mais faixas, carregue as páginas antes de baixar. Fim da paginação ou página sem vídeos novos encerra a continuação. Links indisponíveis, privados ou removidos não passam a ficar disponíveis. MP4 da fila escolhe a maior resolução H.264 com áudio compatível disponível, sem o teto de 720p. Formatos e compatibilidade existentes são mantidos.
+
+Seleções grandes e a continuação da playlist ficam em arquivos privados durante a troca de telas/recriação, passando somente identificadores pequenos entre componentes Android. O serviço consome a seleção privada; não passa milhares de itens pelo limite de transações Binder. A Central continua guardando os 200 registros recentes, sem limitar quantos itens a fila pode processar. Após três falhas seguidas a fila ainda para, evitando insistir em uma fonte bloqueada. Downloads continuam sequenciais, sem serviço permanente quando ociosos ou novos motores/dependências.
+
+Não existe tamanho infinito: precisa haver espaço para a fonte, eventual faixa de áudio separada, saída convertida e arquivo no destino. Verifica espaço livre ao receber tamanho conhecido e durante a operação; preserva 32 MB para o sistema. O provedor/pasta pode ter limites próprios (por exemplo, FAT32), e o site, a rede, os codecs e o Android podem impedir a conclusão. No Android 15, o sistema pode limitar o tempo acumulado de serviços de transferência em segundo plano; o Onda informa essa interrupção e não tenta burlar a regra. Converter pode exigir mais espaço e processamento que guardar o arquivo original. Não retoma uma conversão após encerramento do processo nem promete downloads de qualquer site.
+
+Validação inclui transferência real de mais de 513 MiB com buffers fixos e SHA-256 conferido; mais de 512 respostas Range corretas; metadados de arquivo de 5 GiB chegando à verificação de espaço (sem baixar 5 GiB); seleção de 1.500 itens com linhas recicladas, seleção de 5.000 itens acima de 1 MB salva fora do Bundle e recriação da tela preservando marcações; fila de 1.200 itens, cursor de paginação e melhor resolução. A suíte anterior e instalação sobre a versão existente continuam obrigatórias. Não houve teste de download de múltiplos gigabytes de um site real nem medição de bateria em aparelho físico.
+
+Mantém favoritos do YouTube, proteção parcial de anúncios, áudio/vídeo, PDFs/OCR, voz, Bluetooth, temas, pastas e demais funções. Instale sobre a versão atual, sem desinstalar.
+
+Recursos anteriores — favoritos do YouTube e proteção reforçada
 
 YouTube no Onda: botão Favoritar e lista Favoritos com busca local por nome/endereço. Salve vídeos, Shorts, transmissões com ID de vídeo e playlists, edite o nome, remova ou abra de novo no navegador interno. Menu → Salvar playlist desta página também guarda a playlist de um vídeo que contenha list=. O menu de cada favorito permite consultar os formatos no analisador de downloads existente; isso não inicia download automaticamente. Nomes de até 160 caracteres e limite de 200 favoritos, sem miniaturas remotas nem sondagem de links em segundo plano.
 

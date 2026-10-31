@@ -1,3 +1,13 @@
+## Onda 0.55.0 — arquivos grandes
+
+Downloads, extração AAC e conversão local sem os antigos tetos de 512 MB, 30 minutos por arquivo e 2 horas por fila. Buffers fixos, tamanho em 64 bits e verificação de espaço real. É necessário espaço temporário para a fonte e saída; o destino, o site e o Android podem impor suas próprias restrições. Não promete tamanho infinito nem download de qualquer site.
+
+Playlists/Mixes carregam páginas sob demanda pelo botão **Carregar mais vídeos**, sem o corte de 100/50 faixas. Marque os itens carregados e baixe em sequência. MP4 da fila usa a maior resolução compatível com som disponível. Seleções grandes e cursores ficam em arquivos privados para evitar o limite de transações do Android e preservar a seleção ao recriar a tela. A Central mantém os 200 registros recentes; isso não limita a fila. Três falhas seguidas ainda interrompem a operação. Cancelamento, arquivos concluídos e funções anteriores preservados.
+
+Testes incluem transferência real de 513 MiB com digest, mais de 512 partes, preflight de tamanho de 5 GiB sem baixar esse volume, fila de 1.200 itens e tela com seleção de 5.000 itens. Limites de metadados, protocolos, OCR e outros recursos continuam próprios de suas funções. Não há medição de bateria física nem garantia de download de múltiplos gigabytes em todos os provedores.
+
+As seções abaixo registram versões anteriores e podem descrever os limites antigos, substituídos acima.
+
 ## Onda Música 0.54.0 — Favoritos do YouTube e proteção reforçada
 
 YouTube no Onda: botão Favoritar e lista Favoritos com busca local por nome/endereço. Salve vídeos, Shorts, transmissões com ID de vídeo e playlists, edite o nome, remova ou abra de novo no navegador interno. Menu → Salvar playlist desta página também guarda a playlist de um vídeo que contenha list=. O menu de cada favorito permite consultar os formatos no analisador de downloads existente; isso não inicia download automaticamente. Nomes de até 160 caracteres e limite de 200 favoritos, sem miniaturas remotas nem sondagem de links em segundo plano.
