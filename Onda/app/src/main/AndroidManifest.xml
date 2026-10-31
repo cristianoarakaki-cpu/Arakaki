@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
@@ -31,6 +32,7 @@
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".YouTubeActivity" android:exported="false" />
         <activity android:name=".AppearanceActivity" android:exported="false" />
+        <activity android:name=".DeleteMediaActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OndaFilesActivity" android:exported="false" />
         <activity android:name=".DownloadCenterActivity" android:exported="false" />

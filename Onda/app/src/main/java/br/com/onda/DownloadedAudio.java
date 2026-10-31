@@ -24,6 +24,7 @@ final class DownloadedAudio {
             }
         } catch (JSONException ignored) { }
     }
+    static synchronized void forget(Context context,String uri){try{SharedPreferences p=context.getSharedPreferences("downloaded_audio",0);JSONObject all=new JSONObject(p.getString("documents","{}"));if(all.has(uri)){all.remove(uri);p.edit().putString("documents",all.toString()).apply();}}catch(JSONException ignored){}SharedPreferences last=context.getSharedPreferences("downloads",0);if(uri.equals(last.getString("last_uri","")))last.edit().remove("last_uri").remove("last_title").remove("last_mime").apply();}
     static List<MediaItem> read(Context context) {
         // Recover the last audio opened by older releases, keeping its existing favorite ID.
         SharedPreferences last=context.getSharedPreferences("downloads",0);

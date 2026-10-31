@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — MP3 de alta taxa, mais fontes e listas organizadas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Exclusão de músicas e vídeos com confirmação
+
+Segure uma música ou vídeo na biblioteca → Excluir arquivo do celular. A confirmação mostra o nome real consultado no provedor e o endereço do arquivo; cancelar mantém o arquivo. Exclusão é diferente de ocultação: remove o arquivo do armazenamento e afeta outros aplicativos. O Onda não oferece desfazer. Apenas um arquivo por vez, sem seleção automática, exclusão de pastas ou limpeza em lote.
+
+Android 11 ou mais recente usa a confirmação de exclusão do MediaStore; Android 10 trata a autorização recuperável quando exigida e só repete a operação após aprovação. Android 8/9 pede escrita no armazenamento somente ao excluir um item do MediaStore, com permissão limitada ao SDK 28. Documentos com autorização de escrita usam o provedor do Android (SAF); caso o provedor não permita, o Onda informa a falha. Não solicita acesso a todos os arquivos. Endereços remotos, caminhos file://, PDFs, pastas e provedores arbitrários fora de MediaStore/SAF não são excluídos por esta tela. O arquivo precisa ser reconhecido como áudio/vídeo; nome, tamanho e tipo são conferidos novamente antes do pedido para evitar agir sobre um registro alterado.
+
+Somente após confirmação de exclusão, remove a faixa/URI correspondente da fila e da lista visível, o favorito selecionado e o registro de áudio baixado/último arquivo que teria recolocado o documento na biblioteca. Outros arquivos e favoritos permanecem. Se o item estiver aberto, fica pausado ao entrar na confirmação. Vídeo excluído sai do player e do histórico de posição. Listas salvas, anotações e histórico de downloads mantêm suas referências; podem indicar arquivo indisponível. Cancelamento ou erro não limpa registros. O Android pode pedir uma segunda confirmação.
+
+Validação nativa dedicada em Android 10 e Android 15: cancelamento na tela, cancelamento no sistema quando aplicável, rejeição de endereço remoto, exclusão real de um áudio e um vídeo criados exclusivamente para o teste, preservação de outro arquivo, remoção da faixa/favorito/registro selecionados e atualização das listas. As confirmações do Android são exercitadas pela interface. A suíte anterior e a instalação sobre a versão antiga continuam obrigatórias. Sem varredura em segundo plano, nova API paga ou serviço permanente. Mantém todos os motores, codecs, conversões, OCR, PDFs, voz, YouTube, downloads e demais recursos.
+
+Instale sobre a versão atual, sem desinstalar.
+
+Recursos anteriores — MP3 de alta taxa, mais fontes e listas organizadas
 
 MP3 em 128, 192, 256 ou 320 kbps, com escolha em Conversor local e Downloads → Qualidade MP3. Padrão preservado em 192 kbps; preferência salva no celular e capturada por operação, também em novas conversões de downloads/playlists. Arquivos MP3 originais baixados sem conversão mantêm sua taxa. kbps é a taxa de dados, diferente de Hz. Taxas maiores não recuperam qualidade perdida e geram arquivos maiores. Para fontes abaixo de 32 kHz, LAME reamostra a saída para 44,1 kHz ao escolher 256/320 kbps, pois essas taxas exigem MPEG-1; isso não cria detalhes novos.
 
