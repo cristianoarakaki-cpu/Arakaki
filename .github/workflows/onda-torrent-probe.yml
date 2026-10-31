@@ -1,0 +1,55 @@
+name: Onda - Prova isolada do motor torrent
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/torrent-lab/**', '.github/workflows/onda-torrent-probe.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Compilar apenas o laboratório separado
+        run: gradle --no-daemon -p .github/torrent-lab assembleDebug assembleDebugAndroidTest
+      - name: Aceleração do emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Transferência torrent e magnet somente em loopback
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          avd-name: torrent-probe-29
+          disk-size: 2048M
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb install -r .github/torrent-lab/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r .github/torrent-lab/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -e class br.com.onda.torrentprobe.TorrentProbeTest br.com.onda.torrentprobe.test/androidx.test.runner.AndroidJUnitRunner > /tmp/torrent-probe.txt
+            cat /tmp/torrent-probe.txt
+            adb logcat -d > /tmp/torrent-probe-logcat.txt
+            python -c 's=open("/tmp/torrent-probe.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Onda-Torrent-Probe-Reports
+          path: |
+            /tmp/torrent-probe.txt
+            /tmp/torrent-probe-logcat.txt
+            .github/torrent-lab/app/build/reports/
