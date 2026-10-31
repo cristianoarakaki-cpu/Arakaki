@@ -23,6 +23,7 @@ jobs:
           python3 -m pip install 'cryptography==46.0.3'
           python3 PrismaPDF/tools/vendor.py
           node --check PrismaPDF/assets/app.js
+          node --check PrismaPDF/assets/flow.js
           node --check PrismaPDF/assets/organizer.js
           node --check PrismaPDF/assets/signature.js
           node --check PrismaPDF/assets/scanner.js

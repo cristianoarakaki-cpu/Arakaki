@@ -1,5 +1,5 @@
 {
-  "versionCode": 15,
-  "versionName": "1.12.0",
-  "notes": "Scanner com sugestão automática de quatro cantos offline para papel claro sobre fundo contrastante. Revise a marcação e escolha Usar estes cantos ou Descartar; os ajustes atuais só mudam ao aceitar. Falta de contraste, papel fora da foto ou áreas ambíguas mantêm o ajuste manual. Correção de perspectiva e prévia continuam disponíveis."
+  "versionCode": 16,
+  "versionName": "1.13.0",
+  "notes": "Novo fluxo Continuar com este PDF: envie resultados diretamente para OCR, ocultação de dados e outras ferramentas compatíveis, sem salvar e selecionar novamente. Atalhos para tornar pesquisável e ocultar dados. Botão Ler na entrada permite conferir a cópia recebida. Transferência em memória até 25 MB, sem salvamento automático nem processamento antes de revisar as opções."
 }

@@ -46,3 +46,5 @@ textarea{font:inherit;width:100%;min-width:0;max-width:100%;resize:vertical;padd
 .corner-coordinates{display:flex;gap:12px;flex-wrap:wrap}.corner-coordinates label{flex:1 1 120px;min-width:0}#scanCorrectedPanel{margin-top:20px}#scanPreviewCorrection{margin-bottom:16px}
 
 #scanSuggest{margin:12px 0}.scan-suggestion{border:2px solid var(--accent,#7057c9);border-radius:12px;padding:16px;margin:16px 0}.scan-suggestion[hidden]{display:none}
+
+.result-next{margin-top:18px;border-top:1px solid var(--line,#d9dce5);padding-top:14px}.result-next summary{cursor:pointer;font-weight:700;min-height:44px;display:list-item;overflow-wrap:anywhere}.result-next label{margin-top:16px}.result-next button{white-space:normal;overflow-wrap:anywhere;max-width:100%}.result-next select{min-width:0;max-width:100%;width:100%}.file.has-reader{flex-wrap:wrap}.file.has-reader>span{flex:1 1 140px}.file .input-read{padding:8px 12px;min-width:44px;min-height:44px;flex-shrink:0}

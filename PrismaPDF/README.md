@@ -129,3 +129,11 @@ Botão Sugerir cantos no scanner. Análise local da foto em cores, na rotação 
 A proposta é mostrada sobre a foto, com Usar estes cantos e Descartar. Enquanto aguarda revisão, os controles de edição/geração ficam bloqueados. Aceitar muda para perspectiva, aplica os cantos e invalida prévia/cópia anteriores; pode ajustar antes de gerar. Descartar ou falhar mantém os ajustes e a cópia anteriores. Sem exportação automática nem índice apresentado como taxa de acerto. Nenhuma imagem vai para servidor.
 
 Testes puros: folhas com texto, ruído e rotação; precisão dos cantos sintéticos, foto uniforme, pouco contraste, folha cortada, círculo e ambiguidade entre duas folhas. Testes de navegador: proposta, bloqueio de edição, descartar/aceitar, manutenção/invalidação dos resultados, prévia e PDF final, falha sem perda de edição e nenhuma requisição externa.
+
+## Versão 1.13.0 — Continuar com o PDF gerado
+
+Cada resultado PDF inclui a seção Continuar com este PDF, com atalhos para OCR/ocultação e seletor de outras ferramentas que aceitam PDF. Scanner, imagens em PDF e leitor são excluídos do seletor (leitura já existe no resultado). A próxima ferramenta recebe exatamente a cópia gerada, com o mesmo nome e bytes, sem salvar em disco, biblioteca, upload ou processamento automático. A transferência troca a tela de edição atual; o PDF transferido fica disponível como entrada na próxima ferramenta. O usuário revisa opções e inicia o processamento. Entradas PDF também têm botão Ler, preservando o estado ao retornar.
+
+Mantém o limite de 25 MB por entrada. Uma cópia maior é recusada antes de mudar a ferramenta e continua disponível para salvar/compartilhar. Verifica o cabeçalho antes da troca, evita cliques simultâneos e confere se o resultado/tela continuam atuais antes de transferir. TXT e PNG não oferecem ações incompatíveis de PDF. Não há histórico persistente de etapas.
+
+Teste de navegador offline: imagem em PDF → OCR real → análise de ocultação, igualdade de bytes e nome da entrada, ausência de salvamento/biblioteca/processamento automático, leitura da entrada e retorno, seletor para giro, recusa de cópia acima de 25 MB sem perder resultado, saída TXT e layout de 320 px.
