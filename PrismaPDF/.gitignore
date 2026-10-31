@@ -1,6 +1,0 @@
-assets/vendor/
-build/
-*.jks
-*.p12
-*.keystore
-**/__pycache__/
