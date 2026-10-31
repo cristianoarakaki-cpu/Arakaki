@@ -1,3 +1,17 @@
+## Onda Música 0.54.0 — Favoritos do YouTube e proteção reforçada
+
+YouTube no Onda: botão Favoritar e lista Favoritos com busca local por nome/endereço. Salve vídeos, Shorts, transmissões com ID de vídeo e playlists, edite o nome, remova ou abra de novo no navegador interno. Menu → Salvar playlist desta página também guarda a playlist de um vídeo que contenha list=. O menu de cada favorito permite consultar os formatos no analisador de downloads existente; isso não inicia download automaticamente. Nomes de até 160 caracteres e limite de 200 favoritos, sem miniaturas remotas nem sondagem de links em segundo plano.
+
+Favoritos ficam apenas neste celular, separados dos favoritos de música e da conta Google. Não integram o backup de músicas atual. Não copiam nem baixam o vídeo: abrir e reproduzir depende da internet e da disponibilidade no YouTube. Endereços são normalizados para vídeo ou playlist oficiais, removendo parâmetros de rastreamento e evitando duplicação por links curtos/Shorts. Dados futuros ou inválidos são preservados sem sobrescrever. Não aceita páginas iniciais, buscas, hosts falsos, credenciais ou links de outros sites. Abrir favorito não inicia reprodução automática; voz, formatos, proteção e encerramento do WebView ao sair são mantidos.
+
+Proteção reforçada do YouTube: amplia domínios publicitários dedicados, incluindo criativos 2mdn, IMA e variações regionais do adservice, e bloqueia subsolicitações /api/stats/ads e /pagead/ em hosts oficiais exatos. Estilo local cobre mais cartões móveis/desktop, faixas de anúncio e anúncios acompanhantes. Não bloqueia o documento principal, fluxos googlevideo, capas ytimg, API do player, métricas comuns de reprodução ou controles de pular anúncio. O contador continua medindo solicitações bloqueadas, não quantidade de anúncios removidos. Pode ser desativada no menu; a escolha existente é preservada.
+
+É bloqueio parcial: comerciais inseridos no fluxo do vídeo ainda podem aparecer, e alterações do site podem afetar as regras. Não modifica respostas do player, não pula anúncios automaticamente, não burla verificações, não usa VPN, DNS global, listas baixadas, MutationObserver ou temporizador de varredura. Regras e busca locais, sem API paga; bateria não foi medida em aparelho físico.
+
+Validação inclui links e limites, persistência, renomeação, remoção e separação dos favoritos locais; navegação de volta ao YouTube, rejeição de retornos de página antigos; bloqueio dos novos endpoints, imagens/player preservados e estilos em WebView real sem esconder vídeo ou botão de pular. A suíte anterior, exclusão/cancelamento nos dois Androids e atualização sem desinstalar continuam obrigatórios.
+
+Mantém downloads, conversões MP3 até 320 kbps, reprodução de áudio/vídeo, PDFs/OCR, Bluetooth, voz, temas, Conecta e demais funções existentes. Instale sobre a versão atual, sem desinstalar. O suporte a torrents está em pesquisa separada e não faz parte desta versão.
+
 ## Onda Música 0.53.0 — Exclusão de músicas e vídeos com confirmação
 
 Segure uma música ou vídeo na biblioteca → Excluir arquivo do celular. A confirmação mostra o nome real consultado no provedor e o endereço do arquivo; cancelar mantém o arquivo. Exclusão é diferente de ocultação: remove o arquivo do armazenamento e afeta outros aplicativos. O Onda não oferece desfazer. Apenas um arquivo por vez, sem seleção automática, exclusão de pastas ou limpeza em lote.
