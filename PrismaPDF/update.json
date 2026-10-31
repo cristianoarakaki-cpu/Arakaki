@@ -1,9 +1,9 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 15,
-  "versionName": "1.12.0",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.12.0/Prisma-PDF.apk",
-  "sha256": "7100fcc0f35f1e4fe61ee3cd8c1ef7c31f13a38728a0197e260a49290dbba56f",
-  "notes": "Scanner com sugestão automática de quatro cantos offline para papel claro sobre fundo contrastante. Revise a marcação e escolha Usar estes cantos ou Descartar; os ajustes atuais só mudam ao aceitar. Falta de contraste, papel fora da foto ou áreas ambíguas mantêm o ajuste manual. Correção de perspectiva e prévia continuam disponíveis.",
+  "versionCode": 16,
+  "versionName": "1.13.0",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.13.0/Prisma-PDF.apk",
+  "sha256": "a3d2d6449ce10b5ccda4a9c53e1f726f6b9b76293797e2cbdbd0f4fb1879d6a3",
+  "notes": "Novo fluxo Continuar com este PDF: envie resultados diretamente para OCR, ocultação de dados e outras ferramentas compatíveis, sem salvar e selecionar novamente. Atalhos para tornar pesquisável e ocultar dados. Botão Ler na entrada permite conferir a cópia recebida. Transferência em memória até 25 MB, sem salvamento automático nem processamento antes de revisar as opções.",
   "downloadAvailable": true
 }
