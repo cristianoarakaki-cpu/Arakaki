@@ -1,6 +1,8 @@
 ﻿#requires -version 5.1
 #requires -PSEdition Desktop
-# Férias DCE V1.0.135-R2 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
+# Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
+# Férias DCE V1.0.136-R13 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -43,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.135-R2 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R13 HIST-R13 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -90,8 +92,8 @@ function Initialize-AppBranding {
         $script:AppId="HRMS.DCE.PlanejamentoFerias"
         $script:LauncherFile=Join-Path $script:AppRoot "FeriasDCE_Launcher.ps1"
         $script:PowerShellExe=Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-        # Compatibilidade operacional: o relançamento usa ExecutionPolicy Bypass. Em ambientes corporativos, a TI pode bloquear esta opção por política.
-        $script:RelaunchCommand=('"{0}" -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "{1}"' -f $script:PowerShellExe,$script:LauncherFile)
+        # Reabertura visivel, respeitando a politica de execucao configurada no computador.
+        $script:RelaunchCommand=('"{0}" -NoProfile -STA -File "{1}"' -f $script:PowerShellExe,$script:LauncherFile)
         $script:RelaunchIconResource=$script:IconFile+",0"
 
         if(Test-Path -LiteralPath $script:IconFile){
@@ -323,6 +325,30 @@ function Assert-DatabaseStructure($db){
     }
 }
 
+function Get-PendenciasSemanticasBase($Registros){
+    foreach($r in @($Registros)){
+        if($null -eq $r){continue}
+        $motivos=@()
+        if([string]::IsNullOrWhiteSpace([string]$r.matricula)){$motivos+='Matricula ausente'}
+        if(Test-RegistroFeriasBloqueadas $r){
+            if(-not (Test-RegistroFixoImportado $r)){$motivos+='Fixa bloqueada sem intervalo valido'}
+        }else{
+            # Ler as decisoes gravadas diretamente: helpers podem descartar escolhas vazias.
+            if([int]$r.opcao_aprovada -gt 0){
+                $op=$r.('opcao'+[int]$r.opcao_aprovada)
+                if($null -eq $op -or [string]::IsNullOrWhiteSpace([string]$op.tipo)){$motivos+='Decisao comum sem opcao preenchida'}
+                else{$erro=Validate-Option $op 'Opcao aprovada' ([string]$r.aquisitivo_fim);if($erro){$motivos+=$erro}}
+            }
+            if([int]$r.fr_opcao_aprovada -gt 0){
+                $op=$r.('opcao'+[int]$r.fr_opcao_aprovada)
+                $i=Parse-Date ([string]$op.fr_inicio);$f=Parse-Date ([string]$op.fr_fim)
+                if($null -eq $i -or $null -eq $f -or ($f-$i).Days -ne 19){$motivos+='Decisao FR sem intervalo de 20 dias valido'}
+            }
+        }
+        foreach($motivo in $motivos){[pscustomobject]@{Id=[int]$r.id;Motivo=[string]$motivo}}
+    }
+}
+
 function Assert-ValidJsonFile([string]$path,[string]$context="arquivo JSON"){
     if([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path)){
         throw "$context não foi localizado: $path"
@@ -470,6 +496,8 @@ function Load-Database {
         # Migração segura centralizada: todo registro, antigo ou novo, recebe a mesma estrutura.
         foreach($r in $script:Records){ [void](Initialize-RecordDefaults $r) }
 
+        $script:PendenciasSemanticas=@(Get-PendenciasSemanticasBase $script:Records)
+        foreach($pendencia in $script:PendenciasSemanticas){Write-DiagLog "Conferencia semantica ID=$($pendencia.Id): $($pendencia.Motivo)" 'WARN'}
         # V1.0.58: mantém classificação EXPLÍCITA por setor e vínculo opcional individual de chefia.
         # A inferência pelo nome é usada somente na migração inicial; depois o cadastro passa a ser a fonte de verdade.
         $setoresConhecidos=@()
@@ -504,6 +532,8 @@ function Load-Database {
         $script:InstitutionalResumoCacheKey=""
         if(Get-Command Rebuild-HistoricoIndex -ErrorAction SilentlyContinue){ Rebuild-HistoricoIndex }
 
+        if($null -ne $script:UiLazyLoaded){$script:UiLazyLoaded.Historico=$false;$script:UiLazyLoaded.Painel=$false;$script:UiLazyLoaded.Planejamento=$false}
+        $script:PlanejRefreshDirty=$true
         Write-DiagLog "Base carregada: $(@($script:Records).Count) registro(s), $(@($script:HistoricoFerias).Count) histórico(s)."
 
     } catch {
@@ -572,6 +602,89 @@ function Copy-DatabaseFileInPlace([string]$SourcePath,[string]$DestinationPath,[
     throw "Sobrescrita nao atomica desativada. Use Commit-DatabaseTempFile com temporario na pasta da base."
 }
 
+function Invoke-DatabaseFileReplace([string]$Source,[string]$Destination,[string]$Backup){
+    [IO.File]::Replace($Source,$Destination,$Backup)
+}
+
+function Invoke-DatabaseAtomicRename([string]$Source,[string]$Destination,[string]$ExpectedOldHash){
+    if($env:OS -ne 'Windows_NT'){throw 'A alternativa de renomeacao atomica exige Windows.'}
+    # O rename troca a identidade do arquivo. Nao alterar silenciosamente proprietario/grupo/DACL.
+    $sections=[Security.AccessControl.AccessControlSections]::Owner -bor [Security.AccessControl.AccessControlSections]::Group -bor [Security.AccessControl.AccessControlSections]::Access
+    $srcAcl=Get-Acl -LiteralPath $Source -ErrorAction Stop
+    $dstAcl=Get-Acl -LiteralPath $Destination -ErrorAction Stop
+    $srcSecurity=$srcAcl.GetSecurityDescriptorSddlForm($sections)
+    $dstSecurity=$dstAcl.GetSecurityDescriptorSddlForm($sections)
+    if($srcSecurity -ne $dstSecurity){
+        throw 'Renomeacao alternativa cancelada: proprietario, grupo ou permissoes do temporario diferem da base. Nao foram modificadas permissoes.'
+    }
+    $sensitive=[IO.FileAttributes]::ReadOnly -bor [IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::System -bor [IO.FileAttributes]::Encrypted -bor [IO.FileAttributes]::Compressed
+    $srcAttributes=[IO.File]::GetAttributes($Source)
+    $dstAttributes=[IO.File]::GetAttributes($Destination)
+    if(($dstAttributes -band [IO.FileAttributes]::ReadOnly) -ne 0){throw 'A base esta marcada como somente leitura; nao sera alterada.'}
+    if(($srcAttributes -band $sensitive) -ne ($dstAttributes -band $sensitive)){
+        throw 'Renomeacao alternativa cancelada: atributos protegidos/compressao/criptografia diferem entre temporario e base.'
+    }
+    if((Get-TextSha256 ([IO.File]::ReadAllText($Destination,[Text.Encoding]::UTF8))) -ne $ExpectedOldHash){
+        throw 'A base mudou durante a preparacao da renomeacao. Gravacao cancelada para preservar alteracoes externas.'
+    }
+    if(-not ('FeriasDCE.AtomicFileNative' -as [type])){
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+namespace FeriasDCE {
+    public static class AtomicFileNative {
+        [DllImport("kernel32.dll", EntryPoint="MoveFileExW", CharSet=CharSet.Unicode, SetLastError=true, ExactSpelling=true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool MoveFileEx(string existingName, string newName, uint flags);
+    }
+}
+"@ -ErrorAction Stop
+    }
+    if((Get-TextSha256 ([IO.File]::ReadAllText($Destination,[Text.Encoding]::UTF8))) -ne $ExpectedOldHash){
+        throw 'A base mudou antes da renomeacao. Gravacao cancelada.'
+    }
+    # REPLACE_EXISTING | WRITE_THROUGH. Sem COPY_ALLOWED e sem apagar primeiro o destino.
+    if(-not [FeriasDCE.AtomicFileNative]::MoveFileEx($Source,$Destination,9)){
+        $code=[Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        throw [ComponentModel.Win32Exception]::new($code,('A rede/Windows recusou a renomeacao com substituicao (codigo '+$code+').'))
+    }
+}
+
+function Invoke-DatabaseCompatibleReplace([string]$Source,[string]$Destination,[string]$Backup){
+    # Chamado sob o lock da base. Captura o estado ANTES de File.Replace para detectar falhas parciais.
+    $oldHash=Get-TextSha256 ([IO.File]::ReadAllText($Destination,[Text.Encoding]::UTF8))
+    $newHash=Get-TextSha256 ([IO.File]::ReadAllText($Source,[Text.Encoding]::UTF8))
+    try {
+        Invoke-DatabaseFileReplace $Source $Destination $Backup
+        Write-DiagLog 'Substituicao concluida por File.Replace.' 'INFO'
+        return
+    } catch {
+        $replaceError=$_
+        $baseError=$_.Exception.GetBaseException()
+        $nativeCode=$baseError.HResult -band 0xffff
+        if($baseError -isnot [UnauthorizedAccessException] -and $nativeCode -notin @(1,5,50)){
+            throw
+        }
+        # Nao continuar se Replace moveu algum arquivo parcialmente ou houve alteracao externa.
+        if(-not [IO.File]::Exists($Source) -or -not [IO.File]::Exists($Destination)){throw $replaceError}
+        if((Get-TextSha256 ([IO.File]::ReadAllText($Destination,[Text.Encoding]::UTF8))) -ne $oldHash){throw $replaceError}
+        if((Get-TextSha256 ([IO.File]::ReadAllText($Source,[Text.Encoding]::UTF8))) -ne $newHash){throw $replaceError}
+        $safetyBackup=$Backup
+        if([string]::IsNullOrWhiteSpace($safetyBackup)){
+            $safetyBackup=$Destination+'.antes_rollback.'+[guid]::NewGuid().ToString('N')
+        }
+        if(-not [IO.File]::Exists($safetyBackup)){
+            [IO.File]::Copy($Destination,$safetyBackup,$false)
+        }
+        if((Get-TextSha256 ([IO.File]::ReadAllText($safetyBackup,[Text.Encoding]::UTF8))) -ne $oldHash){
+            throw 'Backup anterior diverge da base. Renomeacao alternativa cancelada.'
+        }
+        Write-DiagLog ('File.Replace recusado (codigo '+$nativeCode+'). Tentando renomeacao com substituicao, sem copia sobre a base. Backup: '+$safetyBackup) 'WARN'
+        Invoke-DatabaseAtomicRename $Source $Destination $oldHash
+        Write-DiagLog 'Substituicao concluida por renomeacao Windows (MoveFileEx), mantendo validacao posterior e lock.' 'INFO'
+    }
+}
+
 function Commit-DatabaseTempFile([string]$TempPath,[string]$DestinationPath,[string]$RollbackPath=""){
     if([string]::IsNullOrWhiteSpace($TempPath) -or -not (Test-Path -LiteralPath $TempPath)){
         throw "Arquivo temporario de gravacao nao encontrado: $TempPath"
@@ -592,7 +705,7 @@ function Commit-DatabaseTempFile([string]$TempPath,[string]$DestinationPath,[str
             # Se ACL/SMB negar rename/delete, falha sem truncar a base ativa.
             for($attempt=1;$attempt -le 6;$attempt++){
                 try {
-                    [IO.File]::Replace($tempFull,$destFull,$replaceBackup)
+                    Invoke-DatabaseCompatibleReplace $tempFull $destFull $replaceBackup
                     break
                 } catch [IO.IOException] {
                     if($attempt -ge 6 -or -not (Test-Path -LiteralPath $tempFull)){throw}
@@ -612,10 +725,10 @@ function Commit-DatabaseTempFile([string]$TempPath,[string]$DestinationPath,[str
         if($committed -and (Test-Path -LiteralPath $replaceBackup)){
             try {
                 [void](Assert-ValidJsonFile $replaceBackup "Backup de rollback")
-                [IO.File]::Replace($replaceBackup,$destFull,$null)
+                Invoke-DatabaseCompatibleReplace $replaceBackup $destFull $null
             } catch { Write-DiagLog "Rollback atomico falhou; backup preservado em $replaceBackup" "FATAL" $_ }
         }
-        throw "Gravacao atomica nao concluida. Verifique permissoes de substituir/renomear/excluir na pasta Dados (inclusive SMB). A base nao sera truncada. Detalhe: $($originalError.Exception.Message)"
+        throw "Gravacao nao concluida: a substituicao normal ou alternativa foi recusada ou nao pode ser validada. Nao foi usada sobrescrita direta. Verifique o log, acesso da rede e a base antes de repetir. Detalhe: $($originalError.Exception.Message)"
     }
     # Limpeza e posterior ao commit; falha de limpeza nao desfaz gravacao bem-sucedida.
     if(Test-Path -LiteralPath $replaceBackup){
@@ -694,6 +807,8 @@ function Save-Database {
         $script:LoadedDbHash=[string]$final.Hash
 
         Invoke-RoutineBackupRetention 50 30
+        if($null -ne $script:UiLazyLoaded){$script:UiLazyLoaded.Historico=$false;$script:UiLazyLoaded.Painel=$false;$script:UiLazyLoaded.Planejamento=$false}
+        $script:PlanejRefreshDirty=$true
         Write-DiagLog "Base salva com sucesso. Revisão=$newRevision"
         return $true
     } catch {
@@ -729,10 +844,16 @@ function Save-Database {
 
 function Parse-Date([string]$s){
     if([string]::IsNullOrWhiteSpace($s)){ return $null }
+    if($null -eq $script:PerfDateCache){$script:PerfDateCache=@{}}
+    if($script:PerfDateCache.ContainsKey($s)){return $script:PerfDateCache[$s]}
     $d=[datetime]::MinValue
-    if([datetime]::TryParseExact($s,"yyyy-MM-dd",[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::None,[ref]$d)){ return $d.Date }
-    return $null
+    $result=$null
+    if([datetime]::TryParseExact($s,"yyyy-MM-dd",[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::None,[ref]$d)){$result=$d.Date}
+    if($script:PerfDateCache.Count -ge 8192){$script:PerfDateCache.Clear()}
+    $script:PerfDateCache[$s]=$result
+    return $result
 }
+
 function Date-ToStore($d){ if($null -eq $d){ return "" }; return ([datetime]$d).ToString("yyyy-MM-dd") }
 function Date-ToBR([string]$s){ $d=Parse-Date $s; if($null -eq $d){ return "" }; return $d.ToString("dd/MM/yyyy") }
 
@@ -1018,6 +1139,326 @@ function Test-FixaLimiteAutomatico($r,[string]$inicio,[string]$fim){
 
 
 # V1.0.135-R2 - duas autorizacoes independentes do mesmo aquisitivo.
+function Get-ConferenciaCP($Records=$script:Records){
+    $grupos=@{};$donos=@{}
+    foreach($r in @($Records)){
+        $mat=([string]$r.matricula).Trim();$cp=([string]$r.cp_relatorio).Trim()
+        if(-not $grupos.ContainsKey($mat)){$grupos[$mat]=[pscustomobject]@{Total=0;SemCP=0;Validos=(New-Object 'System.Collections.Generic.HashSet[string]');Brutos=(New-Object 'System.Collections.Generic.HashSet[string]');Invalidos=(New-Object 'System.Collections.Generic.List[string]')}}
+        $g=$grupos[$mat];$g.Total++
+        if(-not $cp){$g.SemCP++;continue}
+        [void]$g.Brutos.Add($cp);$n=0
+        if($cp -notmatch '^[0-9]+$' -or -not [int]::TryParse($cp,[ref]$n) -or $n -le 0){[void]$g.Invalidos.Add($cp);continue}
+        $normal=$n.ToString([Globalization.CultureInfo]::InvariantCulture);[void]$g.Validos.Add($normal)
+        if(-not $donos.ContainsKey($normal)){$donos[$normal]=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)}
+        [void]$donos[$normal].Add($mat)
+    }
+    $out=@{}
+    foreach($mat in $grupos.Keys){
+        $g=$grupos[$mat];$problemas=New-Object 'System.Collections.Generic.List[string]';$repetidos=New-Object 'System.Collections.Generic.List[string]'
+        if($g.SemCP -eq $g.Total){[void]$problemas.Add('SEM CP')}
+        elseif($g.SemCP -gt 0){[void]$problemas.Add('CP INCOMPLETO')}
+        if($g.Invalidos.Count -gt 0){[void]$problemas.Add('CP INVÁLIDO')}
+        if($g.Validos.Count -gt 1){[void]$problemas.Add('CPs DIVERGENTES')}
+        foreach($valor in $g.Validos){if($donos[$valor].Count -gt 1){[void]$repetidos.Add($valor)}}
+        if($repetidos.Count -gt 0){[void]$problemas.Add('CP REPETIDO')}
+        $cpExibido=if($g.Validos.Count -eq 1 -and $g.Invalidos.Count -eq 0){[string]@($g.Validos)[0]}else{@($g.Brutos | Sort-Object) -join ' / '}
+        $situacao=if($problemas.Count){$problemas -join '; '}else{'CP OK'}
+        $detalhes=@("Matrícula: $mat","Situação: $situacao","CP cadastrado: $(if($cpExibido){$cpExibido}else{'(vazio)'})","Registros: $($g.Total); sem CP: $($g.SemCP).")
+        foreach($valor in $repetidos){$outras=@($donos[$valor] | Where-Object {$_ -ne $mat} | Sort-Object);$detalhes+="CP $valor também aparece na(s) matrícula(s): $($outras -join ', ')."}
+        $out[$mat]=[pscustomobject]@{Matricula=$mat;CP=$cpExibido;Situacao=$situacao;TemProblema=($problemas.Count -gt 0);Problemas=@($problemas.ToArray());Total=$g.Total;SemCP=$g.SemCP;Detalhe=($detalhes -join "`r`n")}
+    }
+    return $out
+}
+
+function Test-FiltroConferenciaCP($Info,[string]$Filtro='TODOS'){
+    if(-not $Filtro -or $Filtro -eq 'TODOS'){return $true}
+    if($null -eq $Info){return $false}
+    if($Filtro -eq 'COM PROBLEMA'){return [bool]$Info.TemProblema}
+    if($Filtro -eq 'CP OK'){return (-not [bool]$Info.TemProblema)}
+    return ($Info.Problemas -contains $Filtro)
+}
+
+function Get-CPsServidor([string]$Matricula){
+    $mat=$Matricula.Trim()
+    $valores=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {([string]$_.cp_relatorio).Trim()} | Where-Object {$_} | Sort-Object -Unique)
+    # O cadastro atual prevalece; o CP original do histórico é apenas recurso para bases antigas.
+    if($valores.Count -eq 0){$valores=@($script:HistoricoFerias | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {([string]$_.cp_relatorio).Trim()} | Where-Object {$_} | Sort-Object -Unique)}
+    return @($valores)
+}
+
+function Resolve-CPServidorCadastro([string]$Matricula,[string]$Valor){
+    $texto=$Valor.Trim();$numero=0
+    if(-not $texto){throw 'CP obrigatório. Informe o código do servidor antes de salvar.'}
+    if($texto -notmatch '^[0-9]+$' -or -not [int]::TryParse($texto,[ref]$numero) -or $numero -le 0){throw 'CP inválido. Informe um número inteiro positivo de até 2147483647.'}
+    $normal=$numero.ToString([Globalization.CultureInfo]::InvariantCulture)
+    # Uma passagem na base atual evita pesquisar todos os aquisitivos a cada comparação.
+    $matAtual=$Matricula.Trim();$presentes=@{};$comCP=@{}
+    foreach($other in @($script:Records)){
+        $matOutro=([string]$other.matricula).Trim();$presentes[$matOutro]=$true
+        $valorOutro=([string]$other.cp_relatorio).Trim()
+        if(-not $valorOutro){continue}
+        $comCP[$matOutro]=$true;$n=0
+        if($matOutro -ne $matAtual -and [int]::TryParse($valorOutro,[ref]$n) -and $n -eq $numero){throw "O CP $normal já pertence à matrícula $matOutro. A matrícula continua sendo a chave principal."}
+    }
+    foreach($other in @($script:HistoricoFerias)){
+        $matOutro=([string]$other.matricula).Trim();$n=0
+        if($matOutro -ne $matAtual -and $presentes.ContainsKey($matOutro) -and -not $comCP.ContainsKey($matOutro) -and [int]::TryParse(([string]$other.cp_relatorio).Trim(),[ref]$n) -and $n -eq $numero){throw "O CP $normal já consta para a matrícula $matOutro no histórico. Confira o cadastro desse servidor."}
+    }
+    return $normal
+}
+
+function Set-CPServidor([string]$Matricula,[string]$Valor){
+    $cp=Resolve-CPServidorCadastro $Matricula $Valor
+    $recs=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $Matricula.Trim()})
+    if($recs.Count -eq 0){throw 'Matrícula não encontrada para salvar o CP.'}
+    foreach($r in $recs){$r | Add-Member NoteProperty cp_relatorio $cp -Force}
+}
+
+function Show-CPServidorNoEditor([string]$Matricula){
+    if($null -eq $script:txtCPServidor){return}
+    $cps=@(Get-CPsServidor $Matricula)
+    $script:txtCPServidor.Text=if($cps.Count -eq 1){[string]$cps[0]}else{''}
+    $script:txtCPServidor.BackColor=if($cps.Count -gt 1){[Drawing.Color]::MistyRose}else{[Drawing.Color]::White}
+    $script:lblCPServidor.Text=if($cps.Count -gt 1){'CP (conferir)'}else{'CP obrigatório'}
+    $tip=if($cps.Count -gt 1){'CPs divergentes: '+($cps -join ', ')+'. Informe o correto e salve o cadastro para todos os períodos.'}else{'CP obrigatório e complementar. A matrícula permanece como chave principal. Salvar cadastro aplica o CP a todos os períodos desta matrícula.'}
+    $audit=Get-ConferenciaCP
+    $info=$audit[$Matricula.Trim()]
+    if($null -ne $info -and $info.TemProblema){$script:txtCPServidor.BackColor=[Drawing.Color]::MistyRose;$script:lblCPServidor.Text='CP (conferir)';$tip=$info.Detalhe+"`r`nInforme o CP correto e salve o cadastro para todos os períodos."}
+    $script:tipCPServidor.SetToolTip($script:txtCPServidor,$tip)
+}
+
+function Get-ExportacaoListaServidores {
+    $porMat=@{};$pendencias=New-Object 'System.Collections.Generic.List[object]'
+    foreach($r in @($script:Records)){
+        $mat=([string]$r.matricula).Trim();$nome=([string]$r.nome).Trim()
+        if(-not $mat){[void]$pendencias.Add([pscustomobject]@{Matricula='';Nome=$nome;Motivo='Cadastro sem matrícula; não incluído na lista principal'});continue}
+        if(-not $porMat.ContainsKey($mat)){$porMat[$mat]=New-Object 'System.Collections.Generic.List[string]'}
+        if($nome){[void]$porMat[$mat].Add($nome.ToUpperInvariant())}
+    }
+    $linhas=New-Object 'System.Collections.Generic.List[object]'
+    foreach($mat in $porMat.Keys){
+        $nomes=@($porMat[$mat] | Sort-Object -Unique)
+        $nome=$nomes -join ' / '
+        [void]$linhas.Add([pscustomobject][ordered]@{'Matrícula'=[string]$mat;Nome=[string]$nome})
+        if($nomes.Count -ne 1){$motivo=if($nomes.Count -eq 0){'Matrícula sem nome cadastrado'}else{'Mais de um nome cadastrado para esta matrícula; todos exibidos, sem escolher automaticamente'};[void]$pendencias.Add([pscustomobject]@{Matricula=[string]$mat;Nome=$nome;Motivo=$motivo})}
+    }
+    return [pscustomobject]@{Cabecalhos=@('Matrícula','Nome');Linhas=@($linhas.ToArray() | Sort-Object Nome,'Matrícula');Pendencias=@($pendencias.ToArray())}
+}
+
+function Exportar-ListaServidoresExcel {
+    $save=New-Object Windows.Forms.SaveFileDialog
+    try{
+        $dados=Get-ExportacaoListaServidores
+        if($dados.Linhas.Count -eq 0 -and $dados.Pendencias.Count -eq 0){[Windows.Forms.MessageBox]::Show('Não existem servidores cadastrados para exportar.','Lista de servidores')|Out-Null;return}
+        $save.Filter='Excel (*.xlsx)|*.xlsx';$save.FileName='SERVIDORES_MATRICULA_NOME_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.xlsx';$save.OverwritePrompt=$true
+        if($save.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return}
+        $orientacoes=@(
+            'A aba Servidores contém Matrícula e Nome de todos os servidores da base atual, independente de filtros ou aceite das férias.',
+            'Cada matrícula aparece uma única vez, mesmo com vários períodos aquisitivos. As matrículas são texto para preservar zeros iniciais.',
+            'Exporte do banco de dados outra lista com Matrícula, CP e Nome. Preserve a matrícula completa como texto nessa outra lista para possibilitar o vínculo exato.',
+            'A aba Pendencias informa matrículas sem nome, nomes diferentes para a mesma matrícula e cadastros sem matrícula. Confira essas situações antes de vincular CPs.',
+            'Esta exportação não vincula CPs e não altera o cadastro. A lista principal possui somente duas colunas.'
+        )
+        Write-ExcelAceitasAccess -Path $save.FileName -Dados $dados -NomeAbaPrincipal 'Servidores' -InstrucoesPersonalizadas $orientacoes -CabecalhosPendencias @('Matricula','Nome','Motivo')
+        [Windows.Forms.MessageBox]::Show("Lista gerada com $($dados.Linhas.Count) matrícula(s) única(s) e $($dados.Pendencias.Count) pendência(s).`n`nA aba Servidores contém Matrícula e Nome. Gere no banco a outra lista com Matrícula, CP e Nome para a conferência e vinculação dos CPs.",'Lista de servidores')|Out-Null
+    }catch{[Windows.Forms.MessageBox]::Show(('Não foi possível gerar a lista: '+$_.Exception.Message),'Lista de servidores')|Out-Null}finally{$save.Dispose()}
+}
+
+function Get-DetalheDatasExportacaoAccess($Registro,[int]$Numero,[bool]$Radiologicas){
+    $op=$Registro.("opcao$Numero")
+    $partes=New-Object 'System.Collections.Generic.List[string]'
+    [void]$partes.Add(('Aquisitivo {0} a {1}; opcao aceita {2}; tipo "{3}"' -f [string]$Registro.aquisitivo_inicio,[string]$Registro.aquisitivo_fim,$Numero,[string]$op.tipo))
+    $pares=if($Radiologicas){@([pscustomobject]@{Inicio='fr_inicio';Fim='fr_fim';Rotulo='FR'})}else{@([pscustomobject]@{Inicio='inicio1';Fim='fim1';Rotulo='Periodo 1'},[pscustomobject]@{Inicio='inicio2';Fim='fim2';Rotulo='Periodo 2'})}
+    foreach($par in $pares){
+        $inicio=[string]$op.($par.Inicio);$fim=[string]$op.($par.Fim)
+        $di=Parse-Date $inicio;$df=Parse-Date $fim
+        $duracao=if($null -ne $di -and $null -ne $df){'{0} dias inclusivos' -f (($df-$di).Days+1)}else{'data ausente ou invalida'}
+        [void]$partes.Add(('{0}: inicio="{1}", fim="{2}" ({3})' -f $par.Rotulo,$inicio,$fim,$duracao))
+    }
+    return ($partes.ToArray() -join '; ')
+}
+
+function Get-ExportacaoAceitasAccess {
+    $headers=@('Codigo do Servidor','Observação','Periodo Aquisitivo_1','Periodo Aquisitivo_2','Agendar Após','Ferias_30_Inicio','Ferias_30_Final','Ferias_Par_1QIn','Ferias_Par_1QFin','Ferias_Par_2QIn','Ferias_Par_2QFin','Programacao_Ano','Processo_20Dias')
+    $cpPorMat=@{}
+    foreach($mat in @($script:Records | ForEach-Object {([string]$_.matricula).Trim()} | Where-Object {$_} | Sort-Object -Unique)){
+        $cpPorMat[$mat]=@(Get-CPsServidor $mat)
+    }
+    $donosCP=@{}
+    foreach($m in $cpPorMat.Keys){foreach($valor in @($cpPorMat[$m])){
+        $numero=0
+        if([int]::TryParse([string]$valor,[ref]$numero) -and $numero -gt 0){
+            $k=[string]$numero
+            if(-not $donosCP.ContainsKey($k)){$donosCP[$k]=@{}}
+            $donosCP[$k][$m]=$true
+        }
+    }}
+    $candidatos=New-Object 'System.Collections.Generic.List[object]'
+    $pendencias=New-Object 'System.Collections.Generic.List[object]'
+    foreach($r in @($script:Records)){
+        # Fixas pertencem a programações anteriores, mesmo se restou um aceite no registro.
+        if(Test-RegistroFeriasBloqueadas $r){continue}
+        $nc=Get-NumeroComumConfirmada $r;$nf=Get-NumeroFRConfirmada $r
+        if($nc -eq 0 -and $nf -eq 0){continue}
+        $mat=([string]$r.matricula).Trim();$ai=Parse-Date ([string]$r.aquisitivo_inicio);$af=Parse-Date ([string]$r.aquisitivo_fim)
+        foreach($modalidade in @('Comum','FR 20 dias')){
+            if(($modalidade -eq 'Comum' -and $nc -eq 0) -or ($modalidade -ne 'Comum' -and $nf -eq 0)){continue}
+            $motivo='';$cp=0;$cps=@($cpPorMat[$mat] | Where-Object {$_})
+            if($cps.Count -ne 1){$motivo=if($cps.Count -gt 1){'CPs divergentes para a mesma matrícula'}else{'CP não disponível; informe o CP antes de colar no Access'}}
+            elseif(-not [int]::TryParse([string]$cps[0],[ref]$cp) -or $cp -le 0){$motivo='CP inválido para Inteiro Longo do Access'}
+            elseif($donosCP[[string]$cp].Count -gt 1){$motivo='CP compartilhado por matrículas diferentes; conferir cadastro antes da importação'}
+            if($null -eq $ai -or $null -eq $af -or $af -lt $ai -or $af -gt [datetime]'9999-12-29'){$motivo='Período aquisitivo inválido'}
+            $obs=([string]$r.observacoes).Trim()
+            if($obs.Length -gt 255){$motivo='Observação ultrapassa 255 caracteres do campo Texto Curto'}
+            # Manter ARRAY inclusive com um unico intervalo: PSCustomObject.Count nao existe no Windows PowerShell 5.1.
+            $blocks=@(if($modalidade -eq 'Comum'){Get-BlocosComunsOpcao $r $nc}else{Get-BlocoFROpcao $r $nf})
+            $i30=$null;$f30=$null;$i1=$null;$f1=$null;$i2=$null;$f2=$null
+            if($modalidade -eq 'FR 20 dias'){
+                if($blocks.Count -ne 1){$motivo='FR aceita sem intervalo válido de 20 dias. '+(Get-DetalheDatasExportacaoAccess $r $nf $true)}else{$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
+            }else{
+                $op=$r.("opcao$nc");$tipo=([string]$op.tipo -replace ' \+ FR 20 DIAS$','')
+                if($tipo -eq '30 DIAS' -and $blocks.Count -eq 1 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 29){$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
+                elseif($tipo -eq '15+15 DIAS' -and $blocks.Count -eq 2 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 14 -and ($blocks[1].fim-$blocks[1].inicio).Days -eq 14 -and -not (Test-Overlap $blocks[0].inicio $blocks[0].fim $blocks[1].inicio $blocks[1].fim)){
+                    $i1=$blocks[0].inicio;$f1=$blocks[0].fim;$i2=$blocks[1].inicio;$f2=$blocks[1].fim
+                }else{$motivo='Opção aceita sem datas válidas de 30 dias ou 15+15 dias. '+(Get-DetalheDatasExportacaoAccess $r $nc $false)}
+            }
+            $audit=[pscustomobject][ordered]@{Matricula=$mat;Nome=[string]$r.nome;CP=($cps -join ' / ');Modalidade=$modalidade;Motivo=$motivo}
+            if($motivo){[void]$pendencias.Add($audit);continue}
+            $row=[ordered]@{};$values=@($cp,$obs,$ai,$af,$af.AddDays(2),$i30,$f30,$i1,$f1,$i2,$f2,0,$(if($modalidade -eq 'FR 20 dias'){-1}else{0}))
+            for($j=0;$j -lt $headers.Count;$j++){$row[$headers[$j]]=$values[$j]}
+            [void]$candidatos.Add([pscustomobject]@{Linha=[pscustomobject]$row;Audit=$audit;Chave="$cp|$($ai.ToString('yyyy-MM-dd'))|$($af.ToString('yyyy-MM-dd'))|$modalidade"})
+        }
+    }
+    $linhas=New-Object 'System.Collections.Generic.List[object]'
+    foreach($group in @($candidatos | Group-Object Chave)){
+        $unique=@($group.Group | ForEach-Object {$_.Linha | ConvertTo-Json -Compress} | Sort-Object -Unique)
+        if($unique.Count -gt 1){foreach($item in $group.Group){$item.Audit.Motivo='Mais de um registro aceito divergente para CP/aquisitivo/modalidade';[void]$pendencias.Add($item.Audit)}}
+        else{[void]$linhas.Add($group.Group[0].Linha)}
+    }
+    return [pscustomobject]@{Cabecalhos=$headers;Linhas=@($linhas.ToArray());Pendencias=@($pendencias.ToArray())}
+}
+
+function Write-ExcelAceitasAccess([string]$Path,$Dados,[string]$NomeAbaPrincipal='Colar_Access',[string[]]$InstrucoesPersonalizadas=@(),[string[]]$CabecalhosPendencias=@('Matricula','Nome','CP','Modalidade','Motivo')){
+    # XLSX nativo, sem automação do Excel, macros, fórmulas ou acesso ao banco Access.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    function XmlAccess($value){return [Security.SecurityElement]::Escape(([string]$value -replace '[\x00-\x08\x0B\x0C\x0E-\x1F]',''))}
+    function SheetAccess($headers,$items,[bool]$principal){
+        $sb=New-Object Text.StringBuilder
+        [void]$sb.Append('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>')
+        for($j=0;$j -lt $headers.Count;$j++){$width=if($headers[$j] -match 'Nome|Motivo|Observação|Instrução'){55}else{23};[void]$sb.Append('<col min="'+($j+1)+'" max="'+($j+1)+'" width="'+$width+'" customWidth="1"/>')}
+        [void]$sb.Append('</cols><sheetData>')
+        $rn=1
+        foreach($item in @($null)+@($items)){
+            [void]$sb.Append('<row r="'+$rn+'">')
+            for($j=0;$j -lt $headers.Count;$j++){
+                $col=[string][char](65+$j);$ref=$col+$rn
+                $val=if($rn -eq 1){$headers[$j]}else{$item.($headers[$j])}
+                if($null -eq $val){continue}
+                if($rn -eq 1){[void]$sb.Append('<c r="'+$ref+'" s="1" t="inlineStr"><is><t>'+ (XmlAccess $val)+'</t></is></c>')}
+                elseif($val -is [datetime]){[void]$sb.Append('<c r="'+$ref+'" s="2"><v>'+$val.ToOADate().ToString('0.########',[Globalization.CultureInfo]::InvariantCulture)+'</v></c>')}
+                elseif($val -is [int]){$style=if($principal -and $headers[$j] -eq 'Programacao_Ano'){3}else{0};[void]$sb.Append('<c r="'+$ref+'" s="'+$style+'"><v>'+$val+'</v></c>')}
+                else{[void]$sb.Append('<c r="'+$ref+'" t="inlineStr"><is><t xml:space="preserve">'+(XmlAccess $val)+'</t></is></c>')}
+            }
+            [void]$sb.Append('</row>');$rn++
+        }
+        [void]$sb.Append('</sheetData></worksheet>');return $sb.ToString()
+    }
+    $instrucoes=@(
+        'Copie somente os dados da aba Colar_Access, sem o cabeçalho. No Access, cole a partir de Codigo do Servidor em novas linhas. Não selecione ID_Ferias: ele é automático.',
+        'A ordem dos 13 campos corresponde à estrutura apresentada. Revise a seleção antes de colar. Uma nova colagem pode duplicar registros já existentes no Access.',
+        'Programacao_Ano contém o número 0 com formato 0000; preencha o ano correto antes da colagem.',
+        'Processo_20Dias: -1 marca Sim; 0 marca Não no Access. FR aceita é uma linha independente, com suas datas em Ferias_30_Inicio/Final e Processo_20Dias = -1.',
+        'Agendar Após = fim do período aquisitivo + 2 dias. Datas são células de data do Excel, exibidas em dd/mm/yyyy.',
+        'Somente opções explicitamente aceitas são exportadas. Pendentes e todas as férias fixas/bloqueadas são excluídas, mesmo com opção marcada como aceita. A exportação considera toda a base, sem os filtros da lista.',
+        'Pendências não estão na aba de colagem. Confira a aba Pendencias. CPs são obtidos por matrícula exata nos registros e histórico; nenhum CP é adivinhado.'
+    ) | ForEach-Object {[pscustomobject]@{'Instrução'=$_}}
+    if($InstrucoesPersonalizadas.Count -gt 0){$instrucoes=@($InstrucoesPersonalizadas | ForEach-Object {[pscustomobject]@{'Instrução'=$_}})}
+    $files=[ordered]@{}
+    $files['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'
+    $files['_rels/.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+    $files['xl/workbook.xml']='<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Colar_Access" sheetId="1" r:id="rId1"/><sheet name="Pendencias" sheetId="2" r:id="rId2"/><sheet name="Instrucoes" sheetId="3" r:id="rId3"/></sheets></workbook>'
+    $files['xl/workbook.xml']=$files['xl/workbook.xml'].Replace('Colar_Access',(XmlAccess $NomeAbaPrincipal))
+    $files['xl/_rels/workbook.xml.rels']='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
+    $files['xl/styles.xml']='<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="0000"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'
+    $files['xl/worksheets/sheet1.xml']=SheetAccess $Dados.Cabecalhos $Dados.Linhas $true
+    $files['xl/worksheets/sheet2.xml']=SheetAccess $CabecalhosPendencias $Dados.Pendencias $false
+    $files['xl/worksheets/sheet3.xml']=SheetAccess @('Instrução') $instrucoes $false
+    $temp=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp';$zip=$null
+    try{
+        $zip=[IO.Compression.ZipFile]::Open($temp,[IO.Compression.ZipArchiveMode]::Create)
+        foreach($key in $files.Keys){$entry=$zip.CreateEntry($key);$writer=New-Object IO.StreamWriter($entry.Open(),[Text.UTF8Encoding]::new($false));try{$writer.Write($files[$key])}finally{$writer.Dispose()}}
+        $zip.Dispose();$zip=$null
+        Move-Item -LiteralPath $temp -Destination $Path -Force -ErrorAction Stop
+    }finally{if($null -ne $zip){$zip.Dispose()};if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force}}
+}
+
+function Write-ArquivoImportacaoFeriasAccess([string]$Path,$Dados){
+    # XML tipado com as mesmas 13 colunas; nunca inclui ID_Ferias nem altera a base.
+    $temp=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
+    $settings=New-Object Xml.XmlWriterSettings
+    $settings.Encoding=New-Object Text.UTF8Encoding($true)
+    $settings.Indent=$true
+    $writer=$null
+    try{
+        $writer=[Xml.XmlWriter]::Create($temp,$settings)
+        $writer.WriteStartDocument();$writer.WriteStartElement('FeriasDCE')
+        $writer.WriteAttributeString('versao','1')
+        $writer.WriteAttributeString('gerado_em',(Get-Date).ToString('o',[Globalization.CultureInfo]::InvariantCulture))
+        $writer.WriteStartElement('Registros')
+        foreach($row in @($Dados.Linhas)){
+            $writer.WriteStartElement('Registro')
+            foreach($header in $Dados.Cabecalhos){
+                $writer.WriteStartElement('Campo');$writer.WriteAttributeString('nome',[string]$header)
+                $value=$row.$header
+                if($null -eq $value){$writer.WriteAttributeString('nulo','1')}
+                elseif($value -is [datetime]){$writer.WriteString($value.ToString('yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture))}
+                else{$writer.WriteString([Convert]::ToString($value,[Globalization.CultureInfo]::InvariantCulture))}
+                $writer.WriteEndElement()
+            }
+            $writer.WriteEndElement()
+        }
+        $writer.WriteEndElement();$writer.WriteStartElement('Pendencias')
+        foreach($item in @($Dados.Pendencias)){
+            $writer.WriteStartElement('Pendencia')
+            foreach($property in $item.PSObject.Properties){
+                $writer.WriteStartElement('Campo');$writer.WriteAttributeString('nome',$property.Name)
+                $writer.WriteString([string]$property.Value);$writer.WriteEndElement()
+            }
+            $writer.WriteEndElement()
+        }
+        $writer.WriteEndElement();$writer.WriteEndElement();$writer.WriteEndDocument()
+        $writer.Dispose();$writer=$null
+        Move-Item -LiteralPath $temp -Destination $Path -Force -ErrorAction Stop
+    }finally{if($null -ne $writer){$writer.Dispose()};if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp -Force}}
+}
+
+function Exportar-ArquivoImportacaoFeriasAccess {
+    $save=New-Object Windows.Forms.SaveFileDialog
+    try{
+        $dados=Get-ExportacaoAceitasAccess
+        if($dados.Linhas.Count -eq 0 -and $dados.Pendencias.Count -eq 0){[Windows.Forms.MessageBox]::Show('Não há férias aceitas não fixas para exportar.','Importação Access')|Out-Null;return}
+        $save.Filter='Importação de férias (*.xml)|*.xml'
+        $save.FileName='FERIAS_ACEITAS_IMPORTAR_ACCESS_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.xml'
+        $save.OverwritePrompt=$true
+        if($save.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return}
+        Write-ArquivoImportacaoFeriasAccess $save.FileName $dados
+        [Windows.Forms.MessageBox]::Show("Arquivo gerado: $($dados.Linhas.Count) registro(s) elegível(is) e $($dados.Pendencias.Count) pendência(s).`n`nNo Access, execute ImportarFeriasDCE do módulo modImportarFeriasDCE. Ele confere a tabela antes de inserir e apresenta o resultado para revisão.`n`nNão cole novamente a planilha para essas mesmas férias. Programacao_Ano permanece 0000; o importador permite informar o ano. Nenhum dado foi gravado no Access nesta etapa.",'Importação Access')|Out-Null
+    }catch{[Windows.Forms.MessageBox]::Show(('Falha ao gerar o arquivo: '+$_.Exception.Message),'Importação Access')|Out-Null}finally{$save.Dispose()}
+}
+
+function Exportar-AceitasAccess {
+    $save=New-Object Windows.Forms.SaveFileDialog
+    try{
+        $dados=Get-ExportacaoAceitasAccess
+        if($dados.Linhas.Count -eq 0 -and $dados.Pendencias.Count -eq 0){[Windows.Forms.MessageBox]::Show('Não existem opções explicitamente aceitas para exportar.','Exportar para Access')|Out-Null;return}
+        $save.Filter='Excel (*.xlsx)|*.xlsx';$save.FileName='FERIAS_ACEITAS_ACCESS_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.xlsx';$save.OverwritePrompt=$true
+        if($save.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return}
+        Write-ExcelAceitasAccess $save.FileName $dados
+        [Windows.Forms.MessageBox]::Show("Excel gerado: $($dados.Linhas.Count) linha(s) para colagem e $($dados.Pendencias.Count) pendência(s).`n`nPreencha Programacao_Ano (0000). Copie somente os dados de Colar_Access, sem cabeçalho, e cole no Access a partir de Codigo do Servidor, sem ID_Ferias.`n`nProcesso_20Dias: -1 = Sim; 0 = Não. Confira também as abas Pendencias e Instrucoes.",'Exportar para Access')|Out-Null
+    }catch{[Windows.Forms.MessageBox]::Show(('Não foi possível gerar o Excel: '+$_.Exception.Message),'Exportar para Access')|Out-Null}finally{$save.Dispose()}
+}
+
 function Get-NumeroFRConfirmada($r){
     if($null -eq $r){return 0}
     $n=0; try{$n=[int]$r.fr_opcao_aprovada}catch{$n=0}
@@ -1054,21 +1495,7 @@ function Get-ConflitoEntreAquisitivosAprovados($registro,$blocosCandidatos){
     foreach($outro in @($script:Records)){
         if($null -eq $outro -or [int]$outro.id -eq [int]$registro.id){continue}
         if(([string]$outro.matricula).Trim() -ne $mat){continue}
-        $existentes=@()
-        if(Test-RegistroFeriasBloqueadas $outro){
-            $ini=Parse-Date ([string]$outro.fixo_inicio)
-            $fim=Parse-Date ([string]$outro.fixo_fim)
-            if($null -ne $ini -and $null -ne $fim){$existentes+= [pscustomobject]@{inicio=$ini;fim=$fim}}
-            foreach($extra in @(Get-FixasAdicionais $outro)){
-                $ini=Parse-Date ([string]$extra.inicio);$fim=Parse-Date ([string]$extra.fim)
-                if($null -ne $ini -and $null -ne $fim){$existentes+= [pscustomobject]@{inicio=$ini;fim=$fim}}
-            }
-        }else{
-            $nc=Get-NumeroComumConfirmada $outro
-            $nf=Get-NumeroFRConfirmada $outro
-            if($nc -gt 0){$existentes+=@(Get-BlocosComunsOpcao $outro $nc)}
-            if($nf -gt 0){$existentes+=@(Get-BlocoFROpcao $outro $nf)}
-        }
+        $existentes=@(Get-BlocosConfirmadosRegistro $outro)
         foreach($bloco in @($blocosCandidatos)){
             if($null -eq $bloco -or $null -eq $bloco.inicio -or $null -eq $bloco.fim){continue}
             foreach($existente in @($existentes)){
@@ -1086,8 +1513,8 @@ function Get-MesesBlocosAno($blocos,[int]$ano){
     $result=New-Object 'System.Collections.Generic.HashSet[int]'
     foreach($b in @($blocos)){
         if($null -eq $b -or $null -eq $b.inicio -or $null -eq $b.fim){continue}
-        $cursor=(Get-Date -Year $b.inicio.Year -Month $b.inicio.Month -Day 1).Date
-        $ultimo=(Get-Date -Year $b.fim.Year -Month $b.fim.Month -Day 1).Date
+        $cursor=[datetime]::new($b.inicio.Year,$b.inicio.Month,1)
+        $ultimo=[datetime]::new($b.fim.Year,$b.fim.Month,1)
         while($cursor -le $ultimo){if($cursor.Year -eq $ano){[void]$result.Add($cursor.Month)};$cursor=$cursor.AddMonths(1)}
     }
     return @($result | Sort-Object)
@@ -1134,7 +1561,7 @@ function Get-NumeroOpcaoPlanejamento($r){
 function Get-OpcaoPlanejamento($r){
     if(Test-RegistroFixoImportado $r){
         $ad=@(Get-FixasAdicionais $r)
-        return [pscustomobject]@{tipo='FÉRIAS FIXAS';inicio1=[string]$r.fixo_inicio;fim1=[string]$r.fixo_fim;inicio2=if($ad.Count -gt 0){[string]$ad[0].inicio}else{''};fim2=if($ad.Count -gt 0){[string]$ad[0].fim}else{''};fr_inicio='';fr_fim=''}
+        return [pscustomobject]@{blocos_fixos=@(Get-OptionBlocksPlanejamento $r);tipo='FÉRIAS FIXAS';inicio1=[string]$r.fixo_inicio;fim1=[string]$r.fixo_fim;inicio2=if($ad.Count -gt 0){[string]$ad[0].inicio}else{''};fim2=if($ad.Count -gt 0){[string]$ad[0].fim}else{''};fr_inicio='';fr_fim=''}
     }
     $nc=Get-NumeroComumConfirmada $r
     if($nc -eq 0){$nc=1} # Projeção enquanto pendente.
@@ -1170,11 +1597,21 @@ function Get-OptionBlocksPlanejamento($r){
     return @($result)
 }
 
+function Get-BlocosConfirmadosRegistro($r){
+    if(Test-RegistroFeriasBloqueadas $r){return @(Get-OptionBlocksPlanejamento $r)}
+    $nc=Get-NumeroComumConfirmada $r
+    $nf=Get-NumeroFRConfirmada $r
+    $blocos=@()
+    if($nc -gt 0){$blocos+=@(Get-BlocosComunsOpcao $r $nc)}
+    if($nf -gt 0){$blocos+=@(Get-BlocoFROpcao $r $nf)}
+    return @($blocos)
+}
+
 function Get-MesesPlanejamentoRegistro($r,[int]$ano){
     $meses=New-Object 'System.Collections.Generic.HashSet[int]'
     foreach($b in (Get-OptionBlocksPlanejamento $r)){
-        $cursor=(Get-Date -Year $b.inicio.Year -Month $b.inicio.Month -Day 1).Date
-        $ultimo=(Get-Date -Year $b.fim.Year -Month $b.fim.Month -Day 1).Date
+        $cursor=[datetime]::new($b.inicio.Year,$b.inicio.Month,1)
+        $ultimo=[datetime]::new($b.fim.Year,$b.fim.Month,1)
         while($cursor -le $ultimo){
             if($cursor.Year -eq $ano){ [void]$meses.Add($cursor.Month) }
             $cursor=$cursor.AddMonths(1)
@@ -1418,6 +1855,75 @@ function Test-CargoEnfermeiroHistorico([string]$cargo){
     return $false
 }
 
+
+function Get-HistoricoAnosConsulta {
+    $anos=@($script:HistoricoFerias | ForEach-Object {
+        foreach($ym in @(Get-HistoricoMesesAtingidos $_)){ [int]$ym.ano }
+    } | Sort-Object -Unique)
+    if($anos.Count -gt 0){ return $anos }
+    # Sem dados, a janela inicial acompanha o ano de planejamento selecionado.
+    $ano=2027
+    if($null -ne $script:cmbPlanejAno -and $null -ne $script:cmbPlanejAno.SelectedItem){
+        $n=0; if([int]::TryParse([string]$script:cmbPlanejAno.SelectedItem,[ref]$n) -and $n -ge 1903 -and $n -le 9999){$ano=$n}
+    }
+    return @(($ano-3)..($ano-1))
+}
+
+function Get-HistoricoRegistroErro($h){
+    if($null -eq $h -or [string]::IsNullOrWhiteSpace([string]$h.matricula)){return 'Matrícula ausente.'}
+    $ini=Parse-Date ([string]$h.inicio);$fim=Parse-Date ([string]$h.fim)
+    if($null -eq $ini -or $null -eq $fim -or $fim -lt $ini){return 'Datas de férias inválidas ou invertidas.'}
+    if($ini.Year -lt 1900 -or $fim.Year -gt 9998){return 'Ano de férias fora do intervalo suportado (1900 a 9998).'}
+    $ai=([string]$h.aquisitivo_inicio).Trim();$af=([string]$h.aquisitivo_fim).Trim()
+    if($ai -or $af){
+        $a=Parse-Date $ai;$b=Parse-Date $af
+        if($null -eq $a -or $null -eq $b -or $b -lt $a){return 'Período aquisitivo incompleto, inválido ou invertido.'}
+    }
+    return ''
+}
+
+function Get-HistoricoConflito($a,$b){
+    if(([string]$a.matricula).Trim() -ne ([string]$b.matricula).Trim()){return ''}
+    if((Get-HistoricoChave $a) -eq (Get-HistoricoChave $b)){return ''}
+    $ia=Parse-Date ([string]$a.inicio);$fa=Parse-Date ([string]$a.fim)
+    $ib=Parse-Date ([string]$b.inicio);$fb=Parse-Date ([string]$b.fim)
+    if($null -eq $ia -or $null -eq $fa -or $null -eq $ib -or $null -eq $fb){return ''}
+    if($ia -le $fb -and $fa -ge $ib){return 'Períodos sobrepostos do mesmo servidor; conferir datas e aquisitivos. Nada foi substituído.'}
+    return ''
+}
+
+function Test-CorAmarelaRelatorio($fg,$styles,$theme){
+    if($null -eq $fg){return $false}
+    $rgb=([string]$fg.rgb).ToUpperInvariant()
+    $indexed=-1
+    if([int]::TryParse([string]$fg.indexed,[ref]$indexed)){
+        # Paleta personalizada prevalece sobre a paleta padrão OOXML.
+        $palette=@($styles.styleSheet.colors.indexedColors.rgbColor)
+        if($indexed -ge 0 -and $indexed -lt $palette.Count -and $null -ne $palette[$indexed]){$rgb=([string]$palette[$indexed].rgb).ToUpperInvariant()}
+        elseif($indexed -in @(6,43)){$rgb=if($indexed -eq 6){'FFFFFF00'}else{'FFFFFF99'}}
+    }
+    $themeIndex=-1
+    if(-not $rgb -and [int]::TryParse([string]$fg.theme,[ref]$themeIndex) -and $null -ne $theme){
+        $scheme=@($theme.theme.themeElements.clrScheme.ChildNodes | Where-Object {$_.NodeType -eq [Xml.XmlNodeType]::Element})
+        # OOXML: índices lt1/dk1/lt2/dk2, enquanto o XML declara dk1/lt1/dk2/lt2.
+        $order=@(1,0,3,2,4,5,6,7,8,9,10,11)
+        if($themeIndex -ge 0 -and $themeIndex -lt $order.Count -and $order[$themeIndex] -lt $scheme.Count){
+            $color=$scheme[$order[$themeIndex]].FirstChild
+            if($null -ne $color){$rgb=[string]$color.val;if($color.LocalName -eq 'sysClr'){$rgb=[string]$color.lastClr}}
+        }
+    }
+    $rgb=($rgb -replace '^#','').ToUpperInvariant()
+    if($rgb.Length -eq 8){$rgb=$rgb.Substring(2)}
+    # Não tratar um tema amarelo escurecido até preto/branqueado como marcação amarela.
+    # Tons de tema com tint exigem resolução de luminância; não inferir pela cor base.
+    $tint=0.0
+    if(-not [string]::IsNullOrWhiteSpace([string]$fg.tint)){
+        if(-not [double]::TryParse([string]$fg.tint,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$tint) -or $tint -ne 0){return $false}
+    }
+    # Normalização RGB/ARGB: somente amarelos explicitamente suportados, sem inferir por proximidade.
+    return ($rgb -match '^(FFFF00|FFC000|FFF2CC|FFFF99|FFFFCC)$')
+}
+
 function Get-HistoricoChave($h){
     $mat=([string]$h.matricula).Trim()
     $ini=([string]$h.inicio).Trim()
@@ -1429,84 +1935,46 @@ function Get-HistoricoChave($h){
 }
 
 function Merge-HistoricoFeriasIncremental([array]$incoming){
-    # Não modifica nem remove registros existentes; apenas adiciona períodos inéditos.
     $resultado=New-Object 'System.Collections.Generic.List[object]'
     $auditoria=New-Object 'System.Collections.Generic.List[object]'
-    $map=@{}
-    $duplicadosExistentes=0
+    $map=@{};$duplicadosExistentes=0
     foreach($h in @($script:HistoricoFerias)){
-        [void]$resultado.Add($h)
-        $k=Get-HistoricoChave $h
-        if($k){
-            if($map.ContainsKey($k)){ $duplicadosExistentes++ }
-            else { $map[$k]=$h }
-        }
+        [void]$resultado.Add($h);$k=Get-HistoricoChave $h
+        if($k){if($map.ContainsKey($k)){$duplicadosExistentes++}else{$map[$k]=$h}}
     }
-
-    $adicionados=0; $jaExistentes=0; $divergencias=0
+    $adicionados=0;$jaExistentes=0;$divergencias=0;$invalidos=0
     foreach($n in @($incoming)){
-        $k=Get-HistoricoChave $n
-        $acao='IGNORADO'; $detalhe='Chave histórica inválida ou matrícula ausente.'
-        $anterior=''; $recebido=''
-        if($k -and $map.ContainsKey($k)){
-            $jaExistentes++
-            $acao='JA_EXISTENTE_PRESERVADO'
+        $k=Get-HistoricoChave $n;$erro=Get-HistoricoRegistroErro $n
+        $acao='IGNORADO_INVALIDO';$detalhe=$erro;$anterior='';$recebido=([string]$n.inicio)+' a '+([string]$n.fim)
+        if($erro){$invalidos++}
+        elseif($k -and $map.ContainsKey($k)){
+            $jaExistentes++;$acao='JA_EXISTENTE_PRESERVADO'
             $detalhe='Período e aquisitivo idênticos; nenhuma alteração realizada.'
             $anterior=([string]$map[$k].inicio)+' a '+([string]$map[$k].fim)
-            $recebido=([string]$n.inicio)+' a '+([string]$n.fim)
-        } elseif($k){
-            # Datas diferentes que se sobrepõem ao mesmo aquisitivo não são incluídas automaticamente.
-            $conflito=$false
-            $matN=([string]$n.matricula).Trim()
-            $aqiN=([string]$n.aquisitivo_inicio).Trim()
-            $aqfN=([string]$n.aquisitivo_fim).Trim()
-            $dtIniN=[datetime]::MinValue; $dtFimN=[datetime]::MinValue
-            try { $dtIniN=[datetime]::ParseExact(([string]$n.inicio),'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture) } catch {}
-            try { $dtFimN=[datetime]::ParseExact(([string]$n.fim),'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture) } catch {}
-            foreach($ant in @($resultado.ToArray())){
-                if(([string]$ant.matricula).Trim() -ne $matN){ continue }
-                if(([string]$ant.aquisitivo_inicio).Trim() -ne $aqiN -or ([string]$ant.aquisitivo_fim).Trim() -ne $aqfN){ continue }
-                $dtIniA=[datetime]::MinValue; $dtFimA=[datetime]::MinValue
-                try { $dtIniA=[datetime]::ParseExact(([string]$ant.inicio),'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture) } catch {}
-                try { $dtFimA=[datetime]::ParseExact(([string]$ant.fim),'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture) } catch {}
-                if($dtIniN -ne [datetime]::MinValue -and $dtFimN -ne [datetime]::MinValue -and $dtIniA -ne [datetime]::MinValue -and $dtFimA -ne [datetime]::MinValue -and $dtIniN -le $dtFimA -and $dtFimN -ge $dtIniA){
-                    $conflito=$true
-                    $anterior=([string]$ant.inicio)+' a '+([string]$ant.fim)
-                    break
-                }
+        }else{
+            $conflito=''
+            foreach($ant in @($resultado.ToArray())+@($incoming)){
+                $conflito=Get-HistoricoConflito $n $ant
+                if($conflito){$anterior=([string]$ant.inicio)+' a '+([string]$ant.fim);break}
             }
             if($conflito){
-                $divergencias++
-                $acao='CONFERIR_SOBREPOSICAO'
-                $detalhe='Mesmo servidor e aquisitivo: período recebido sobrepõe período armazenado; nada foi alterado.'
-                $recebido=([string]$n.inicio)+' a '+([string]$n.fim)
-            } else {
-            $n | Add-Member -NotePropertyName importado_em -NotePropertyValue (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -Force
-            [void]$resultado.Add($n)
-            $map[$k]=$n
-            $adicionados++
-            $acao='NOVO_INCLUIDO'
-            $detalhe='Novo período histórico, sem alteração dos registros anteriores.'
-            $recebido=([string]$n.inicio)+' a '+([string]$n.fim)
+                $divergencias++;$acao='CONFERIR_SOBREPOSICAO';$detalhe=$conflito
+            }else{
+                $n|Add-Member -NotePropertyName importado_em -NotePropertyValue (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -Force
+                [void]$resultado.Add($n);$map[$k]=$n;$adicionados++
+                $acao='NOVO_INCLUIDO';$detalhe='Novo período histórico, sem alteração dos registros anteriores.'
             }
         }
         [void]$auditoria.Add([pscustomobject]@{
-            acao=$acao; matricula=[string]$n.matricula; nome=[string]$n.nome
-            aquisitivo_inicio=[string]$n.aquisitivo_inicio; aquisitivo_fim=[string]$n.aquisitivo_fim
-            periodo_anterior=$anterior; periodo_recebido=$recebido
-            inicio_recebido=[string]$n.inicio; fim_recebido=[string]$n.fim
-            arquivo_origem=[string]$n.arquivo_origem; linha_origem=[string]$n.linha_origem
-            detalhe=$detalhe
+            acao=$acao;matricula=[string]$n.matricula;nome=[string]$n.nome
+            aquisitivo_inicio=[string]$n.aquisitivo_inicio;aquisitivo_fim=[string]$n.aquisitivo_fim
+            periodo_anterior=$anterior;periodo_recebido=$recebido;inicio_recebido=[string]$n.inicio;fim_recebido=[string]$n.fim
+            arquivo_origem=[string]$n.arquivo_origem;linha_origem=[string]$n.linha_origem;detalhe=$detalhe
         })
     }
     return [pscustomobject]@{
-        itens=$resultado.ToArray()
-        auditoria=$auditoria.ToArray()
-        adicionados=$adicionados
-        ja_existentes=$jaExistentes
-        alterados=0
-        divergencias=$divergencias
-        preservados=([int]$resultado.Count-$adicionados)
+        itens=$resultado.ToArray();auditoria=$auditoria.ToArray();adicionados=$adicionados;ja_existentes=$jaExistentes
+        alterados=0;divergencias=$divergencias;invalidos=$invalidos;preservados=([int]$resultado.Count-$adicionados)
         duplicados_preexistentes_preservados=$duplicadosExistentes
     }
 }
@@ -1521,6 +1989,7 @@ function Exportar-AuditoriaHistoricoIncremental([array]$rows){
 }
 
 function Get-HistoricoDesempateInfo($r,[int]$mes,[int]$ano){
+    if($ano -lt 1903 -or $ano -gt 9999 -or $mes -lt 1 -or $mes -gt 12){throw 'Ano ou mês inválido para consulta histórica.'}
     $mat=([string]$r.matricula).Trim()
     $nomeMes=Get-NomeMesExtenso $mes
     $minDias=[int]$script:HistoricoMinDiasMesDesempate
@@ -1567,7 +2036,7 @@ function Get-HistoricoDesempateInfo($r,[int]$mes,[int]$ano){
             [void]$det.Add($txt)
             $anosInfo += [pscustomobject]@{ano=$y;tem_dados=$true;tem_servidor=$true;teve_mes=$true;dias_mes=$diasMes;periodos=$periodos;texto=$txt}
         } else {
-            $txt=if($diasMes -gt 0){"${y}: NÃO conta como férias em $nomeMes para desempate — $diasMes dia(s), abaixo do mínimo de $minDias"}else{"${y}: NÃO teve férias registradas em $nomeMes"}
+            $txt=if($diasMes -gt 0){"${y}: NÃO conta como férias em $nomeMes para desempate — $diasMes dia(s), abaixo do mínimo de $minDias"}else{"${y}: Sem férias registradas em $nomeMes (ausência de registro não comprova não utilização)"}
             [void]$det.Add($txt)
             $anosInfo += [pscustomobject]@{ano=$y;tem_dados=$true;tem_servidor=$true;teve_mes=$false;dias_mes=$diasMes;periodos=@();texto=$txt}
         }
@@ -1585,9 +2054,10 @@ function Get-HistoricoDesempateInfo($r,[int]$mes,[int]$ano){
         disponivel=$true
         ocorrencias=$ocorrencias
         cobertura=$cobertura
-        prioridade=$prioridade
+        prioridade=$(if($cobertura -lt 3){"PARCIAL — $prioridade"}else{$prioridade})
+        cobertura_completa=($cobertura -eq 3)
         penalidade=$ocorrencias
-        detalhe=("Prioridade histórica: $prioridade | $ocorrencias ano(s) com pelo menos $minDias dias de férias em $nomeMes, considerando $cobertura ano(s) com dados. Períodos distintos no mesmo mês são somados por dias únicos. " + ($det -join " | "))
+        detalhe=("Prioridade histórica: $(if($cobertura -lt 3){'PARCIAL — '}else{''})$prioridade | $ocorrencias ano(s) com pelo menos $minDias dias de férias em $nomeMes, considerando $cobertura ano(s) com dados. Períodos distintos no mesmo mês são somados por dias únicos. " + ($det -join " | "))
         anos=@($anosInfo)
     }
 }
@@ -1667,21 +2137,27 @@ function Get-HistoricoRegistrosFiltrados([string]$matricula=""){
 function Refresh-HistoricoFiltrosListas {
     if($null -eq $script:cmbHistSetor -or $null -eq $script:cmbHistPeriodo){ return }
 
+    $anoSel=if($script:cmbHistAno.SelectedItem){[string]$script:cmbHistAno.SelectedItem}else{"TODOS"}
     $setSel=if($script:cmbHistSetor.SelectedItem){[string]$script:cmbHistSetor.SelectedItem}else{"TODOS"}
     $perSel=if($script:cmbHistPeriodo.SelectedItem){[string]$script:cmbHistPeriodo.SelectedItem}else{"TODOS"}
 
     $script:CarregandoHistoricoUI=$true
     try {
+        $script:cmbHistAno.Items.Clear()
+        [void]$script:cmbHistAno.Items.Add('TODOS')
+        foreach($yy in @(Get-HistoricoAnosConsulta)){[void]$script:cmbHistAno.Items.Add([string]$yy)}
+        $idx=$script:cmbHistAno.Items.IndexOf($anoSel)
+        $script:cmbHistAno.SelectedIndex=if($idx -ge 0){$idx}else{0}
         $script:cmbHistSetor.Items.Clear()
         [void]$script:cmbHistSetor.Items.Add("TODOS")
-        $setores=@($script:Records | ForEach-Object { ([string]$_.setor).Trim() } | Where-Object { $_ } | Sort-Object -Unique)
+        $setores=@(@($script:Records)+@($script:HistoricoFerias | ForEach-Object {[pscustomobject]@{setor=[string]$_.setor_origem}}) | ForEach-Object { ([string]$_.setor).Trim() } | Where-Object { $_ } | Sort-Object -Unique)
         foreach($s in $setores){ [void]$script:cmbHistSetor.Items.Add($s) }
         $idx=$script:cmbHistSetor.Items.IndexOf($setSel)
         $script:cmbHistSetor.SelectedIndex=if($idx -ge 0){$idx}else{0}
 
         $script:cmbHistPeriodo.Items.Clear()
         [void]$script:cmbHistPeriodo.Items.Add("TODOS")
-        $periodos=@($script:Records | ForEach-Object { ([string]$_.periodo).Trim().ToUpperInvariant() } | Where-Object { $_ } | Sort-Object -Unique)
+        $periodos=@(@($script:Records)+@($script:HistoricoFerias | ForEach-Object {[pscustomobject]@{periodo=[string]$_.periodo_origem}}) | ForEach-Object { ([string]$_.periodo).Trim().ToUpperInvariant() } | Where-Object { $_ } | Sort-Object -Unique)
         foreach($p in $periodos){ [void]$script:cmbHistPeriodo.Items.Add($p) }
         $idx=$script:cmbHistPeriodo.Items.IndexOf($perSel)
         $script:cmbHistPeriodo.SelectedIndex=if($idx -ge 0){$idx}else{0}
@@ -1692,6 +2168,7 @@ function Refresh-HistoricoFiltrosListas {
 
 
 function Refresh-HistoricoResumoVisual([string]$matricula=""){
+    $anosConsulta=@(Get-HistoricoAnosConsulta)
     $mat=([string]$matricula).Trim()
 
     # Limpa os cartões/matriz quando ainda não há servidor selecionado.
@@ -1713,7 +2190,7 @@ function Refresh-HistoricoResumoVisual([string]$matricula=""){
 
     # Conta mês/ano que realmente atingiu o critério de 15 dias.
     $qMeses15=0
-    for($yy=2024;$yy -le 2026;$yy++){
+    foreach($yy in $anosConsulta){
         for($mm=1;$mm -le 12;$mm++){
             $cand=@($all | Where-Object { Test-HistoricoAtingeAnoMes $_ $yy $mm })
             $dias=Get-HistoricoDiasUnicosMes $cand $yy $mm
@@ -1738,7 +2215,7 @@ function Refresh-HistoricoResumoVisual([string]$matricula=""){
             $nomeMes=(Get-NomeMesExtenso $mesAlvo).ToUpperInvariant()
             $script:lblHistCardMesAlvoTitulo.Text="ÚLTIMA VEZ EM $nomeMes"
             $achou=$false
-            for($yy=2026;$yy -ge 2024;$yy--){
+            foreach($yy in @($anosConsulta | Sort-Object -Descending)){
                 $cand=@($all | Where-Object { Test-HistoricoAtingeAnoMes $_ $yy $mesAlvo })
                 $dias=Get-HistoricoDiasUnicosMes $cand $yy $mesAlvo
                 if($dias -ge $minDias){
@@ -1747,17 +2224,17 @@ function Refresh-HistoricoResumoVisual([string]$matricula=""){
                     break
                 }
             }
-            if(-not $achou){ $script:lblHistCardMesAlvoValor.Text="Não utilizado (15+d)" }
+            if(-not $achou){ $script:lblHistCardMesAlvoValor.Text="Sem uso registrado (15+d)" }
         } else {
             $script:lblHistCardMesAlvoTitulo.Text="MÊS-ALVO"
             $script:lblHistCardMesAlvoValor.Text="Selecione um mês"
         }
     }
 
-    # Matriz visual 2024–2026 x 12 meses.
+    # Matriz dos anos importados x 12 meses.
     if($null -ne $script:gridHistResumoMeses){
         $script:gridHistResumoMeses.Rows.Clear()
-        foreach($yy in @(2026,2025,2024)){
+        foreach($yy in @($anosConsulta | Sort-Object -Descending)){
             $idx=$script:gridHistResumoMeses.Rows.Add()
             $rr=$script:gridHistResumoMeses.Rows[$idx]
             $rr.Cells["hrAno"].Value=$yy
@@ -1767,6 +2244,8 @@ function Refresh-HistoricoResumoVisual([string]$matricula=""){
                 $cand=@($all | Where-Object { Test-HistoricoAtingeAnoMes $_ $yy $mm })
                 $dias=Get-HistoricoDiasUnicosMes $cand $yy $mm
                 $cell=$rr.Cells[$nomeCol]
+                $anoRows=@(Get-HistoricoIndexItems $script:HistoricoIndexPorMatAno "$mat|$yy")
+                $cell.ToolTipText=if($anoRows.Count -eq 0){'Sem registros desse ano para o servidor.'}else{'Somente dados registrados; ausência no mês não comprova não utilização.'}
                 $cell.Style.Alignment=[Windows.Forms.DataGridViewContentAlignment]::MiddleCenter
                 if($dias -ge $minDias){
                     $qual++
@@ -1779,7 +2258,7 @@ function Refresh-HistoricoResumoVisual([string]$matricula=""){
                     $cell.Style.BackColor=[Drawing.Color]::FromArgb(255,243,205)
                     $cell.Style.ForeColor=[Drawing.Color]::FromArgb(128,88,0)
                 } else {
-                    $cell.Value="—"
+                    $cell.Value=if($anoRows.Count -eq 0){"?"}else{"—"}
                     $cell.Style.BackColor=[Drawing.Color]::FromArgb(244,246,248)
                     $cell.Style.ForeColor=[Drawing.Color]::Gray
                 }
@@ -1932,7 +2411,7 @@ function Refresh-HistoricoServidoresUI {
 
 function Get-HistoricoResumoAno([array]$rows,[int]$ano,[int]$mesAlvo){
     $r=@($rows | Where-Object { Test-HistoricoAtingeAno $_ $ano })
-    if($r.Count -eq 0){ return "NÃO" }
+    if($r.Count -eq 0){ return "SEM REGISTRO" }
 
     if($mesAlvo -le 0){
         $periodos=@($r | ForEach-Object { Get-HistoricoChave $_ } | Where-Object {$_} | Sort-Object -Unique)
@@ -1963,6 +2442,16 @@ function Refresh-HistoricoComparacaoUI {
     $script:gridHistComparacao.Rows.Clear()
     $script:gridHistLinhaTempo.Rows.Clear()
 
+    $anosConsulta=@(Get-HistoricoAnosConsulta)
+    foreach($col in @($script:gridHistComparacao.Columns | Where-Object {$_.Name -match '^hcAno[0-9]+$'})){
+        $script:gridHistComparacao.Columns.Remove($col)
+    }
+    $pos=4
+    foreach($yy in $anosConsulta){
+        $col=New-Object Windows.Forms.DataGridViewTextBoxColumn
+        $col.Name="hcAno$yy";$col.HeaderText=[string]$yy;$col.Width=165;$col.ReadOnly=$true
+        [void]$script:gridHistComparacao.Columns.Add($col);$col.DisplayIndex=$pos;$pos++
+    }
     $mats=@($script:HistoricoComparacaoSelecionados.Keys | Sort-Object)
     if($mats.Count -eq 0){
         if($null -ne $script:lblHistCompResumo){
@@ -2011,16 +2500,14 @@ function Refresh-HistoricoComparacaoUI {
         $rr.Cells["hcNome"].Value=[string]$meta.nome
         $rr.Cells["hcSetor"].Value=[string]$meta.setor
         $rr.Cells["hcPer"].Value=[string]$meta.periodo
-        $rr.Cells["hc2024"].Value=Get-HistoricoResumoAno $all 2024 $mesAlvo
-        $rr.Cells["hc2025"].Value=Get-HistoricoResumoAno $all 2025 $mesAlvo
-        $rr.Cells["hc2026"].Value=Get-HistoricoResumoAno $all 2026 $mesAlvo
+        foreach($yy in $anosConsulta){$rr.Cells["hcAno$yy"].Value=Get-HistoricoResumoAno $all $yy $mesAlvo}
         $rr.Cells["hcOc"].Value=$ocorrencias
         $rr.Cells["hcUltMes"].Value=if($null -ne $ultimaMes){Date-ToBR ([string]$ultimaMes.inicio)}else{"—"}
         $rr.Cells["hcUlt"].Value=if($null -ne $ultima){"$(Date-ToBR ([string]$ultima.inicio)) a $(Date-ToBR ([string]$ultima.fim))"}else{"—"}
 
         # Leitura visual imediata: verde = mês utilizado (15+ dias), amarelo = houve férias
         # mas não atingiu 15 dias, cinza = sem utilização naquele mês-alvo.
-        foreach($cn in @("hc2024","hc2025","hc2026")){
+        foreach($cn in @($anosConsulta | ForEach-Object {"hcAno$_"})){
             $v=[string]$rr.Cells[$cn].Value
             $rr.Cells[$cn].Style.Alignment=[Windows.Forms.DataGridViewContentAlignment]::MiddleCenter
             if($v -like "SIM*"){
@@ -2056,7 +2543,7 @@ function Refresh-HistoricoComparacaoUI {
     }
 
     if($null -ne $script:lblHistCompResumo){
-        $script:lblHistCompResumo.Text="COMPARAÇÃO HISTÓRICA — $($mats.Count) servidor(es) selecionado(s) | Mês-alvo: $mesRotulo.`r`n2024/2025/2026 consideram o mês como utilizado somente quando o servidor totaliza pelo menos 15 dias efetivos de férias naquele mês. Parcelas no mesmo mês são somadas por dias únicos. 'Ocorrências' conta mês/ano que atingiu esse mínimo e é apenas apoio ao desempate; não substitui as regras operacionais do planejamento."
+        $script:lblHistCompResumo.Text="COMPARAÇÃO HISTÓRICA — $($mats.Count) servidor(es) selecionado(s) | Mês-alvo: $mesRotulo.`r`nOs anos exibidos consideram o mês como utilizado somente quando o servidor totaliza pelo menos 15 dias efetivos de férias naquele mês. Parcelas no mesmo mês são somadas por dias únicos. 'Ocorrências' conta mês/ano que atingiu esse mínimo e é apenas apoio ao desempate; não substitui as regras operacionais do planejamento."
     }
 }
 
@@ -2103,7 +2590,8 @@ function Refresh-ConfigInfo {
     $chefias=0
     try { $chefias=@(Get-GruposChefiaNomes).Count } catch { $chefias=0 }
     $hist=if([bool]$script:Config.historico_3_anos_importado){"Histórico 3 anos: importado"}else{"Histórico 3 anos: aguardando planilha"}
-    $script:lblConfigInfo.Text="Base atual: $servidores servidor(es) | $periodos período(s) aquisitivo(s) | $fixas férias fixa(s) | $chefias Grupo(s) de Chefia | $pend cadastro(s) pendente(s) | $hist."
+    $script:PendenciasSemanticas=@(Get-PendenciasSemanticasBase $script:Records)
+    $script:lblConfigInfo.Text="Conferencia de dados: $($script:PendenciasSemanticas.Count) pendencia(s) | Base atual: $servidores servidor(es) | $periodos período(s) aquisitivo(s) | $fixas férias fixa(s) | $chefias Grupo(s) de Chefia | $pend cadastro(s) pendente(s) | $hist."
 }
 
 
@@ -2630,13 +3118,20 @@ function Get-NodeText($node){
     return [string]$node
 }
 
-function Convert-ExcelSerialToDateString($v){
+function Convert-ExcelSerialToDateString($v,[bool]$Date1904=$false){
     if($null -eq $v -or [string]::IsNullOrWhiteSpace([string]$v)){ return "" }
     $n=0.0
     if([double]::TryParse([string]$v,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$n)){
-        try { return ([datetime]::FromOADate($n)).ToString("yyyy-MM-dd") } catch { return "" }
+        try { return ([datetime]::FromOADate($n+$(if($Date1904){1462}else{0}))).ToString("yyyy-MM-dd") } catch { return "" }
     }
     return ""
+}
+
+function Get-ExcelDate1904($zip){
+    $entry=$zip.Entries|Where-Object {$_.FullName -eq 'xl/workbook.xml'}|Select-Object -First 1
+    if(-not $entry){return $false}
+    $workbook=Read-ZipXmlSafe $entry
+    return (([string]$workbook.workbook.workbookPr.date1904).ToLowerInvariant() -in @('1','true'))
 }
 
 function Read-XlsmBase([string]$path){
@@ -2648,6 +3143,7 @@ function Read-XlsmBase([string]$path){
     $zip=$null
     try {
         $zip=[System.IO.Compression.ZipFile]::OpenRead($tmp)
+        $date1904=Get-ExcelDate1904 $zip
         $shared=@()
         $entry=$zip.Entries | Where-Object {$_.FullName -eq "xl/sharedStrings.xml"} | Select-Object -First 1
         if($entry){
@@ -2715,25 +3211,25 @@ function Read-XlsmBase([string]$path){
             $o=[ordered]@{tipo="";inicio1="";fim1="";inicio2="";fim2="";fr_inicio="";fr_fim=""}
             if($vals[$offset] -or $vals[$offset+1]){
                 $o.tipo="30 DIAS"
-                $o.inicio1=Convert-ExcelValueToDateString $vals[$offset]
-                $o.fim1=Convert-ExcelValueToDateString $vals[$offset+1]
+                $o.inicio1=Convert-ExcelValueToDateString $vals[$offset] -Date1904 $date1904
+                $o.fim1=Convert-ExcelValueToDateString $vals[$offset+1] -Date1904 $date1904
             } elseif($vals[$offset+2] -or $vals[$offset+3] -or $vals[$offset+4] -or $vals[$offset+5]){
                 $o.tipo="15+15 DIAS"
-                $o.inicio1=Convert-ExcelValueToDateString $vals[$offset+2]
-                $o.fim1=Convert-ExcelValueToDateString $vals[$offset+3]
-                $o.inicio2=Convert-ExcelValueToDateString $vals[$offset+4]
-                $o.fim2=Convert-ExcelValueToDateString $vals[$offset+5]
+                $o.inicio1=Convert-ExcelValueToDateString $vals[$offset+2] -Date1904 $date1904
+                $o.fim1=Convert-ExcelValueToDateString $vals[$offset+3] -Date1904 $date1904
+                $o.inicio2=Convert-ExcelValueToDateString $vals[$offset+4] -Date1904 $date1904
+                $o.fim2=Convert-ExcelValueToDateString $vals[$offset+5] -Date1904 $date1904
             }
             if($vals[$offset+6] -or $vals[$offset+7]){
                 if([string]::IsNullOrWhiteSpace([string]$o.tipo)){
                     # Compatibilidade com planilhas que possuem somente 20 dias.
                     $o.tipo='20 DIAS'
-                    $o.inicio1=Convert-ExcelValueToDateString $vals[$offset+6]
-                    $o.fim1=Convert-ExcelValueToDateString $vals[$offset+7]
+                    $o.inicio1=Convert-ExcelValueToDateString $vals[$offset+6] -Date1904 $date1904
+                    $o.fim1=Convert-ExcelValueToDateString $vals[$offset+7] -Date1904 $date1904
                 } else {
                     # FR coexiste com as férias comuns; não sobrescreve 30 ou 15+15.
-                    $o.fr_inicio=Convert-ExcelValueToDateString $vals[$offset+6]
-                    $o.fr_fim=Convert-ExcelValueToDateString $vals[$offset+7]
+                    $o.fr_inicio=Convert-ExcelValueToDateString $vals[$offset+6] -Date1904 $date1904
+                    $o.fr_fim=Convert-ExcelValueToDateString $vals[$offset+7] -Date1904 $date1904
                 }
             }
             return [pscustomobject]$o
@@ -2752,8 +3248,8 @@ function Read-XlsmBase([string]$path){
                     setor=([string]$v[2]).Trim()
                     grupo_chefia=([string]$v[3]).Trim()
                     grupo_analise=([string]$v[4]).Trim()
-                    aquisitivo_inicio=Convert-ExcelValueToDateString $v[5]
-                    aquisitivo_fim=Convert-ExcelValueToDateString $v[6]
+                    aquisitivo_inicio=Convert-ExcelValueToDateString $v[5] -Date1904 $date1904
+                    aquisitivo_fim=Convert-ExcelValueToDateString $v[6] -Date1904 $date1904
                     opcao1=OptFrom $v 7
                     opcao2=OptFrom $v 15
                     opcao3=OptFrom $v 23
@@ -2767,8 +3263,8 @@ function Read-XlsmBase([string]$path){
                     setor=""
                     grupo_chefia=""
                     grupo_analise=""
-                    aquisitivo_inicio=Convert-ExcelValueToDateString $v[2]
-                    aquisitivo_fim=Convert-ExcelValueToDateString $v[3]
+                    aquisitivo_inicio=Convert-ExcelValueToDateString $v[2] -Date1904 $date1904
+                    aquisitivo_fim=Convert-ExcelValueToDateString $v[3] -Date1904 $date1904
                     opcao1=OptFrom $v 4
                     opcao2=OptFrom $v 12
                     opcao3=OptFrom $v 20
@@ -2823,9 +3319,9 @@ function Read-ZipXmlSafe($entry){
     }
 }
 
-function Convert-ExcelValueToDateString($v){
+function Convert-ExcelValueToDateString($v,[bool]$Date1904=$false){
     if($null -eq $v -or [string]::IsNullOrWhiteSpace([string]$v)){ return "" }
-    $serial=Convert-ExcelSerialToDateString $v
+    $serial=Convert-ExcelSerialToDateString $v -Date1904 $Date1904
     if($serial){ return $serial }
     $s=([string]$v).Trim()
     $d=[datetime]::MinValue
@@ -2869,6 +3365,7 @@ function Read-RelatorioFeriasAmarelo([string]$path){
     $zip=$null
     try {
         $zip=[System.IO.Compression.ZipFile]::OpenRead($tmp)
+        $date1904=Get-ExcelDate1904 $zip
         $shared=@()
         $ssEntry=$zip.Entries | Where-Object {$_.FullName -eq "xl/sharedStrings.xml"} | Select-Object -First 1
         if($ssEntry){
@@ -2881,6 +3378,9 @@ function Read-RelatorioFeriasAmarelo([string]$path){
         $styles=Read-ZipXmlSafe $stylesEntry
         $fills=@($styles.styleSheet.fills.fill)
         $xfs=@($styles.styleSheet.cellXfs.xf)
+        $theme=$null
+        $themeEntry=$zip.Entries | Where-Object {$_.FullName -eq 'xl/theme/theme1.xml'} | Select-Object -First 1
+        if($themeEntry){$theme=Read-ZipXmlSafe $themeEntry}
         $yellowStyles=New-Object 'System.Collections.Generic.HashSet[int]'
         for($i=0;$i -lt $xfs.Count;$i++){
             $fillId=0
@@ -2889,11 +3389,7 @@ function Read-RelatorioFeriasAmarelo([string]$path){
             $pf=$fills[$fillId].patternFill
             if($null -eq $pf -or [string]$pf.patternType -ne "solid"){ continue }
             $fg=$pf.fgColor
-            $indexed=""; $rgb=""
-            if($null -ne $fg){ $indexed=[string]$fg.indexed; $rgb=([string]$fg.rgb).ToUpperInvariant() }
-            # Os relatórios enviados usam indexed=43 para o amarelo. Mantemos também
-            # alguns RGB amarelos comuns para suportar futuras exportações.
-            if($indexed -eq "43" -or $rgb -match '^(FFFFFF00|FFFF00|FFFFC000|FFF2CC|FFFF99)$'){
+            if(Test-CorAmarelaRelatorio $fg $styles $theme){
                 [void]$yellowStyles.Add($i)
             }
         }
@@ -2967,8 +3463,8 @@ function Read-RelatorioFeriasAmarelo([string]$path){
                 setor=([string]$arr[5]).Trim()
                 periodo_trabalho=([string]$arr[6]).Trim()
                 horario=([string]$arr[7]).Trim()
-                aquisitivo_inicio=Convert-ExcelValueToDateString $arr[8]
-                aquisitivo_fim=Convert-ExcelValueToDateString $arr[9]
+                aquisitivo_inicio=Convert-ExcelValueToDateString $arr[8] -Date1904 $date1904
+                aquisitivo_fim=Convert-ExcelValueToDateString $arr[9] -Date1904 $date1904
                 mes_referencia=$mesAtual
                 ano_referencia=$anoAtual
                 coluna_amarela=$coluna
@@ -3009,6 +3505,9 @@ function New-MapaIdentidadeSistema {
 
 function Resolve-IdentidadeRelatorio($r,$mapa){
     $mat=([string]$r.matricula).Trim()
+    $nomesCadastro=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat -and $mat} | ForEach-Object {([string]$_.nome).Trim()} | Where-Object {$_} | Sort-Object -Unique)
+    $r | Add-Member NoteProperty nome_cadastro ($nomesCadastro -join ' / ') -Force
+    $r | Add-Member NoteProperty matricula_encontrada $(if($mat -and $mapa.ByMat.ContainsKey($mat)){$mat}else{''}) -Force
     if(-not $mat){ return [pscustomobject]@{status="NÃO LOCALIZADO";matricula="";metodo="matrícula ausente"} }
     if(-not $mapa.ByMat.ContainsKey($mat)){
         return [pscustomobject]@{status="NÃO LOCALIZADO";matricula="";metodo="matrícula não cadastrada; nenhum vínculo por nome será feito"}
@@ -3016,7 +3515,7 @@ function Resolve-IdentidadeRelatorio($r,$mapa){
     $nomeNorm=Convert-ToUpperSemAcento ([string]$r.nome)
     $nomes=@($script:Records | Where-Object {([string]$_.matricula).Trim() -eq $mat} | ForEach-Object {Convert-ToUpperSemAcento ([string]$_.nome)} | Where-Object {$_} | Sort-Object -Unique)
     if($nomeNorm -and $nomes.Count -gt 0 -and $nomes -notcontains $nomeNorm){
-        return [pscustomobject]@{status="CONFLITO";matricula="";metodo="matrícula encontrada mas nome divergente; conferência obrigatória"}
+        return [pscustomobject]@{status="CONFLITO";matricula="";metodo="matrícula encontrada mas nome divergente. Planilha (linha $($r.linha)): '$([string]$r.nome)'; cadastro: '$($r.nome_cadastro)'. Confira o cadastro em Lançamentos e a linha da planilha; nenhuma troca de nome ou vínculo será feita automaticamente"}
     }
     return [pscustomobject]@{status="OK";matricula=$mat;metodo="MATRÍCULA exata"}
 }
@@ -3028,6 +3527,7 @@ function Get-PreviewFixas2027($rows){
 
     foreach($r in @($rows)){
         $status=""; $det=""; $matSistema=""
+        $ident=Resolve-IdentidadeRelatorio $r $mapa
         if(-not [bool]$r.valido){
             $status="ERRO"; $det=[string]$r.erro
         } elseif((Convert-ToUpperSemAcento ([string]$r.cargo)) -ne "ENFERMEIRO"){
@@ -3040,9 +3540,8 @@ function Get-PreviewFixas2027($rows){
                 $status="DUPLICADO"; $det="Registro repetido na planilha"
             } else {
                 $seen[$key]=$true
-                $ident=Resolve-IdentidadeRelatorio $r $mapa
                 if($ident.status -ne "OK"){
-                    $status=if($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"CONFERIR"}
+                    $status=if($ident.status -eq "CONFLITO"){"NOME DIVERGENTE"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"CONFERIR"}
                     $det="Matrícula do relatório: $([string]$r.matricula). Servidor não pôde ser vinculado automaticamente: $($ident.metodo). Não será importado até haver vínculo seguro."
                 } else {
                     $matSistema=[string]$ident.matricula
@@ -3100,19 +3599,25 @@ function Get-PreviewHistorico($rows){
     $mapa=New-MapaIdentidadeSistema
 
     foreach($r in @($rows)){
-        if(-not [bool]$r.valido){ continue }
+        $ident=Resolve-IdentidadeRelatorio $r $mapa
+        if(-not [bool]$r.valido){
+            $r|Add-Member NoteProperty matricula_sistema '' -Force
+            $r|Add-Member NoteProperty preview_status 'ERRO DE LEITURA' -Force
+            $r|Add-Member NoteProperty preview_detalhe ([string]$r.erro) -Force
+            $out+=$r
+            continue
+        }
         if(-not (Test-CargoEnfermeiroHistorico ([string]$r.cargo))){ continue }
-        if([int]$r.ano_referencia -lt 2024 -or [int]$r.ano_referencia -gt 2026){ continue }
+        if([int]$r.ano_referencia -lt 1900 -or [int]$r.ano_referencia -gt 9998){ continue }
         if([int]$r.mes_referencia -lt 1 -or [int]$r.mes_referencia -gt 12){ continue }
 
-        $ident=Resolve-IdentidadeRelatorio $r $mapa
         $matSistema=if($ident.status -eq "OK"){[string]$ident.matricula}else{""}
         $keyBase=if($matSistema){$matSistema}else{"MATRICULA:$([string]$r.matricula)|NOME:$(Convert-ToUpperSemAcento ([string]$r.nome))"}
-        $key="$keyBase|$([int]$r.ano_referencia)|$([int]$r.mes_referencia)|$([string]$r.ferias_inicio)|$([string]$r.ferias_fim)"
+        $key="$keyBase|$([int]$r.ano_referencia)|$([int]$r.mes_referencia)|$([string]$r.ferias_inicio)|$([string]$r.ferias_fim)|$([string]$r.aquisitivo_inicio)|$([string]$r.aquisitivo_fim)"
         if($seen.ContainsKey($key)){ continue }
         $seen[$key]=$true
 
-        $status=if($ident.status -eq "OK"){"IMPORTAR"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"SEM VÍNCULO"}
+        $status=if($ident.status -eq "OK"){"IMPORTAR"}elseif($ident.status -eq "CONFLITO"){"NOME DIVERGENTE"}elseif($ident.status -eq "AMBÍGUO"){"AMBÍGUO"}else{"SEM VÍNCULO"}
         $det=if($ident.status -eq "OK"){
             "Histórico confirmado pela célula amarela | vínculo por $($ident.metodo) | Matrícula sistema: $matSistema"
         } else {
@@ -3123,6 +3628,21 @@ function Get-PreviewHistorico($rows){
         $r | Add-Member -NotePropertyName preview_status -NotePropertyValue $status -Force
         $r | Add-Member -NotePropertyName preview_detalhe -NotePropertyValue $det -Force
         $out += $r
+    }
+    # Conflitos internos são exibidos integralmente na prévia, sem escolher a primeira linha.
+    foreach($r in $out){
+        if([string]$r.preview_status -ne 'IMPORTAR'){continue}
+        $hr=[pscustomobject]@{matricula=[string]$r.matricula_sistema;inicio=[string]$r.ferias_inicio;fim=[string]$r.ferias_fim;aquisitivo_inicio=[string]$r.aquisitivo_inicio;aquisitivo_fim=[string]$r.aquisitivo_fim}
+        $erro=Get-HistoricoRegistroErro $hr
+        if(-not $erro){
+            foreach($other in $out){
+                if([string]$other.preview_status -notin @('IMPORTAR','CONFERIR')){continue}
+                $ho=[pscustomobject]@{matricula=[string]$other.matricula_sistema;inicio=[string]$other.ferias_inicio;fim=[string]$other.ferias_fim;aquisitivo_inicio=[string]$other.aquisitivo_inicio;aquisitivo_fim=[string]$other.aquisitivo_fim}
+                $erro=Get-HistoricoConflito $hr $ho
+                if($erro){break}
+            }
+        }
+        if($erro){$r.preview_status='CONFERIR';$r.preview_detalhe=$erro}
     }
     return @($out)
 }
@@ -3163,11 +3683,33 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
         @("st","Status"),@("mat","Matrícula planilha"),@("cp","CP planilha"),@("mats","Matrícula sistema"),@("nome","Nome"),@("setor","Setor"),@("per","Período"),
         @("aq","Período aquisitivo"),@("ref","Mês referência"),@("ferias","Férias destacadas"),@("det","Observação")
     )){ [void]$g.Columns.Add($c[0],$c[1]) }
-    $g.Columns["st"].FillWeight=11; $g.Columns["mat"].FillWeight=12; $g.Columns["cp"].FillWeight=10; $g.Columns["mats"].FillWeight=12; $g.Columns["nome"].FillWeight=24
-    $g.Columns["setor"].FillWeight=18; $g.Columns["per"].FillWeight=11; $g.Columns["aq"].FillWeight=18
-    $g.Columns["ref"].FillWeight=11; $g.Columns["ferias"].FillWeight=18; $g.Columns["det"].FillWeight=28
+    [void]$g.Columns.Add('nomecad','Nome no cadastro')
+    [void]$g.Columns.Add('linha','Linha da planilha')
+    $g.Columns['mats'].Visible=$false
+    $g.Columns['nome'].HeaderText='Nome na planilha'
+    $g.Columns['mat'].HeaderText='Matrícula'
+    $g.AutoSizeColumnsMode='None'
+    foreach($c in $g.Columns){$c.Width=150; $c.SortMode='Automatic'}
+    $g.Columns['st'].Width=165; $g.Columns['mat'].Width=110
+    $g.Columns['nome'].Width=270; $g.Columns['nomecad'].Width=270
+    $g.Columns['linha'].Width=95; $g.Columns['det'].Width=500
+    $order=@('st','mat','nome','nomecad','linha','cp','setor','per','aq','ref','ferias','det','mats')
+    for($j=0;$j -lt $order.Count;$j++){$g.Columns[$order[$j]].DisplayIndex=$j}
+    $g.MultiSelect=$false; $g.ShowCellToolTips=$true
+    $details=New-Object Windows.Forms.TextBox
+    $details.Dock='Bottom'; $details.Height=125; $details.Multiline=$true
+    $details.ReadOnly=$true; $details.ScrollBars='Vertical'; $details.BackColor=[Drawing.Color]::White
+    $details.Text='Selecione um registro para ver os nomes completos, a origem e o motivo.'
+    $dlg.Controls.Add($details)
+    $onlyConflicts=New-Object Windows.Forms.CheckBox
+    $onlyConflicts.Text='Mostrar somente nomes divergentes'; $onlyConflicts.AutoSize=$true
+    $onlyConflicts.Location=New-Object Drawing.Point(14,106); $top.Controls.Add($onlyConflicts)
+    $top.Height=136
     foreach($r in @($rows)){
         $i=$g.Rows.Add(); $rr=$g.Rows[$i]
+        $rr.Tag=$r
+        $rr.Cells['nomecad'].Value=[string]$r.nome_cadastro
+        $rr.Cells['linha'].Value=[string]$r.linha
         $rr.Cells["st"].Value=[string]$r.preview_status
         $rr.Cells["mat"].Value=[string]$r.matricula
         $rr.Cells["cp"].Value=[string]$r.cp
@@ -3180,6 +3722,8 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
         $rr.Cells["ferias"].Value=[string]$r.periodo_texto
         $rr.Cells["det"].Value=[string]$r.preview_detalhe
         switch([string]$r.preview_status){
+            "NOME DIVERGENTE" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
+            "ERRO DE LEITURA" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "ERRO" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "AMBÍGUO" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::MistyRose }
             "CONFERIR" { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::FromArgb(255,244,204) }
@@ -3191,6 +3735,22 @@ function Show-PreviewImportacao([string]$titulo,$rows,[string]$resumo){
             default { $rr.DefaultCellStyle.BackColor=[Drawing.Color]::FromArgb(239,249,239) }
         }
     }
+    $g.add_SelectionChanged({
+        if($null -eq $g.CurrentRow){$details.Text='Nenhum registro selecionado.';return}
+        $selected=$g.CurrentRow.Tag
+        if($null -eq $selected){return}
+        $cad=if([string]$selected.nome_cadastro){[string]$selected.nome_cadastro}else{'(nenhum nome cadastrado para esta matrícula)'}
+        $details.Text="Status: $($selected.preview_status) | Matrícula na planilha: $($selected.matricula) | Matrícula encontrada: $($selected.matricula_encontrada) | Linha da planilha: $($selected.linha)`r`nNome na planilha: $($selected.nome)`r`nNome no cadastro: $cad`r`nMotivo: $($selected.preview_detalhe)"
+    })
+    $onlyConflicts.add_CheckedChanged({
+        $g.CurrentCell=$null
+        foreach($gridRow in $g.Rows){$gridRow.Visible=(-not $onlyConflicts.Checked -or [string]$gridRow.Tag.preview_status -eq 'NOME DIVERGENTE')}
+        $first=@($g.Rows | Where-Object {$_.Visible} | Select-Object -First 1)
+        if($first.Count){$g.CurrentCell=$first[0].Cells['st']}else{$details.Text='Nenhuma divergência de nome encontrada.'}
+    })
+    $btnOK.Anchor='Top,Right'; $btnCancel.Anchor='Top,Right'
+    $lr.Anchor='Top,Left,Right'
+    $nota.Width=700
     $dlg.Controls.Add($g); $g.BringToFront()
     $btnOK.add_Click({ $dlg.DialogResult=[Windows.Forms.DialogResult]::OK; $dlg.Close() })
     $btnCancel.add_Click({ $dlg.DialogResult=[Windows.Forms.DialogResult]::Cancel; $dlg.Close() })
@@ -3289,6 +3849,8 @@ function Exportar-RejeitadosImportacao([string]$origem,$rows,[string[]]$statusIm
             CP_Planilha=[string]$_.cp
             Matricula_Sistema=[string]$_.matricula_sistema
             Nome=[string]$_.nome
+            Nome_Cadastro=[string]$_.nome_cadastro
+            Matricula_Encontrada=[string]$_.matricula_encontrada
             Cargo=[string]$_.cargo
             Setor=[string]$_.setor
             Periodo_Aquisitivo_Inicio=[string]$_.aquisitivo_inicio
@@ -3301,6 +3863,18 @@ function Exportar-RejeitadosImportacao([string]$origem,$rows,[string[]]$statusIm
     $dados | Export-Csv -LiteralPath $dest -NoTypeInformation -Delimiter ';' -Encoding UTF8 -ErrorAction Stop
     Write-DiagLog ("Relatório de importação {0}: {1} registro(s) não importado(s) em {2}" -f $origem,$rejeitados.Count,$dest)
     return $dest
+}
+
+function Save-EstadoAntesImportacaoFixa($r){
+    if([bool]$r.pre_import_estado_salvo){return}
+    # Importacao antiga sem snapshot nao pode ser confundida com estado manual anterior.
+    if([string]$r.origem_planejamento -eq 'PROGRAMACAO_ANTERIOR_IMPORTADA' -or [string]$r.fixo_importado_em){return}
+    foreach($campo in @('ferias_bloqueadas','origem_planejamento','bloqueio_motivo','opcao_aprovada','fr_opcao_aprovada','fixo_inicio','fixo_fim','fixo_tipo_relatorio','fixo_coluna_origem','fixo_importado_em','fixo_arquivo_origem','fixo_ajustado','fixo_inicio_original','fixo_fim_original','fixo_ajustado_em','fixo_motivo_ajuste','fixo_observacao_ajuste','fixo_ajustado_por')){
+        $r | Add-Member -NotePropertyName ('pre_import_'+$campo) -NotePropertyValue $r.$campo -Force
+    }
+    $copia=@(Get-FixasAdicionais $r | ForEach-Object {$_ | Select-Object *})
+    $r | Add-Member NoteProperty pre_import_fixos_adicionais $copia -Force
+    $r.pre_import_estado_salvo=$true
 }
 
 function Importar-FeriasFixas2027 {
@@ -3364,6 +3938,7 @@ function Importar-FeriasFixas2027 {
                 if([string]$x.preview_status -eq 'ACRESCENTAR'){
                     # Segunda/terceira parcela fixa, nunca sobrescrever a primeira.
                     if(-not (Test-RegistroFixoImportado $r) -or (Test-FixaMesmoIntervalo $r ([string]$x.ferias_inicio) ([string]$x.ferias_fim)) -or (Test-FixaSobreposta $r ([string]$x.ferias_inicio) ([string]$x.ferias_fim))){ continue }
+                    Save-EstadoAntesImportacaoFixa $r
                     $adicionais=@(Get-FixasAdicionais $r)
                     $adicionais += [pscustomobject]@{
                         inicio=[string]$x.ferias_inicio; fim=[string]$x.ferias_fim
@@ -3371,32 +3946,16 @@ function Importar-FeriasFixas2027 {
                         arquivo=[IO.Path]::GetFileName($path); importado_em=(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
                     }
                     $r | Add-Member -NotePropertyName fixos_adicionais -NotePropertyValue @($adicionais) -Force
+                    $r.origem_planejamento='PROGRAMACAO_ANTERIOR_IMPORTADA'
+                    $r.fixo_importado_em=(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
                     $atualizados++
                     continue
                 }
+                Save-EstadoAntesImportacaoFixa $r
                 $atualizados++
                 # Reversibilidade real: se este registro já era fixo/manual antes da importação,
                 # o estado anterior é preservado e poderá ser restaurado pelo reset das importações.
-                if(-not [bool]$r.pre_import_estado_salvo){
-                    $r.pre_import_estado_salvo=$true
-                    $r.pre_import_ferias_bloqueadas=[bool]$r.ferias_bloqueadas
-                    $r.pre_import_origem_planejamento=[string]$r.origem_planejamento
-                    $r.pre_import_bloqueio_motivo=[string]$r.bloqueio_motivo
-                    $r.pre_import_opcao_aprovada=[int]$r.opcao_aprovada
-                    $r.pre_import_fixo_inicio=[string]$r.fixo_inicio
-                    $r.pre_import_fixo_fim=[string]$r.fixo_fim
-                    $r.pre_import_fixo_tipo_relatorio=[string]$r.fixo_tipo_relatorio
-                    $r.pre_import_fixo_coluna_origem=[string]$r.fixo_coluna_origem
-                    $r.pre_import_fixo_importado_em=[string]$r.fixo_importado_em
-                    $r.pre_import_fixo_arquivo_origem=[string]$r.fixo_arquivo_origem
-                    $r.pre_import_fixo_ajustado=[bool]$r.fixo_ajustado
-                    $r.pre_import_fixo_inicio_original=[string]$r.fixo_inicio_original
-                    $r.pre_import_fixo_fim_original=[string]$r.fixo_fim_original
-                    $r.pre_import_fixo_ajustado_em=[string]$r.fixo_ajustado_em
-                    $r.pre_import_fixo_motivo_ajuste=[string]$r.fixo_motivo_ajuste
-                    $r.pre_import_fixo_observacao_ajuste=[string]$r.fixo_observacao_ajuste
-                    $r.pre_import_fixo_ajustado_por=[string]$r.fixo_ajustado_por
-                }
+                # Estado anterior capturado antes de qualquer alteracao acima.
             } else {
                 # O relatório usa matrícula como chave. CP é apenas informação adicional.
                 # Quando o período antigo não existe, criamos o compromisso sob a
@@ -3478,11 +4037,54 @@ function Importar-FeriasFixas2027 {
     }
 }
 
+
+function Get-PlanoRecuperacaoHistorico($db){
+    Assert-DatabaseStructure $db
+    if($null -eq $db.PSObject.Properties['historico_ferias']){throw 'Este backup não contém histórico de férias.'}
+    $mats=@{}
+    foreach($r in @($script:Records)){$mat=([string]$r.matricula).Trim();if($mat){$mats[$mat]=$true}}
+    $vinculados=@();$semVinculo=0
+    foreach($h in @($db.historico_ferias)){
+        $mat=([string]$h.matricula).Trim()
+        if($mats.ContainsKey($mat)){$vinculados+=$h}else{$semVinculo++}
+    }
+    return [pscustomobject]@{merge=(Merge-HistoricoFeriasIncremental $vinculados);sem_vinculo=$semVinculo;lidos=@($db.historico_ferias).Count}
+}
+
+function Recuperar-HistoricoBackup {
+    $dlg=New-Object Windows.Forms.OpenFileDialog
+    $dlg.Title='Recuperar SOMENTE o histórico de férias de um backup'
+    $dlg.Filter='Backup JSON (*.json)|*.json';$dlg.InitialDirectory=$script:BackupDir
+    try{if($dlg.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){return};$path=$dlg.FileName}finally{$dlg.Dispose()}
+    try{
+        $backup=Get-Content -LiteralPath $path -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $plano=Get-PlanoRecuperacaoHistorico $backup;$merge=$plano.merge
+        $resumo="Recuperar somente o HISTÓRICO deste backup?`n$([IO.Path]::GetFileName($path))`n`nNovos períodos: $($merge.adicionados)`nJá existentes: $($merge.ja_existentes)`nSobreposições não incluídas: $($merge.divergencias)`nInválidos não incluídos: $($merge.invalidos)`nSem matrícula no cadastro atual: $($plano.sem_vinculo)`n`nLançamentos, aprovações, férias fixas e cadastros atuais serão preservados. Um backup será criado antes."
+        if($merge.adicionados -eq 0){[Windows.Forms.MessageBox]::Show($resumo+"`n`nNenhum período novo pode ser recuperado automaticamente.",'Histórico')|Out-Null;return}
+        if([Windows.Forms.MessageBox]::Show($resumo,'Recuperação seletiva do histórico',[Windows.Forms.MessageBoxButtons]::YesNo,[Windows.Forms.MessageBoxIcon]::Question) -ne [Windows.Forms.DialogResult]::Yes){return}
+        [void](Backup-AntesAcao 'ANTES_RECUPERAR_HISTORICO')
+        $script:HistoricoFerias=@($merge.itens);Rebuild-HistoricoIndex
+        $script:Config.historico_3_anos_importado=(@($script:HistoricoFerias).Count -gt 0)
+        $script:Config.ultima_importacao_historico=Get-Date -Format 'dd/MM/yyyy HH:mm'
+        Save-Database|Out-Null
+        Refresh-ImportacaoStatus;Refresh-HistoricoFeriasUI
+        $aviso=''
+        try{$auditoria=Exportar-AuditoriaHistoricoIncremental $merge.auditoria}catch{$aviso="`nNão foi possível gravar o CSV de auditoria; consulte o log.";Write-DiagLog 'Recuperação salva, mas CSV de auditoria não foi gravado.' 'WARN' $_}
+        Write-DiagLog "Recuperação seletiva de histórico concluída: $($merge.adicionados) novo(s) período(s)." 'INFO'
+        [Windows.Forms.MessageBox]::Show("Histórico recuperado: $($merge.adicionados) período(s). Os demais dados atuais foram preservados.$aviso",'Histórico')|Out-Null
+    }catch{
+        $falha=$_
+        try{Load-Database;Refresh-HistoricoFeriasUI}catch{Write-DiagLog 'Falha ao recarregar após erro na recuperação histórica.' 'ERROR' $_}
+        Write-DiagLog 'Falha na recuperação seletiva do histórico.' 'ERROR' $falha
+        [Windows.Forms.MessageBox]::Show("Recuperação não confirmada: $($falha.Exception.Message)",'Histórico',[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Error)|Out-Null
+    }
+}
+
 function Importar-HistoricoFerias {
     $path=[string]$script:Config.planilha_historico_ferias
-    Write-DiagLog "Solicitada importação do histórico 2024-2026: $path"
+    Write-DiagLog "Solicitada importação do histórico de férias: $path"
     if([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path)){
-        [Windows.Forms.MessageBox]::Show("Selecione primeiro a planilha de histórico 2024 a 2026.","Histórico de férias",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Information) | Out-Null
+        [Windows.Forms.MessageBox]::Show("Selecione primeiro a planilha de histórico de férias.","Histórico de férias",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Information) | Out-Null
         return
     }
     try {
@@ -3495,19 +4097,17 @@ function Importar-HistoricoFerias {
         $candidatos=@($raw | Where-Object {
             [bool]$_.valido -and
             (Test-CargoEnfermeiroHistorico ([string]$_.cargo)) -and
-            [int]$_.ano_referencia -ge 2024 -and [int]$_.ano_referencia -le 2026 -and
+            [int]$_.ano_referencia -ge 1900 -and [int]$_.ano_referencia -le 9998 -and
             [int]$_.mes_referencia -ge 1 -and [int]$_.mes_referencia -le 12
         })
         Write-DiagLog "Histórico: etapa 2/6 — vinculando matrícula exata e conferindo nome e montando prévia."
         $rows=Get-PreviewHistorico $raw
         $importaveis=@($rows | Where-Object { [string]$_.preview_status -eq "IMPORTAR" })
-        $semVinculo=@($rows | Where-Object { [string]$_.preview_status -in @("SEM VÍNCULO","AMBÍGUO") }).Count
-        $duplicadosDescartados=[math]::Max(0,($candidatos.Count-$rows.Count))
-        $c2024=@($importaveis | Where-Object {[int]$_.ano_referencia -eq 2024}).Count
-        $c2025=@($importaveis | Where-Object {[int]$_.ano_referencia -eq 2025}).Count
-        $c2026=@($importaveis | Where-Object {[int]$_.ano_referencia -eq 2026}).Count
+        $semVinculo=@($rows | Where-Object { [string]$_.preview_status -in @("SEM VÍNCULO","AMBÍGUO","NOME DIVERGENTE") }).Count
+        $duplicadosDescartados=[math]::Max(0,($candidatos.Count-@($rows | Where-Object {[bool]$_.valido}).Count))
+        $porAno=(@($importaveis | Group-Object ano_referencia | Sort-Object Name | ForEach-Object {"$($_.Name)=$($_.Count)"}) -join ', ')
         $serv=@($importaveis | Select-Object -ExpandProperty matricula_sistema -Unique).Count
-        $resumo="Lidos: $totalLidos | histórico vinculado e importável: $($importaveis.Count) | servidores vinculados: $serv | sem vínculo automático: $semVinculo | outros cargos ignorados: $ignCargo | duplicidades descartadas: $duplicadosDescartados | erros de leitura: $errosLeitura. Por ano: 2024=$c2024, 2025=$c2025, 2026=$c2026. O relatório usa MATRÍCULA como chave exata e confere o nome; CP é informação complementar opcional. A importação é incremental: dados anteriores são preservados. Para desempate, o mês só conta como utilizado quando totaliza pelo menos 15 dias efetivos de férias dentro dele; parcelas no mesmo mês são somadas por dias únicos. Ausência em um ano = 'sem registro'."
+        $resumo="Lidos: $totalLidos | histórico vinculado e importável: $($importaveis.Count) | servidores vinculados: $serv | sem vínculo automático: $semVinculo | outros cargos ignorados: $ignCargo | duplicidades descartadas: $duplicadosDescartados | erros de leitura: $errosLeitura. Por ano: $porAno. O relatório usa MATRÍCULA como chave exata e confere o nome; CP é complementar e não substitui a matrícula; o cadastro manual exige CP. A importação é incremental: dados anteriores são preservados. Para desempate, o mês só conta como utilizado quando totaliza pelo menos 15 dias efetivos de férias dentro dele; parcelas no mesmo mês são somadas por dias únicos. Ausência em um ano = 'sem registro'."
         $arquivoRejeitados=""
         try { $arquivoRejeitados=Exportar-RejeitadosImportacao 'HISTORICO' $rows @('IMPORTAR') }
         catch {
@@ -3515,7 +4115,7 @@ function Importar-HistoricoFerias {
             [Windows.Forms.MessageBox]::Show("A prévia pode ser consultada, mas o relatório de não importados NÃO foi salvo. Verifique as permissões da pasta Logs. Detalhe: $($_.Exception.Message)","Auditoria de importação",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Warning)|Out-Null
         }
         if($arquivoRejeitados){ $resumo += " Registro(s) não importado(s): relatório salvo em Logs\Conferencia_Importacoes." }
-        if(-not (Show-PreviewImportacao "Prévia — Histórico de férias 2024 a 2026" $rows $resumo)){ return }
+        if(-not (Show-PreviewImportacao "Prévia — Histórico de férias" $rows $resumo)){ return }
         if($importaveis.Count -eq 0){
             [Windows.Forms.MessageBox]::Show("Nenhum histórico pôde ser vinculado com segurança aos servidores atuais.","Histórico de férias") | Out-Null
             return
@@ -3561,9 +4161,9 @@ function Importar-HistoricoFerias {
             Write-DiagLog "Falha ao exportar auditoria do histórico importado." "ERROR" $_
         }
         $msgAuditoria=if($arquivoAuditoria){ "`nAuditoria por registro: $arquivoAuditoria" } else { $avisoAuditoria }
-        [Windows.Forms.MessageBox]::Show("Histórico importado de forma INCREMENTAL.`n`nLidos/vinculados nesta importação: $($novo.Count)`nNovos períodos incluídos: $($merge.adicionados)`nPeríodos idênticos já existentes (preservados): $($merge.ja_existentes)`nRegistros existentes alterados: 0`nSobreposições para conferência (não importadas): $($merge.divergencias)`nHistóricos anteriores preservados: $($merge.preservados)`nDuplicatas pré-existentes mantidas: $($merge.duplicados_preexistentes_preservados)`nTotal acumulado no sistema: $(@($script:HistoricoFerias).Count)`nServidores no arquivo atual: $serv`n$msgAuditoria`n`nReimportar uma planilha parcial NÃO apaga anos anteriores. Para desempate, o mês conta quando totaliza pelo menos 15 dias efetivos; parcelas no mesmo mês somam dias únicos.","Histórico de férias",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Information) | Out-Null
+        [Windows.Forms.MessageBox]::Show("Histórico importado de forma INCREMENTAL.`n`nLidos/vinculados nesta importação: $($novo.Count)`nNovos períodos incluídos: $($merge.adicionados)`nPeríodos idênticos já existentes (preservados): $($merge.ja_existentes)`nRegistros existentes alterados: 0`nSobreposições para conferência (não importadas): $($merge.divergencias)`nRegistros inválidos (não importados): $($merge.invalidos)`nHistóricos anteriores preservados: $($merge.preservados)`nDuplicatas pré-existentes mantidas: $($merge.duplicados_preexistentes_preservados)`nTotal acumulado no sistema: $(@($script:HistoricoFerias).Count)`nServidores no arquivo atual: $serv`n$msgAuditoria`n`nReimportar uma planilha parcial NÃO apaga anos anteriores. Para desempate, o mês conta quando totaliza pelo menos 15 dias efetivos; parcelas no mesmo mês somam dias únicos.","Histórico de férias",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Information) | Out-Null
     } catch {
-        Write-DiagLog "Falha ao importar histórico 2024-2026." "ERROR" $_
+        Write-DiagLog "Falha ao importar histórico de férias." "ERROR" $_
         try { Load-Database } catch { Write-DiagLog "Falha adicional ao recarregar a base após erro na importação do histórico." "ERROR" $_ }
         [Windows.Forms.MessageBox]::Show("Falha ao importar o histórico.`n$($_.Exception.Message)`n`nLog: $script:LogFile","Histórico de férias",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Error) | Out-Null
     }
@@ -3604,9 +4204,9 @@ function Confirmar-ResetDuplo([string]$titulo,[string]$descricao,[bool]$digitado
     Apply-AppBranding $dlg
     $dlg.Text="Confirmação de segurança — $titulo"; $dlg.StartPosition="CenterParent"; $dlg.Size=New-Object Drawing.Size(560,245); $dlg.FormBorderStyle="FixedDialog"; $dlg.MaximizeBox=$false; $dlg.MinimizeBox=$false
     $lbl=New-Object Windows.Forms.Label; $lbl.Location=New-Object Drawing.Point(18,18); $lbl.Size=New-Object Drawing.Size(510,75)
-    $lbl.Text="Esta é uma operação de RESET TOTAL.`r`nDigite exatamente RESETAR no campo abaixo para liberar o botão de confirmação."; $dlg.Controls.Add($lbl)
+    $lbl.Text="Operação: $titulo.`r`nDigite exatamente RESETAR no campo abaixo para liberar o botão de confirmação."; $dlg.Controls.Add($lbl)
     $txt=New-TextBox 18 100 505; $dlg.Controls.Add($txt)
-    $ok=New-Button "Confirmar RESET TOTAL" 245 145 185 38; $ok.Enabled=$false; $ok.BackColor=[Drawing.Color]::MistyRose; $dlg.Controls.Add($ok)
+    $ok=New-Button "Confirmar operação" 245 145 185 38; $ok.Enabled=$false; $ok.BackColor=[Drawing.Color]::MistyRose; $dlg.Controls.Add($ok)
     $cancel=New-Button "Cancelar" 440 145 85 38; $dlg.Controls.Add($cancel)
     $txt.add_TextChanged({ $ok.Enabled=($txt.Text.Trim().ToUpperInvariant() -eq "RESETAR") })
     $ok.add_Click({ $dlg.DialogResult=[Windows.Forms.DialogResult]::OK; $dlg.Close() })
@@ -3664,6 +4264,15 @@ function Reset-FixasImportadas {
             $removerIds += [int]$r.id
         } else {
             if([bool]$r.pre_import_estado_salvo){
+                $anteriores=@()
+                if($null -ne $r.PSObject.Properties['pre_import_fixos_adicionais']){$anteriores=@($r.pre_import_fixos_adicionais)}
+                else {
+                    # Versoes antigas: remover somente adicionais identificados como importados.
+                    $anteriores=@(Get-FixasAdicionais $r | Where-Object {-not [string]$_.importado_em -and -not [string]$_.arquivo})
+                    Write-DiagLog "Reset ID=$($r.id): snapshot antigo sem parcelas; preservados adicionais sem origem de importacao." 'WARN'
+                }
+                $r | Add-Member NoteProperty fixos_adicionais $anteriores -Force
+                if($null -ne $r.PSObject.Properties['pre_import_fr_opcao_aprovada']){$r.fr_opcao_aprovada=[int]$r.pre_import_fr_opcao_aprovada}
                 $r.ferias_bloqueadas=[bool]$r.pre_import_ferias_bloqueadas
                 $r.origem_planejamento=[string]$r.pre_import_origem_planejamento
                 $r.bloqueio_motivo=[string]$r.pre_import_bloqueio_motivo
@@ -3682,12 +4291,15 @@ function Reset-FixasImportadas {
                 $r.fixo_observacao_ajuste=[string]$r.pre_import_fixo_observacao_ajuste
                 $r.fixo_ajustado_por=[string]$r.pre_import_fixo_ajustado_por
             } else {
+                $r | Add-Member NoteProperty fixos_adicionais @() -Force
                 # Compatibilidade defensiva com importações feitas por versões anteriores à V1.0.40.
                 $r.ferias_bloqueadas=$false; $r.origem_planejamento="ATUAL"; $r.bloqueio_motivo=""
                 $r.fixo_inicio=""; $r.fixo_fim=""; $r.fixo_tipo_relatorio=""; $r.fixo_coluna_origem=""; $r.fixo_importado_em=""; $r.fixo_arquivo_origem=""
                 $r.fixo_ajustado=$false; $r.fixo_inicio_original=""; $r.fixo_fim_original=""; $r.fixo_ajustado_em=""; $r.fixo_motivo_ajuste=""; $r.fixo_observacao_ajuste=""; $r.fixo_ajustado_por=""
                 Write-DiagLog "Reset de fixa importada sem estado prévio disponível para registro ID=$([int]$r.id)." "WARN"
             }
+            $r | Add-Member NoteProperty pre_import_fixos_adicionais @() -Force
+            $r | Add-Member NoteProperty pre_import_fr_opcao_aprovada 0 -Force
             $r.pre_import_estado_salvo=$false
             $r.pre_import_ferias_bloqueadas=$false; $r.pre_import_origem_planejamento=""; $r.pre_import_bloqueio_motivo=""; $r.pre_import_opcao_aprovada=0
             $r.pre_import_fixo_inicio=""; $r.pre_import_fixo_fim=""; $r.pre_import_fixo_tipo_relatorio=""; $r.pre_import_fixo_coluna_origem=""; $r.pre_import_fixo_importado_em=""; $r.pre_import_fixo_arquivo_origem=""
@@ -3704,8 +4316,8 @@ function Reset-FixasImportadas {
 }
 
 function Reset-HistoricoImportado {
-    $desc="Será apagado SOMENTE o histórico importado de 2024 a 2026 usado como critério de desempate.`n`nNenhum lançamento atual, férias fixa, cadastro, grupo, chefia ou limite será alterado."
-    if(-not (Confirmar-ResetDuplo "Limpar histórico 2024–2026" $desc $false)){ return }
+    $desc="Será apagado SOMENTE o histórico importado de TODOS os anos usado como critério de desempate.`n`nNenhum lançamento atual, férias fixa, cadastro, grupo, chefia ou limite será alterado."
+    if(-not (Confirmar-ResetDuplo "Limpar histórico importado" $desc $true)){ return }
     [void](Backup-AntesAcao "ANTES_RESET_HISTORICO")
     $q=@($script:HistoricoFerias).Count; $script:HistoricoFerias=@(); Rebuild-HistoricoIndex; $script:Config.historico_3_anos_importado=$false; $script:Config.ultima_importacao_historico=""
     Save-Database; Refresh-AllAfterMaintenance
@@ -3713,12 +4325,15 @@ function Reset-HistoricoImportado {
 }
 
 function Reset-PlanejamentoAtual {
-    $desc="Será ZERADO o planejamento atual sem apagar os cadastros-base.`n`nSERÁ APAGADO:`n• 1ª, 2ª e 3ª opções de férias`n• opção aceita / decisão`n• justificativa da decisão`n• férias fixas importadas, manuais e ajustadas`n• histórico 2024–2026 usado no desempate`n`nSERÁ PRESERVADO:`n• servidores e matrículas`n• setor e período de trabalho`n• períodos aquisitivos`n• observações gerais do período aquisitivo`n• setores, períodos, grupos de análise, grupos de chefia e limites`n• política mensal e backups existentes."
+    $desc="Será ZERADO o planejamento atual sem apagar os cadastros-base.`n`nSERÁ APAGADO:`n• 1ª, 2ª e 3ª opções de férias`n• opção aceita / decisão`n• justificativa da decisão`n• férias fixas importadas, manuais e ajustadas`n• histórico importado usado no desempate`n`nSERÁ PRESERVADO:`n• servidores e matrículas`n• setor e período de trabalho`n• períodos aquisitivos`n• observações gerais do período aquisitivo`n• setores, períodos, grupos de análise, grupos de chefia e limites`n• política mensal e backups existentes."
     if(-not (Confirmar-ResetDuplo "ZERAR PLANEJAMENTO ATUAL" $desc $false)){ return }
     [void](Backup-AntesAcao "ANTES_RESET_PLANEJAMENTO")
 
     $vazio={ New-EmptyOptionObject }
     foreach($r in @($script:Records)){
+        $r | Add-Member NoteProperty fixos_adicionais @() -Force
+        $r | Add-Member NoteProperty pre_import_fixos_adicionais @() -Force
+        $r | Add-Member NoteProperty pre_import_fr_opcao_aprovada 0 -Force
         $r.opcao1=& $vazio; $r.opcao2=& $vazio; $r.opcao3=& $vazio
         $r.opcao_aprovada=0
         $r.fr_opcao_aprovada=0
@@ -3795,7 +4410,9 @@ function Reset-TotalSistema {
 
 function Restaurar-UltimoPreReset {
     # O timestamp confiável está no nome, pois Copy-Item pode preservar LastWriteTime da origem.
-    $b=Get-ChildItem -LiteralPath $script:BackupDir -Filter "ANTES_RESET_*.json" -File -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+    $b=Get-ChildItem -LiteralPath $script:BackupDir -Filter "ANTES_RESET_*.json" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '_(\d{8})_(\d{6})_(\d{3})\.json$' -and
+        $null -ne $(try {[datetime]::ParseExact(($Matches[1]+$Matches[2]+$Matches[3]),'yyyyMMddHHmmssfff',[Globalization.CultureInfo]::InvariantCulture)}catch {$null}) } |
+        Sort-Object @{Expression={if($_.Name -match '_(\d{8})_(\d{6})_(\d{3})\.json$'){[datetime]::ParseExact(($Matches[1]+$Matches[2]+$Matches[3]),'yyyyMMddHHmmssfff',[Globalization.CultureInfo]::InvariantCulture)}};Descending=$true},Name | Select-Object -First 1
     if($null -eq $b){ [Windows.Forms.MessageBox]::Show("Nenhum backup pré-reset foi encontrado.","Restaurar backup") | Out-Null; return }
     $quando=$b.Name
     if($b.Name -match '_(\d{8})_(\d{6})_(\d{3})\.json$'){
@@ -5151,7 +5768,10 @@ function Sync-FromBase([bool]$silent=$false){
 
                 # Para registros que já existem no aplicativo, a planilha base
                 # não sobrescreve 1ª/2ª/3ª opções sem conferência.
-                if($before -ne $after){
+                if($before -ne $after -and (Test-RegistroFeriasBloqueadas $existing)){
+                    Write-DiagLog "Sincronização: opções de período FIXO/BLOQUEADO preservadas; ID=$([int]$existing.id). Use o ajuste excepcional para alterar férias confirmadas." 'WARN'
+                }
+                if($before -ne $after -and -not (Test-RegistroFeriasBloqueadas $existing)){
                     $divergenciasOpcoes++
                     $aqIni=Date-ToBR ([string]$existing.aquisitivo_inicio)
                     $aqFim=Date-ToBR ([string]$existing.aquisitivo_fim)
@@ -5411,9 +6031,9 @@ function Get-ServidorRecords([string]$matricula){
 }
 
 
-function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,[string]$periodo){
+function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$cpServidor=''){
     $matricula=$matricula.Trim()
-    $nome=$nome.Trim()
+    $nome=$nome.Trim().ToUpperInvariant()
     $setor=$setor.Trim()
     $periodo=$periodo.Trim().ToUpperInvariant()
 
@@ -5422,10 +6042,12 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
     if([string]::IsNullOrWhiteSpace($setor)){ return [pscustomobject]@{status="ERRO";mensagem="Setor vazio"} }
     if([string]::IsNullOrWhiteSpace($periodo)){ return [pscustomobject]@{status="ERRO";mensagem="Período vazio"} }
 
+    try{$cpServidor=Resolve-CPServidorCadastro $matricula $cpServidor}catch{return [pscustomobject]@{status='ERRO';mensagem=$_.Exception.Message}}
     $recs=@($script:Records | Where-Object {[string]$_.matricula -eq $matricula})
     if($recs.Count -gt 0){
         foreach($r in $recs){
             [void](Initialize-RecordDefaults $r)
+            $r.cp_relatorio=$cpServidor
             $r.nome=$nome
             $r.setor=$setor
             $r.periodo=$periodo
@@ -5443,6 +6065,7 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
     # Cadastro-base sem período aquisitivo: será enriquecido depois pela sincronização.
     $novo=[pscustomobject]@{
         id=Get-NextId
+        cp_relatorio=$cpServidor
         matricula=$matricula
         nome=$nome
         setor=$setor
@@ -5473,7 +6096,9 @@ function Apply-ServidorCadastro([string]$matricula,[string]$nome,[string]$setor,
 }
 
 
-function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$aqIni="",[string]$aqFim="",[bool]$cadastroBase=$false){
+function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$setor,[string]$periodo,[string]$aqIni="",[string]$aqFim="",[bool]$cadastroBase=$false,[string]$cpServidor=''){
+    if(-not $PSBoundParameters.ContainsKey('cpServidor')){$cps=@(Get-CPsServidor $matricula);if($cps.Count -eq 1){$cpServidor=[string]$cps[0]}}
+    $cpServidor=Resolve-CPServidorCadastro $matricula $cpServidor
     $novo=[pscustomobject]@{
         id=Get-NextId
         matricula=$matricula.Trim(); nome=$nome.Trim(); setor=$setor.Trim(); periodo=$periodo.Trim().ToUpperInvariant()
@@ -5484,6 +6109,7 @@ function New-RegistroFeriasManual([string]$matricula,[string]$nome,[string]$seto
         ferias_bloqueadas=$false; origem_planejamento="ATUAL"; bloqueio_motivo=""
     }
     [void](Initialize-RecordDefaults $novo)
+    $novo.cp_relatorio=$cpServidor
     return $novo
 }
 
@@ -5521,31 +6147,31 @@ function Adicionar-PeriodoManualServidor([string]$matricula){
 
 # V1.0.114 - Cadastro manual de compromissos fixos no periodo selecionado.
 function Cadastrar-FeriasFixaManual {
-    if([int]$script:CurrentId -le 0){ [Windows.Forms.MessageBox]::Show("Selecione primeiro um periodo aquisitivo na grade.","Nova férias fixa") | Out-Null; return }
+    if([int]$script:CurrentId -le 0){ [Windows.Forms.MessageBox]::Show("Selecione primeiro um periodo aquisitivo na grade.","Novo período de férias fixas") | Out-Null; return }
     $id=[int]$script:CurrentId
     $r=$script:Records | Where-Object { [int]$_.id -eq $id } | Select-Object -First 1
     if($null -eq $r){ return }
-    if(-not (Parse-Date ([string]$r.aquisitivo_fim))){ [Windows.Forms.MessageBox]::Show("Informe primeiro o período aquisitivo, usando Adicionar ou Corrigir período.","Nova férias fixa")|Out-Null;return }
+    if(-not (Parse-Date ([string]$r.aquisitivo_fim))){ [Windows.Forms.MessageBox]::Show("Informe primeiro o período aquisitivo, usando Adicionar ou Corrigir período.","Novo período de férias fixas")|Out-Null;return }
     if([string]::IsNullOrWhiteSpace([string]$r.setor) -or [string]::IsNullOrWhiteSpace([string]$r.periodo)){
-        [Windows.Forms.MessageBox]::Show("Complete o setor e o período de trabalho do servidor antes de incluir férias fixas.","Nova férias fixa")|Out-Null;return
+        [Windows.Forms.MessageBox]::Show("Complete o setor e o período de trabalho do servidor antes de incluir férias fixas.","Novo período de férias fixas")|Out-Null;return
     }
     # Uma fixa remanescente por aquisitivo: a outra quinzena pertence ao ano anterior.
     # Para corrigir uma fixa existente, utilize o fluxo protegido de alteração.
     if(Test-RegistroFixoImportado $r){
-        [Windows.Forms.MessageBox]::Show("Este período aquisitivo já possui férias FIXAS. Não é permitido adicionar outra quinzena fixa ao mesmo aquisitivo. Use Corrigir período para ajustar o registro existente.","Nova férias fixa") | Out-Null
+        [Windows.Forms.MessageBox]::Show("Este período aquisitivo já possui férias FIXAS. Não é permitido adicionar outra quinzena fixa ao mesmo aquisitivo. Use Corrigir período para ajustar o registro existente.","Novo período de férias fixas") | Out-Null
         return
     }
     if(-not (Test-RegistroFixoImportado $r)){
         foreach($n in 1..3){
             $op=$r.("opcao$n")
             if($null -ne $op -and -not [string]::IsNullOrWhiteSpace([string]$op.tipo)){
-                [Windows.Forms.MessageBox]::Show("Este aquisitivo possui opções cadastradas. A inclusão manual de fixa foi bloqueada para não transformar opções em férias confirmadas. Revise o cadastro antes.","Nova férias fixa")|Out-Null
+                [Windows.Forms.MessageBox]::Show("Este aquisitivo possui opções cadastradas. A inclusão manual de fixa foi bloqueada para não transformar opções em férias confirmadas. Revise o cadastro antes.","Novo período de férias fixas")|Out-Null
                 return
             }
         }
     }
     if((Test-RegistroFeriasBloqueadas $r) -and -not (Test-RegistroFixoImportado $r)){
-        [Windows.Forms.MessageBox]::Show("Este período já possui bloqueio manual. Regularize esse bloqueio antes de incluir férias fixa.","Nova férias fixa")|Out-Null;return
+        [Windows.Forms.MessageBox]::Show("Este período já possui bloqueio manual. Regularize esse bloqueio antes de incluir férias fixa.","Novo período de férias fixas")|Out-Null;return
     }
     $dlg=New-Object Windows.Forms.Form; Apply-AppBranding $dlg
     $dlg.Text="Cadastrar férias fixa - $($r.nome)"; $dlg.Size=New-Object Drawing.Size(610,390)
@@ -5711,7 +6337,7 @@ function Corrigir-PeriodoSelecionado {
     if($null -ne $d1){ $ini.Value=$d1 }
     if($null -ne $d2){ $fim.Value=$d2 }
     $info=New-Object Windows.Forms.Label; $info.Location=New-Object Drawing.Point(20,135); $info.Size=New-Object Drawing.Size(495,70)
-    $info.Text="A alteracao nao apaga as opcoes nem as ferias fixas. O sistema verifica opcoes existentes, duplicidade e faz backup antes da gravacao."
+    $info.Text="A alteracao nao apaga as opcoes nem as ferias fixas. O sistema verifica opcoes e fixas existentes, duplicidade e faz backup antes da gravacao."
     $dlg.Controls.Add($info)
     $dlg.Controls.Add((New-Label "Motivo da correcao (obrigatorio)" 20 215 290))
     $mot=New-Object Windows.Forms.TextBox; $mot.Location=New-Object Drawing.Point(20,240); $mot.Width=490; $mot.MaxLength=350; $dlg.Controls.Add($mot)
@@ -5730,6 +6356,12 @@ function Corrigir-PeriodoSelecionado {
             if($null -ne $op -and -not [string]::IsNullOrWhiteSpace([string]$op.tipo)){
                 $erro=Validate-Option $op "$num opcao" $novoFim
                 if($erro){ [Windows.Forms.MessageBox]::Show("A correcao tornaria uma opcao existente invalida:`n$erro`n`nAjuste primeiro a opcao.","Validacao") | Out-Null; return }
+            }
+        }
+        foreach($bloco in @(Get-OptionBlocksPlanejamento $r)){
+            if((Test-RegistroFeriasBloqueadas $r) -and ([datetime]$bloco.inicio).Date -le $fim.Value.Date){
+                [Windows.Forms.MessageBox]::Show("A correcao deixaria ferias fixas antes do termino do aquisitivo. Confira a fixa e o aquisitivo antes de continuar.","Validacao") | Out-Null
+                return
             }
         }
         $conf=[Windows.Forms.MessageBox]::Show("Aquisitivo anterior: $(Date-ToBR $antIni) a $(Date-ToBR $antFim)`nNovo: $(Date-ToBR $novoIni) a $(Date-ToBR $novoFim)`n`nConfirmar correcao?","Confirmar",[Windows.Forms.MessageBoxButtons]::YesNo,[Windows.Forms.MessageBoxIcon]::Warning)
@@ -5762,8 +6394,9 @@ function Abrir-CadastroManualServidor {
     $dlg=New-Object Windows.Forms.Form; Apply-AppBranding $dlg
     $dlg.Text="Novo servidor — cadastro manual"; $dlg.Size=New-Object Drawing.Size(650,470); $dlg.StartPosition="CenterParent"; $dlg.FormBorderStyle="FixedDialog"; $dlg.MaximizeBox=$false; $dlg.MinimizeBox=$false
     $titulo=New-Object Windows.Forms.Label; $titulo.Text="CADASTRO MANUAL DE SERVIDOR"; $titulo.Location=New-Object Drawing.Point(20,15); $titulo.Size=New-Object Drawing.Size(400,28); $titulo.Font=New-Object Drawing.Font("Segoe UI",11,[Drawing.FontStyle]::Bold); $dlg.Controls.Add($titulo)
-    $dlg.Controls.Add((New-Label "Matrícula" 20 60 100)); $tm=New-TextBox 20 82 180; $dlg.Controls.Add($tm)
-    $dlg.Controls.Add((New-Label "Nome completo" 220 60 120)); $tn=New-TextBox 220 82 390; $dlg.Controls.Add($tn)
+    $dlg.Controls.Add((New-Label "Matrícula" 20 60 100)); $tm=New-TextBox 20 82 150; $dlg.Controls.Add($tm)
+    $dlg.Controls.Add((New-Label "CP obrigatório" 180 60 105));$tc=New-TextBox 180 82 100;$dlg.Controls.Add($tc)
+    $dlg.Controls.Add((New-Label "Nome completo" 290 60 120)); $tn=New-TextBox 290 82 320; $tn.CharacterCasing=[Windows.Forms.CharacterCasing]::Upper; $dlg.Controls.Add($tn)
     $dlg.Controls.Add((New-Label "Setor" 20 126 100)); $cs=New-Combo 20 148 360 $true; foreach($x in @($script:Config.setores|Sort-Object)){[void]$cs.Items.Add($x)}; $dlg.Controls.Add($cs)
     $dlg.Controls.Add((New-Label "Período de trabalho" 400 126 150)); $cp=New-Combo 400 148 210; foreach($x in @($script:Config.periodos|Sort-Object)){[void]$cp.Items.Add($x)}; $dlg.Controls.Add($cp)
     $chk=New-Object Windows.Forms.CheckBox; $chk.Text="Cadastrar também o primeiro período aquisitivo agora"; $chk.Location=New-Object Drawing.Point(20,202); $chk.Size=New-Object Drawing.Size(380,26); $dlg.Controls.Add($chk)
@@ -5774,18 +6407,19 @@ function Abrir-CadastroManualServidor {
     $btnOk=New-Button "CADASTRAR" 325 365 140 38; $btnOk.BackColor=[Drawing.Color]::FromArgb(205,235,205); $btnCancel=New-Button "Cancelar" 475 365 135 38; $dlg.Controls.Add($btnOk);$dlg.Controls.Add($btnCancel)
     $btnCancel.add_Click({$dlg.DialogResult=[Windows.Forms.DialogResult]::Cancel;$dlg.Close()})
     $btnOk.add_Click({
-        $mat=$tm.Text.Trim();$nome=$tn.Text.Trim();$setor=$cs.Text.Trim();$per=$cp.Text.Trim().ToUpperInvariant()
+        $mat=$tm.Text.Trim();$nome=$tn.Text.Trim().ToUpperInvariant();$setor=$cs.Text.Trim();$per=$cp.Text.Trim().ToUpperInvariant()
         if(-not $mat -or -not $nome -or -not $setor -or -not $per){[Windows.Forms.MessageBox]::Show("Preencha Matrícula, Nome, Setor e Período de trabalho.","Validação")|Out-Null;return}
         if(@($script:Records|Where-Object{[string]$_.matricula -eq $mat}).Count -gt 0){[Windows.Forms.MessageBox]::Show("Esta matrícula já existe no sistema. Selecione o servidor na lista para editar o cadastro ou adicionar um novo período aquisitivo.","Servidor já cadastrado")|Out-Null;return}
+        try{$cpServidor=Resolve-CPServidorCadastro $mat $tc.Text}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Validação')|Out-Null;return}
         $ai="";$af="";$base=$true
         if($chk.Checked){if($df.Value.Date -lt $di.Value.Date){[Windows.Forms.MessageBox]::Show("O fim do período aquisitivo não pode ser anterior ao início.","Validação")|Out-Null;return};$ai=Date-ToStore $di.Value.Date;$af=Date-ToStore $df.Value.Date;$base=$false}
-        $dlg.Tag=[pscustomobject]@{mat=$mat;nome=$nome;setor=$setor;per=$per;ai=$ai;af=$af;base=$base};$dlg.DialogResult=[Windows.Forms.DialogResult]::OK;$dlg.Close()
+        $dlg.Tag=[pscustomobject]@{mat=$mat;cpServidor=$cpServidor;nome=$nome;setor=$setor;per=$per;ai=$ai;af=$af;base=$base};$dlg.DialogResult=[Windows.Forms.DialogResult]::OK;$dlg.Close()
     })
     if($dlg.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK){$dlg.Dispose();return}
     $d=$dlg.Tag;$dlg.Dispose()
     try{
         [void](Backup-AntesAcao "ANTES_CADASTRO_MANUAL_SERVIDOR")
-        $novo=New-RegistroFeriasManual ([string]$d.mat) ([string]$d.nome) ([string]$d.setor) ([string]$d.per) ([string]$d.ai) ([string]$d.af) ([bool]$d.base);$script:Records += $novo
+        $novo=New-RegistroFeriasManual ([string]$d.mat) ([string]$d.nome) ([string]$d.setor) ([string]$d.per) ([string]$d.ai) ([string]$d.af) ([bool]$d.base) -cpServidor ([string]$d.cpServidor);$script:Records += $novo
         if(Test-ServidorExcluido ([string]$d.mat)){ Remove-ServidorExcluido ([string]$d.mat) }
         if(@($script:Config.setores) -notcontains [string]$d.setor){$script:Config.setores=@(@($script:Config.setores)+[string]$d.setor|Sort-Object -Unique);Set-GrupoAnaliseSetor ([string]$d.setor) "ASSISTENCIAL"}
         if(@($script:Config.periodos) -notcontains [string]$d.per){$script:Config.periodos=@(@($script:Config.periodos)+[string]$d.per|Sort-Object -Unique)}
@@ -5817,6 +6451,7 @@ function Import-LoteFromClipboard {
         $row.Cells["lnome"].Value=$parts[1].Trim()
         $row.Cells["lsetor"].Value=$parts[2].Trim()
         $row.Cells["lperiodo"].Value=$parts[3].Trim()
+        $row.Cells["lcp"].Value=if($parts.Count -ge 5){$parts[4].Trim()}else{""}
     }
 }
 
@@ -5834,6 +6469,15 @@ function Validar-LoteServidores([bool]$silent=$false) {
         if(-not $nome){ $msgs += "Nome vazio" }
         if(-not $setor){ $msgs += "Setor vazio" }
         if(-not $per){ $msgs += "Período vazio" }
+        try{
+            $cpServidor=Resolve-CPServidorCadastro $mat ([string]$row.Cells['lcp'].Value)
+            foreach($otherRow in $script:gridLote.Rows){
+                if($otherRow.IsNewRow -or [object]::ReferenceEquals($otherRow,$row)){continue}
+                $otherMat=([string]$otherRow.Cells['lmat'].Value).Trim();$n=0
+                if($otherMat -eq $mat){$msgs+='Matrícula repetida no lote';break}
+                if([int]::TryParse(([string]$otherRow.Cells['lcp'].Value).Trim(),[ref]$n) -and $n.ToString() -eq $cpServidor){$msgs+='CP repetido no lote';break}
+            }
+        }catch{$msgs+=$_.Exception.Message}
         if($msgs.Count -gt 0){
             $row.Cells["lstatus"].Value="ERRO"
             $row.Cells["lmsg"].Value=($msgs -join "; ")
@@ -5917,6 +6561,7 @@ function Desfazer-UltimoLote {
             [Windows.Forms.MessageBoxIcon]::Information
         ) | Out-Null
     } catch {
+        try{Load-Database}catch{Write-DiagLog 'Falha ao recarregar a base após erro ao desfazer lote.' 'ERROR' $_}
         [Windows.Forms.MessageBox]::Show(
             "Não foi possível desfazer o lote.`n$($_.Exception.Message)",
             "Férias DCE",
@@ -5976,7 +6621,7 @@ function Processar-LoteServidores {
         $nome=[string]$row.Cells["lnome"].Value
         $setor=[string]$row.Cells["lsetor"].Value
         $per=[string]$row.Cells["lperiodo"].Value
-        $res=Apply-ServidorCadastro $mat $nome $setor $per
+        $res=Apply-ServidorCadastro $mat $nome $setor $per -cpServidor ([string]$row.Cells["lcp"].Value)
         $row.Cells["lstatus"].Value=$res.status
         $row.Cells["lmsg"].Value=$res.mensagem
         switch($res.status){
@@ -6258,6 +6903,9 @@ function Refresh-Grid {
     $chefia=if($null -ne $script:cmbFiltroChefia -and $script:cmbFiltroChefia.SelectedItem){[string]$script:cmbFiltroChefia.SelectedItem}else{"TODOS"}
     $sol=if($null -ne $script:cmbFiltroSolicitacao -and $script:cmbFiltroSolicitacao.SelectedItem){[string]$script:cmbFiltroSolicitacao.SelectedItem}else{"TODOS"}
     $just=if($null -ne $script:cmbFiltroJustificativa -and $script:cmbFiltroJustificativa.SelectedItem){[string]$script:cmbFiltroJustificativa.SelectedItem}else{"TODOS"}
+    $filtroCP=if($null -ne $script:cmbFiltroCP -and $script:cmbFiltroCP.SelectedItem){[string]$script:cmbFiltroCP.SelectedItem}else{'TODOS'}
+    $script:ConferenciaCPAtual=Get-ConferenciaCP
+    $cpComProblema=@($script:ConferenciaCPAtual.Values | Where-Object {$_.TemProblema}).Count
     # V1.0.135-R2: evita custo de agrupamento e ordenacao a cada tecla.
     # Cache invalidado em gravacao e carregamento; nao altera dados persistidos.
     $script:grid.SuspendLayout()
@@ -6274,6 +6922,8 @@ function Refresh-Grid {
         $cad=$recs | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.setor) -or -not [string]::IsNullOrWhiteSpace([string]$_.periodo) } | Select-Object -First 1
         if($cad){ $rCad=$cad } else { $rCad=$r }
 
+        $cpInfo=$script:ConferenciaCPAtual[([string]$r.matricula).Trim()]
+        if(-not (Test-FiltroConferenciaCP $cpInfo $filtroCP)){continue}
         if($q){
             $hay=("$($r.matricula) $($r.nome) $($rCad.setor) $($rCad.periodo)").ToUpperInvariant()
             if($hay -notlike "*$q*"){ continue }
@@ -6314,6 +6964,9 @@ function Refresh-Grid {
         $row.Cells["excluir"].Value=($script:GridServidoresMarcados.ContainsKey($matRow) -and [bool]$script:GridServidoresMarcados[$matRow])
         $row.Cells["formulario"].Value=($script:FormServidoresMarcados.ContainsKey($matRow) -and [bool]$script:FormServidoresMarcados[$matRow])
         $row.Cells["matricula"].Value=$r.matricula
+        $row.Cells['cp'].Value=$cpInfo.CP
+        $row.Cells['cp'].ToolTipText=$cpInfo.Detalhe
+        if($cpInfo.TemProblema){$row.Cells['cp'].Style.BackColor=[Drawing.Color]::MistyRose;$row.Cells['cp'].Style.ForeColor=[Drawing.Color]::DarkRed}
         $row.Cells["nome"].Value=$r.nome
         $row.Cells["setor"].Value=$rCad.setor
         $row.Cells["periodo"].Value=$rCad.periodo
@@ -6373,7 +7026,8 @@ function Refresh-Grid {
     $totalFixos=$script:GridPesquisaTotais.Fixos
     $totalEscolha=$script:GridPesquisaTotais.Escolha
     $totalVazios=$script:GridPesquisaTotais.Vazios
-    $script:lblTotal.Text="Servidores exibidos: $($script:grid.Rows.Count) | Periodos fixos: $totalFixos | Aquisitivos de escolha: $totalEscolha | Cadastros sem datas: $totalVazios"
+    $script:lblTotal.Text="Servidores: $($script:grid.Rows.Count) | CP com problema (base): $cpComProblema | Periodos fixos: $totalFixos | Aquisitivos de escolha: $totalEscolha | Cadastros sem datas: $totalVazios"
+    if($script:grid.Rows.Count -eq 0 -and $filtroCP -ne 'TODOS'){Clear-Editor}
     Update-PendenciasButton
     Atualizar-ResumoMarcados
     Atualizar-BotaoExcluidos
@@ -6462,6 +7116,7 @@ function Load-Servidor([string]$matricula){
     $script:CurrentMatricula=[string]$cad.matricula
     $script:txtMatricula.Text=[string]$cad.matricula
     $script:txtNome.Text=[string]$cad.nome
+    Show-CPServidorNoEditor ([string]$cad.matricula)
     $script:cmbSetor.Text=[string]$cad.setor
     $idx=$script:cmbPeriodo.Items.IndexOf([string]$cad.periodo)
     if($idx -lt 0 -and -not [string]::IsNullOrWhiteSpace([string]$cad.periodo)){
@@ -6661,6 +7316,7 @@ function Excluir-PeriodoSelecionado {
 
 function Clear-Editor {
     $script:CurrentId=0; $script:CurrentMatricula=""
+    if($null -ne $script:txtCPServidor){$script:txtCPServidor.Clear();$script:txtCPServidor.BackColor=[Drawing.Color]::White;$script:lblCPServidor.Text="CP obrigatório"}
     $script:txtMatricula.Text=""; $script:txtNome.Text=""; $script:cmbSetor.Text=""; $script:cmbPeriodo.SelectedIndex=-1; if($null -ne $script:txtJustificativaDecisao){$script:txtJustificativaDecisao.Clear()}
     if($script:gridPeriodos){$script:gridPeriodos.Rows.Clear()}
     Clear-PeriodEditor
@@ -6677,6 +7333,7 @@ function Load-Editor([int]$id){
         $script:CurrentId=$id
         $script:CurrentMatricula=[string]$r.matricula
         $script:txtMatricula.Text=[string]$r.matricula; $script:txtNome.Text=[string]$r.nome
+        Show-CPServidorNoEditor ([string]$r.matricula)
         # O periodo de trabalho pertence ao cadastro da matricula, nao ao aquisitivo selecionado.
         # DropDownList nao aceita texto livre: selecionar um item realmente existente.
         $cadAtual=@(Get-ServidorRecords ([string]$r.matricula) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.periodo) } | Select-Object -First 1)
@@ -6725,13 +7382,15 @@ function Load-Editor([int]$id){
 
 function Save-ServidorCadastro {
     $mat=$script:txtMatricula.Text.Trim()
-    $nome=$script:txtNome.Text.Trim()
+    $nome=$script:txtNome.Text.Trim().ToUpperInvariant()
     $setor=$script:cmbSetor.Text.Trim()
     $per=[string]$script:cmbPeriodo.Text
     if(-not $mat -or -not $nome){ [Windows.Forms.MessageBox]::Show("Selecione um servidor.","Cadastro do servidor") | Out-Null; return }
     if(-not $setor -or -not $per){ [Windows.Forms.MessageBox]::Show("Informe Setor e Período do servidor.","Cadastro do servidor") | Out-Null; return }
     $recs=Get-ServidorRecords $mat
     if($recs.Count -eq 0){ [Windows.Forms.MessageBox]::Show("Servidor não localizado na base.","Cadastro do servidor") | Out-Null; return }
+    try{$cpServidor=Resolve-CPServidorCadastro $mat ([string]$script:txtCPServidor.Text)}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Cadastro do servidor')|Out-Null;return}
+    Set-CPServidor $mat $cpServidor
     foreach($r in $recs){
         $r.nome=$nome
         $r.setor=$setor
@@ -6770,7 +7429,8 @@ function Save-Editor {
         return
     }
 
-    $mat=$script:txtMatricula.Text.Trim(); $nome=$script:txtNome.Text.Trim()
+    $mat=$script:txtMatricula.Text.Trim(); $nome=$script:txtNome.Text.Trim().ToUpperInvariant()
+    try{$cpServidor=Resolve-CPServidorCadastro $mat ([string]$script:txtCPServidor.Text)}catch{[Windows.Forms.MessageBox]::Show($_.Exception.Message,'Cadastro do servidor')|Out-Null;return}
     $setor=$script:cmbSetor.Text.Trim(); $per=[string]$script:cmbPeriodo.Text
     if(-not $setor -or -not $per){ [Windows.Forms.MessageBox]::Show("Cadastre primeiro o Setor e o Período do servidor.","Validação") | Out-Null; return }
 
@@ -6829,6 +7489,7 @@ function Save-Editor {
         catch { return }
     }
 
+    Set-CPServidor $mat $cpServidor
     # Cadastro do servidor é único e se propaga para todos os períodos aquisitivos.
     foreach($sr in (Get-ServidorRecords $mat)){
         $sr.nome=$nome; $sr.setor=$setor; $sr.periodo=$per
@@ -6988,9 +7649,12 @@ function Refresh-Dashboard {
         foreach($r in $filtered){
             $n=0
             if($mode -eq "1ª OPÇÃO"){$n=1}elseif($mode -eq "2ª OPÇÃO"){$n=2}elseif($mode -eq "3ª OPÇÃO"){$n=3}elseif($mode -eq "OPÇÃO DEFINIDA"){$n=[int]$r.opcao_aprovada}
-            if($n -lt 1 -or $n -gt 3){ continue }
+            $blocosDia=@()
+            if($mode -eq 'OPÇÃO DEFINIDA'){$blocosDia=@(Get-BlocosConfirmadosRegistro $r)}
+            elseif($n -ge 1 -and $n -le 3){$blocosDia=@(Get-OptionBlocks $r $n)}
+            else{continue}
             $active=$false
-            foreach($b in (Get-OptionBlocks $r $n)){ if($day -ge $b.inicio -and $day -le $b.fim){$active=$true;break} }
+            foreach($b in $blocosDia){ if($day -ge $b.inicio -and $day -le $b.fim){$active=$true;break} }
             if($active){
                 $total++
                 $rp=([string]$r.periodo).Trim()
@@ -7051,7 +7715,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.135-R2"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R13 | HIST-R13"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -7071,8 +7735,8 @@ $script:tabsPrincipal=$tabs; $script:tabPlanejamentoPrincipal=$tabPlanejSetor; $
 
 # --- HISTÓRICO DE FÉRIAS / COMPARAÇÃO ---
 # V1.0.90: interface simplificada para decisão. A tela prioriza leitura rápida:
-# servidor selecionado -> cartões -> mapa 2024/2025/2026 -> histórico detalhado.
-# Verde = 15+ dias no mês; amarelo = 1 a 14 dias; cinza = sem férias.
+# servidor selecionado -> cartões -> mapa dos anos importados -> histórico detalhado.
+# Verde = 15+ dias no mês; amarelo = 1 a 14 dias; cinza = sem registro no mês; ? = ano sem dados.
 $histRoot=New-Object Windows.Forms.TableLayoutPanel
 $histRoot.Dock="Fill"; $histRoot.ColumnCount=1; $histRoot.RowCount=2; $histRoot.Margin=New-Object Windows.Forms.Padding(0)
 $histRoot.ColumnStyles.Clear(); $histRoot.RowStyles.Clear()
@@ -7094,7 +7758,7 @@ $histTop.Controls.Add($script:txtHistBusca)
 
 $histTop.Controls.Add((New-Label "Ano histórico" 280 7 100 20))
 $script:cmbHistAno=New-Combo 280 29 110
-@("TODOS","2024","2025","2026") | ForEach-Object { [void]$script:cmbHistAno.Items.Add($_) }
+@("TODOS") | ForEach-Object { [void]$script:cmbHistAno.Items.Add($_) }
 $script:cmbHistAno.SelectedIndex=0
 $histTop.Controls.Add($script:cmbHistAno)
 
@@ -7258,7 +7922,7 @@ $script:lblHistCardMesAlvoTitulo=$c3.Titulo; $script:lblHistCardMesAlvoValor=$c3
 $c4=Add-HistoricoCard $histCards 3 "ÚLTIMAS FÉRIAS" ([Drawing.Color]::FromArgb(244,238,255)) ([Drawing.Color]::FromArgb(97,55,153))
 $script:lblHistCardUltimasValor=$c4.Valor
 
-# Matriz 2024/2025/2026 x meses.
+# Matriz dos anos importados x meses.
 $histResumoPanel=New-Object Windows.Forms.TableLayoutPanel
 $histResumoPanel.Dock="Fill"; $histResumoPanel.ColumnCount=1; $histResumoPanel.RowCount=2; $histResumoPanel.Margin=New-Object Windows.Forms.Padding(0)
 $cr=New-Object Windows.Forms.ColumnStyle; $cr.SizeType=[Windows.Forms.SizeType]::Percent; $cr.Width=100; [void]$histResumoPanel.ColumnStyles.Add($cr)
@@ -7268,7 +7932,7 @@ $rrb=New-Object Windows.Forms.RowStyle; $rrb.SizeType=[Windows.Forms.SizeType]::
 $histIndLayout.Controls.Add($histResumoPanel,0,2)
 
 $lblHistMapa=New-Object Windows.Forms.Label
-$lblHistMapa.Dock="Fill"; $lblHistMapa.Text="MAPA RÁPIDO — verde = 15+ dias (CONTA)  |  amarelo = 1–14 dias (NÃO CONTA)  |  cinza = sem férias"
+$lblHistMapa.Dock="Fill"; $lblHistMapa.Text="MAPA RÁPIDO — verde = 15+ dias (CONTA)  |  amarelo = 1–14 dias (NÃO CONTA)  |  cinza = sem registro no mês; ? = ano sem dados"
 $lblHistMapa.Padding=New-Object Windows.Forms.Padding(8,7,4,0); $lblHistMapa.Font=New-Object Drawing.Font("Segoe UI",8,[Drawing.FontStyle]::Bold)
 $lblHistMapa.ForeColor=[Drawing.Color]::FromArgb(55,70,85)
 $histResumoPanel.Controls.Add($lblHistMapa,0,0)
@@ -7338,7 +8002,7 @@ $script:lblHistCompResumo.Text="Marque servidores à esquerda para comparar."
 $histCompLayout.Controls.Add($script:lblHistCompResumo,0,0)
 
 $lblHistCompLegenda=New-Object Windows.Forms.Label
-$lblHistCompLegenda.Dock="Fill"; $lblHistCompLegenda.Text="LEITURA RÁPIDA: VERDE = 15+ dias (mês utilizado) | AMARELO = 1–14 dias | CINZA = sem utilização"
+$lblHistCompLegenda.Dock="Fill"; $lblHistCompLegenda.Text="LEITURA RÁPIDA: VERDE = 15+ dias (mês utilizado) | AMARELO = 1–14 dias | CINZA = sem registro"
 $lblHistCompLegenda.Padding=New-Object Windows.Forms.Padding(8,7,0,0); $lblHistCompLegenda.Font=New-Object Drawing.Font("Segoe UI",8,[Drawing.FontStyle]::Bold)
 $histCompLayout.Controls.Add($lblHistCompLegenda,0,1)
 
@@ -7356,7 +8020,7 @@ $script:gridHistComparacao.AlternatingRowsDefaultCellStyle.BackColor=[Drawing.Co
 Enable-GridSmooth $script:gridHistComparacao
 foreach($c in @(
     @("hcMat","Matrícula",90),@("hcNome","Servidor",190),@("hcSetor","Setor atual",135),@("hcPer","Per.",68),
-    @("hc2024","2024",165),@("hc2025","2025",165),@("hc2026","2026",165),@("hcOc","Meses 15+d",85),
+    @("hcOc","Meses 15+d",85),
     @("hcUltMes","Última vez no mês",115),@("hcUlt","Últimas férias",160)
 )){
     $col=New-Object Windows.Forms.DataGridViewTextBoxColumn; $col.Name=$c[0]; $col.HeaderText=$c[1]; $col.Width=[int]$c[2]; $col.ReadOnly=$true; [void]$script:gridHistComparacao.Columns.Add($col)
@@ -7512,7 +8176,7 @@ $mainSplit.BringToFront()
 $mainSplit.add_SizeChanged({
     try {
         if($mainSplit.Width -gt 900){
-            $alvo=[int]([math]::Round($mainSplit.Width*0.50))
+            $alvo=[int]([math]::Round($mainSplit.Width*0.45))
             if($alvo -lt 520){$alvo=520}
             if($alvo -gt ($mainSplit.Width-520)){$alvo=$mainSplit.Width-520}
             if($alvo -gt 0 -and $alvo -lt $mainSplit.Width){$mainSplit.SplitterDistance=$alvo}
@@ -7522,7 +8186,7 @@ $mainSplit.add_SizeChanged({
 
 $filter=New-Object Windows.Forms.Panel
 $filter.Dock="Top"
-$filter.Height=285
+$filter.Height=178
 $filter.BackColor=[Drawing.Color]::FromArgb(247,249,252)
 $mainSplit.Panel1.Controls.Add($filter)
 
@@ -7535,77 +8199,117 @@ $script:txtFiltroSetoresResumo=New-TextBox 210 28 180
 $script:txtFiltroSetoresResumo.ReadOnly=$true
 $script:txtFiltroSetoresResumo.Text="TODOS OS SETORES"
 $filter.Controls.Add($script:txtFiltroSetoresResumo)
-$script:btnFiltroSetores=New-Button "Selecionar..." 395 26 105 30
+$script:btnFiltroSetores=New-Button "Selecionar..." 395 27 105 25
 $filter.Controls.Add($script:btnFiltroSetores)
 
-$filter.Controls.Add((New-Label "Período" 10 62 80 20))
-$script:cmbFiltroPeriodo=New-Combo 10 82 125
+$filter.Controls.Add((New-Label "Período" 10 52 80 20))
+$script:cmbFiltroPeriodo=New-Combo 10 72 125
 $filter.Controls.Add($script:cmbFiltroPeriodo)
-$filter.Controls.Add((New-Label "Situação" 145 62 80 20))
-$script:cmbFiltroSituacao=New-Combo 145 82 175
+$filter.Controls.Add((New-Label "Situação" 145 52 80 20))
+$script:cmbFiltroSituacao=New-Combo 145 72 175
 @("TODAS","PENDENTES","ACEITAS","FIXAS - TODAS","FIXAS IMPORTADAS","FIXAS AJUSTADAS","FIXAS MANUAIS","SEM DECISÃO") | ForEach-Object {[void]$script:cmbFiltroSituacao.Items.Add($_)}
 $script:cmbFiltroSituacao.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroSituacao)
-$filter.Controls.Add((New-Label "Com solicitação" 330 62 115 20))
-$script:cmbFiltroSolicitacao=New-Combo 330 82 170
+$filter.Controls.Add((New-Label "Com solicitação" 330 52 115 20))
+$script:cmbFiltroSolicitacao=New-Combo 330 72 170
 @("TODOS","COM SOLICITAÇÃO","SEM SOLICITAÇÃO") | ForEach-Object {[void]$script:cmbFiltroSolicitacao.Items.Add($_)}
 $script:cmbFiltroSolicitacao.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroSolicitacao)
 
-$filter.Controls.Add((New-Label "Grupo de análise" 10 116 120 20))
-$script:cmbFiltroGrupoAnalise=New-Combo 10 136 180
+$filter.Controls.Add((New-Label "Grupo de análise" 10 96 120 20))
+$script:cmbFiltroGrupoAnalise=New-Combo 10 116 112
 $filter.Controls.Add($script:cmbFiltroGrupoAnalise)
-$filter.Controls.Add((New-Label "Grupo de Chefia" 200 116 120 20))
-$script:cmbFiltroChefia=New-Combo 200 136 185
+$filter.Controls.Add((New-Label "Grupo de Chefia" 135 96 120 20))
+$script:cmbFiltroChefia=New-Combo 135 116 112
 $filter.Controls.Add($script:cmbFiltroChefia)
-$filter.Controls.Add((New-Label "Justificativa" 395 116 100 20))
-$script:cmbFiltroJustificativa=New-Combo 395 136 175
+$filter.Controls.Add((New-Label "Justificativa" 260 96 100 20))
+$script:cmbFiltroJustificativa=New-Combo 260 116 112
 @("TODOS","COM JUSTIFICATIVA","SEM JUSTIFICATIVA") | ForEach-Object {[void]$script:cmbFiltroJustificativa.Items.Add($_)}
 $script:cmbFiltroJustificativa.SelectedIndex=0
 $filter.Controls.Add($script:cmbFiltroJustificativa)
+$script:cmbFiltroGrupoAnalise.DropDownWidth=260
+$script:cmbFiltroChefia.DropDownWidth=260
+$script:cmbFiltroJustificativa.DropDownWidth=220
+$filter.Controls.Add((New-Label "Conferência CP" 385 96 115 20))
+$script:cmbFiltroCP=New-Combo 385 116 115
+$script:cmbFiltroCP.DropDownWidth=230
+@('TODOS','COM PROBLEMA','SEM CP','CP INCOMPLETO','CP INVÁLIDO','CP REPETIDO','CPs DIVERGENTES','CP OK') | ForEach-Object {[void]$script:cmbFiltroCP.Items.Add($_)}
+$script:cmbFiltroCP.SelectedIndex=0
+$filter.Controls.Add($script:cmbFiltroCP)
 
-$script:btnPendencias=New-Button "Pendências cadastro" 10 174 145 30
-$filter.Controls.Add($script:btnPendencias)
-$btnLimparFiltros=New-Button "Limpar filtros" 165 174 115 30
-$filter.Controls.Add($btnLimparFiltros)
-$btnNovoServidor=New-Button "Novo servidor" 290 174 120 30
-$btnNovoServidor.BackColor=[Drawing.Color]::FromArgb(220,237,255)
-$filter.Controls.Add($btnNovoServidor)
-$script:btnServidoresExcluidos=New-Button "Excluídos (0)" 420 174 135 30
-$script:btnServidoresExcluidos.BackColor=[Drawing.Color]::FromArgb(245,245,245)
-$filter.Controls.Add($script:btnServidoresExcluidos)
+# Ações compactas: menus preservam os mesmos eventos e confirmações existentes.
+$acoesLanc=New-Object Windows.Forms.ToolStrip
+$acoesLanc.Location=New-Object Drawing.Point(8,145)
+$acoesLanc.Size=New-Object Drawing.Size(494,28)
+$acoesLanc.Dock='None'; $acoesLanc.AutoSize=$false; $acoesLanc.GripStyle='Hidden'
+$acoesLanc.CanOverflow=$true; $acoesLanc.BackColor=$filter.BackColor
+$acoesLanc.RenderMode='System'
+$acoesLanc.AccessibleName='Ações dos lançamentos'
+$filter.Controls.Add($acoesLanc)
 
-$btnMarcarVisiveis=New-Button "Marcar visíveis" 10 210 135 30
-$filter.Controls.Add($btnMarcarVisiveis)
-$btnAutorizacao=New-Button "Gerar autorização" 465 210 178 30
-$btnAutorizacao.BackColor=[Drawing.Color]::FromArgb(216,238,224)
-$filter.Controls.Add($btnAutorizacao)
-$btnLimparMarcacao=New-Button "Limpar marcação" 155 210 135 30
-$filter.Controls.Add($btnLimparMarcacao)
-$script:btnExcluirServidoresMarcados=New-Button "Excluir marcados" 300 210 155 30
-$script:btnExcluirServidoresMarcados.BackColor=[Drawing.Color]::FromArgb(255,225,225)
+$script:btnPendencias=New-Object Windows.Forms.ToolStripButton
+$script:btnPendencias.Text='Pendências cadastro'
+$script:btnPendencias.ToolTipText='Mostrar pendências do cadastro'
+[void]$acoesLanc.Items.Add($script:btnPendencias)
+$btnLimparFiltros=New-Object Windows.Forms.ToolStripButton
+$btnLimparFiltros.Text='Limpar filtros'
+[void]$acoesLanc.Items.Add($btnLimparFiltros)
+$btnNovoServidor=New-Object Windows.Forms.ToolStripButton
+$btnNovoServidor.Text='Novo servidor'
+[void]$acoesLanc.Items.Add($btnNovoServidor)
+
+$menuFormLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuFormLanc.Text='Formulários'
+[void]$acoesLanc.Items.Add($menuFormLanc)
+$btnAutorizacao=New-Object Windows.Forms.ToolStripMenuItem
+$btnAutorizacao.Text='Gerar autorização de férias'
+[void]$menuFormLanc.DropDownItems.Add($btnAutorizacao)
+[void]$menuFormLanc.DropDownItems.Add((New-Object Windows.Forms.ToolStripSeparator))
+$btnMarcarFormVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnMarcarFormVisiveis.Text='Marcar formulários dos servidores visíveis'
+[void]$menuFormLanc.DropDownItems.Add($btnMarcarFormVisiveis)
+$btnLimparFormVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnLimparFormVisiveis.Text='Desmarcar formulários dos servidores visíveis'
+[void]$menuFormLanc.DropDownItems.Add($btnLimparFormVisiveis)
+
+$menuRelLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuRelLanc.Text='Relatórios'
+[void]$acoesLanc.Items.Add($menuRelLanc)
+$btnRelConferencia=New-Object Windows.Forms.ToolStripMenuItem
+$btnRelConferencia.Text='Conferência das opções'
+[void]$menuRelLanc.DropDownItems.Add($btnRelConferencia)
+$btnRelAceites=New-Object Windows.Forms.ToolStripMenuItem
+$btnRelAceites.Text='Relatório de aceites'
+[void]$menuRelLanc.DropDownItems.Add($btnRelAceites)
+$btnExportarAccess=New-Object Windows.Forms.ToolStripMenuItem
+$btnExportarAccess.Text='Exportar aceitas para Access (Excel)'
+[void]$menuRelLanc.DropDownItems.Add($btnExportarAccess)
+$btnImportacaoAccess=New-Object Windows.Forms.ToolStripMenuItem
+$btnImportacaoAccess.Text='Gerar arquivo para importar no Access (conferir duplicatas)'
+[void]$menuRelLanc.DropDownItems.Add($btnImportacaoAccess)
+$btnExportarListaServidores=New-Object Windows.Forms.ToolStripMenuItem
+$btnExportarListaServidores.Text='Exportar lista de servidores (Excel)'
+[void]$menuRelLanc.DropDownItems.Add($btnExportarListaServidores)
+
+$menuExclusaoLanc=New-Object Windows.Forms.ToolStripDropDownButton
+$menuExclusaoLanc.Text='Exclusão'
+[void]$acoesLanc.Items.Add($menuExclusaoLanc)
+$btnMarcarVisiveis=New-Object Windows.Forms.ToolStripMenuItem
+$btnMarcarVisiveis.Text='Marcar servidores visíveis para exclusão'
+[void]$menuExclusaoLanc.DropDownItems.Add($btnMarcarVisiveis)
+$btnLimparMarcacao=New-Object Windows.Forms.ToolStripMenuItem
+$btnLimparMarcacao.Text='Limpar marcação de exclusão'
+[void]$menuExclusaoLanc.DropDownItems.Add($btnLimparMarcacao)
+[void]$menuExclusaoLanc.DropDownItems.Add((New-Object Windows.Forms.ToolStripSeparator))
+$script:btnExcluirServidoresMarcados=New-Object Windows.Forms.ToolStripMenuItem
+$script:btnExcluirServidoresMarcados.Text='Excluir marcados'
 $script:btnExcluirServidoresMarcados.ForeColor=[Drawing.Color]::DarkRed
-$filter.Controls.Add($script:btnExcluirServidoresMarcados)
-$lblFiltroAjuda=New-Object Windows.Forms.Label
-$lblFiltroAjuda.Text=""
-$lblFiltroAjuda.Location=New-Object Drawing.Point(465,245)
-$lblFiltroAjuda.Size=New-Object Drawing.Size(175,22)
-$lblFiltroAjuda.ForeColor=[Drawing.Color]::DimGray
-$filter.Controls.Add($lblFiltroAjuda)
-# V151: marcacao de formularios independente da exclusao, limitada as linhas filtradas.
-$btnMarcarFormVisiveis=New-Button "Marcar Form. visiveis" 10 245 166 29
-$btnMarcarFormVisiveis.BackColor=[Drawing.Color]::FromArgb(216,238,224)
-$filter.Controls.Add($btnMarcarFormVisiveis)
-$btnLimparFormVisiveis=New-Button "Limpar Form. visiveis" 183 245 169 29
-$filter.Controls.Add($btnLimparFormVisiveis)
-$btnRelConferencia=New-Button "Relatorio de conferencia" 465 245 178 29
-$btnRelConferencia.BackColor=[Drawing.Color]::FromArgb(227,238,250)
-$filter.Controls.Add($btnRelConferencia)
-$btnRelAceites=New-Button "Relatorio de aceites" 650 245 178 29
-$btnRelAceites.BackColor=[Drawing.Color]::FromArgb(233,245,233)
-$filter.Controls.Add($btnRelAceites)
-$lblFiltroAjuda.Visible=$false
-
+[void]$menuExclusaoLanc.DropDownItems.Add($script:btnExcluirServidoresMarcados)
+$script:btnServidoresExcluidos=New-Object Windows.Forms.ToolStripMenuItem
+$script:btnServidoresExcluidos.Text='Excluídos (0)'
+[void]$menuExclusaoLanc.DropDownItems.Add($script:btnServidoresExcluidos)
+# O overflow nativo mantém os comandos acessíveis em janelas estreitas e fontes ampliadas.
+$filter.add_SizeChanged({$acoesLanc.Width=[math]::Max(100,$filter.ClientSize.Width-16)})
 
 # === FORMULARIOS OFICIAIS - V1.0.90 ===
 function Convert-HtmlSeguro([object]$v) { return [System.Net.WebUtility]::HtmlEncode([string]$v) }
@@ -7979,9 +8683,9 @@ function Gerar-TodasFeriasFixasHTML {
     }
 }
 # V1.0.168 - Relatorio de simultaneidade por setor (consulta, sem modificar JSON).
-function Get-EntradasConferenciaSetor([bool]$IncluirPendentes) {
+function Get-EntradasConferenciaSetor([bool]$IncluirPendentes,$Registros=$script:Records) {
     $itens=New-Object 'System.Collections.Generic.List[object]'
-    foreach($r in @($script:Records)) {
+    foreach($r in @($Registros)) {
         if($null -eq $r){continue}
         $setor=([string]$r.setor).Trim(); if(-not $setor){$setor='SETOR NAO INFORMADO'}
         $mat=([string]$r.matricula).Trim(); $nome=([string]$r.nome).Trim(); if(-not $mat){$mat='REGISTRO:'+([string]$r.id)}
@@ -8039,23 +8743,7 @@ function Normalizar-TurnoConferencia([string]$Valor){
         default {return 'NAO INFORMADO'}
     }
 }
-function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPendentes,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
-    $enc={param($v) [System.Net.WebUtility]::HtmlEncode([string]$v)}
-    $selecionados=@{};foreach($s in $Setores){$selecionados[[string]$s]=$true}
-    # O turno pertence ao registro aquisitivo de origem, nunca ao primeiro cadastro da matricula.
-    $itens=@(Get-EntradasConferenciaSetor $IncluirPendentes | Where-Object {$selecionados.ContainsKey([string]$_.Setor)} | ForEach-Object {
-        [pscustomobject]@{Setor=[string]$_.Setor;Matricula=[string]$_.Matricula;Nome=[string]$_.Nome;Inicio=[datetime]$_.Inicio;Fim=[datetime]$_.Fim;Situacao=[string]$_.Situacao;Turno=[string]$_.Turno;RegistroId=[string]$_.RegistroId}
-    })
-    $grupos=@()
-    if($Modo -eq 'ENTRE_SETORES'){$grupos=@([pscustomobject]@{Nome='ENTRE SETORES SELECIONADOS';Itens=@($itens)})}
-    else {foreach($s in @($Setores | Sort-Object -Unique)){$grupos+= [pscustomobject]@{Nome=$s;Itens=@($itens | Where-Object {$_.Setor -eq $s})}}}
-    $htmlPartes=New-Object System.Text.StringBuilder
-    $totalCriticos=0;$totalAtencao=0;$totalPendentes=0;$totalEventos=0
-    foreach($g in $grupos){
-        $arr=@($g.Itens)
-        [void]$htmlPartes.Append('<section class="setor"><h2>'+(& $enc $g.Nome)+'</h2>')
-        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada.</p></section>');continue}
-        # Pontos de corte: inicio e dia seguinte ao termino (fim inclusivo).
+function Get-EventosConflitoSetor($arr,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
         $pontos=New-Object 'System.Collections.Generic.List[datetime]'
         foreach($it in $arr){$pontos.Add($it.Inicio.Date);if($it.Fim.Date -lt [datetime]::MaxValue.Date){$pontos.Add($it.Fim.Date.AddDays(1))}}
         $cortes=@($pontos | Sort-Object -Unique)
@@ -8109,7 +8797,7 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
                 if(@($t.Group | Select-Object -ExpandProperty Setor -Unique).Count -ge 2){$mesmoTurno=$true;break}
             }
             $pendente=(@($ativos | Where-Object {$_.Situacao -match 'PENDENTE'}).Count -gt 0)
-            $grau=if($mesmoTurno){'CRITICO'}else{'ATENCAO'}
+            $grau=Get-GrauConflitoSetor $ativos $Modo
             $confirmacao=if($pendente){'ENVOLVE PENDENTE'}else{'CONFIRMADO'}
             # Cada trecho pertence a um conjunto IDENTICO de lancamentos, nao apenas matriculas.
             # Nao unir periodos distintos do mesmo servidor ou mudancas de turno/status.
@@ -8121,6 +8809,58 @@ function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPenden
                 $eventos[$eventos.Count-1].Fim=$fim
             }else{$eventos.Add([pscustomobject]@{Inicio=$ini;Fim=$fim;Chave=$chave;Participantes=$ativos;Grau=$grau;Confirmacao=$confirmacao})}
         }
+    return $eventos.ToArray()
+}
+
+function Get-GrauConflitoSetor($Participantes,[string]$Modo='POR_SETOR'){
+    foreach($t in @($Participantes | Where-Object {$_.Turno -ne 'NAO INFORMADO'} | Group-Object Turno | Where-Object {$_.Count -ge 2})){
+        if($Modo -eq 'POR_SETOR' -or @($t.Group | Select-Object -ExpandProperty Setor -Unique).Count -ge 2){return 'CRITICO'}
+    }
+    return 'ATENCAO'
+}
+
+function Get-ConflitosConferenciaAceitas($Registros,[int]$Ano,[int]$Mes=0){
+    # Mesma origem do relatorio: aceites independentes comum/FR e fixas, sem pendentes.
+    $entradas=@(Get-EntradasConferenciaSetor $false $Registros)
+    $mapa=@{};$inicio=[datetime]::new($Ano,1,1);$fim=$inicio.AddYears(1).AddDays(-1)
+    if($Mes -ge 1 -and $Mes -le 12){$inicio=[datetime]::new($Ano,$Mes,1);$fim=$inicio.AddMonths(1).AddDays(-1)}
+    foreach($grupo in @($entradas | Group-Object Setor)){
+        foreach($evento in @(Get-EventosConflitoSetor @($grupo.Group))){
+            $de=$evento.Inicio;if($inicio -gt $de){$de=$inicio}
+            $ate=$evento.Fim;if($fim -lt $ate){$ate=$fim}
+            if($ate -lt $de){continue}
+            foreach($participante in $evento.Participantes){
+                $id=[string]$participante.RegistroId
+                if(-not $mapa.ContainsKey($id)){$mapa[$id]=New-Object 'System.Collections.Generic.List[string]'}
+                foreach($outro in $evento.Participantes){
+                    if($outro.Matricula -eq $participante.Matricula){continue}
+                    $texto=('{0}: {1} a {2} | {3} (mat. {4}; {5})' -f $evento.Grau,$de.ToString('dd/MM/yyyy'),$ate.ToString('dd/MM/yyyy'),$outro.Nome,$outro.Matricula,$outro.Turno)
+                    if(-not $mapa[$id].Contains($texto)){$mapa[$id].Add($texto)}
+                }
+            }
+        }
+    }
+    return $mapa
+}
+
+function Criar-RelatorioConflitosSetores([string[]]$Setores,[bool]$IncluirPendentes,[string]$Modo='POR_SETOR',[bool]$ExigirMesmoTurno=$false){
+    $enc={param($v) [System.Net.WebUtility]::HtmlEncode([string]$v)}
+    $selecionados=@{};foreach($s in $Setores){$selecionados[[string]$s]=$true}
+    # O turno pertence ao registro aquisitivo de origem, nunca ao primeiro cadastro da matricula.
+    $itens=@(Get-EntradasConferenciaSetor $IncluirPendentes | Where-Object {$selecionados.ContainsKey([string]$_.Setor)} | ForEach-Object {
+        [pscustomobject]@{Setor=[string]$_.Setor;Matricula=[string]$_.Matricula;Nome=[string]$_.Nome;Inicio=[datetime]$_.Inicio;Fim=[datetime]$_.Fim;Situacao=[string]$_.Situacao;Turno=[string]$_.Turno;RegistroId=[string]$_.RegistroId}
+    })
+    $grupos=@()
+    if($Modo -eq 'ENTRE_SETORES'){$grupos=@([pscustomobject]@{Nome='ENTRE SETORES SELECIONADOS';Itens=@($itens)})}
+    else {foreach($s in @($Setores | Sort-Object -Unique)){$grupos+= [pscustomobject]@{Nome=$s;Itens=@($itens | Where-Object {$_.Setor -eq $s})}}}
+    $htmlPartes=New-Object System.Text.StringBuilder
+    $totalCriticos=0;$totalAtencao=0;$totalPendentes=0;$totalEventos=0
+    foreach($g in $grupos){
+        $arr=@($g.Itens)
+        [void]$htmlPartes.Append('<section class="setor"><h2>'+(& $enc $g.Nome)+'</h2>')
+        if($arr.Count -lt 2){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada.</p></section>');continue}
+        # Pontos de corte: inicio e dia seguinte ao termino (fim inclusivo).
+        $eventos=@(Get-EventosConflitoSetor $arr $Modo $ExigirMesmoTurno)
         if($eventos.Count -eq 0){[void]$htmlPartes.Append('<p class="ok">Nenhuma coincidência identificada neste escopo.</p></section>');continue}
         [void]$htmlPartes.Append('<p class="section-caption">'+ $eventos.Count +' ocorrência(s) neste setor ou grupo. Cada linha reúne um intervalo de coincidência.</p>')
         [void]$htmlPartes.Append('<div class="table-wrap"><table><caption class="sr-only">Ocorrências de coincidência de férias: '+(& $enc $g.Nome)+'</caption><thead><tr><th scope="col">Classificação</th><th scope="col">Situação</th><th scope="col">Período coincidente</th><th scope="col">Dias</th><th scope="col">Servidores e férias programadas</th><th scope="col">Pessoas</th></tr></thead><tbody>')
@@ -8291,10 +9031,13 @@ $colFormulario=New-Object Windows.Forms.DataGridViewCheckBoxColumn
 $colFormulario.Name="formulario";$colFormulario.HeaderText="Form."
 $colFormulario.FalseValue=$false;$colFormulario.TrueValue=$true;$colFormulario.ReadOnly=$false
 [void]$script:grid.Columns.Add($colFormulario)
-foreach($c in @(@("matricula","Matrícula"),@("nome","Nome"),@("setor","Setor"),@("periodo","Período"),@("situacao","Situação"),@("qtdperiodos","Qtd."),@("qtdsol","Solic."))){ [void]$script:grid.Columns.Add($c[0],$c[1]); $script:grid.Columns[$c[0]].ReadOnly=$true }
+foreach($c in @(@("matricula","Matrícula"),@("cp","CP"),@("nome","Nome"),@("setor","Setor"),@("periodo","Período"),@("situacao","Situação"),@("qtdperiodos","Qtd."),@("qtdsol","Solic."))){ [void]$script:grid.Columns.Add($c[0],$c[1]); $script:grid.Columns[$c[0]].ReadOnly=$true }
 $script:grid.Columns["excluir"].FillWeight=8
 $script:grid.Columns["formulario"].FillWeight=9
 $script:grid.Columns["matricula"].FillWeight=16
+$script:grid.Columns["cp"].FillWeight=9
+$script:grid.Columns["cp"].MinimumWidth=48
+$script:grid.ShowCellToolTips=$true
 $script:grid.Columns["nome"].FillWeight=34
 $script:grid.Columns["setor"].FillWeight=20
 $script:grid.Columns["periodo"].FillWeight=14
@@ -8327,8 +9070,15 @@ $script:txtMatricula=New-TextBox 15 72 125
 $script:txtMatricula.ReadOnly=$true
 $editor.Controls.Add($script:txtMatricula)
 
-$editor.Controls.Add((New-Label "Nome" 150 52 80))
-$script:txtNome=New-TextBox 150 72 530
+$script:lblCPServidor=New-Label "CP obrigatório" 150 52 105
+$editor.Controls.Add($script:lblCPServidor)
+$script:txtCPServidor=New-TextBox 150 72 100
+$editor.Controls.Add($script:txtCPServidor)
+$script:tipCPServidor=New-Object Windows.Forms.ToolTip
+$script:tipCPServidor.SetToolTip($script:txtCPServidor,'CP obrigatório. A matrícula permanece como chave principal.')
+$editor.Controls.Add((New-Label "Nome" 260 52 80))
+$script:txtNome=New-TextBox 260 72 420
+$script:txtNome.CharacterCasing=[Windows.Forms.CharacterCasing]::Upper
 $editor.Controls.Add($script:txtNome)
 
 $editor.Controls.Add((New-Label "Setor do servidor" 15 108 120))
@@ -8568,6 +9318,9 @@ function Get-MesesOpcaoObjeto($op,[int]$ano){
 function Get-OptionBlocksObjeto($op){
     $blocks=@()
     if($null -eq $op){ return @() }
+    if([string]$op.tipo -eq 'FÉRIAS FIXAS' -and $null -ne $op.PSObject.Properties['blocos_fixos']){
+        return @($op.blocos_fixos)
+    }
 
     $s1=Parse-Date ([string]$op.inicio1)
     $e1=Parse-Date ([string]$op.fim1)
@@ -9467,7 +10220,7 @@ function Test-PlanejamentoLinhaTemBusca([string]$setor,[string]$periodo,[int]$an
     return $false
 }
 
-function Get-EstadoLinhaPlanejamento($item,[int]$ano,[int]$mesFoco){
+function Get-EstadoLinhaPlanejamento($item,[int]$ano,[int]$mesFoco,[bool]$CalcularSobreposicao=$true){
     # Setor, periodo e chefia sao informativos: nao criam conflito de aprovacao.
     $fixa=$false
     foreach($r in $script:Records){
@@ -9483,7 +10236,14 @@ function Get-EstadoLinhaPlanejamento($item,[int]$ano,[int]$mesFoco){
     foreach($m in $meses){
         if($item.meses[$m].Count -gt 0 -and @($script:PlanejCriticoMeses) -contains $m){ $critico=$true;break }
     }
-    return [pscustomobject]@{critico=$critico;alerta=$critico;sobreposicao=$false;fixa=$fixa;sem_limite=$false}
+    $sobreposicao=$false;$semLimite=$false
+    foreach($m in $meses){
+        if($item.solicitacoes[$m].Count -gt 0 -and (Get-LimiteInstitucionalMes $m) -le 0){$semLimite=$true}
+        if($CalcularSobreposicao -and $item.meses[$m].Count -gt 1){
+            if((Get-PlanejamentoOverlapInfo $item.setor $item.periodo $ano $m).tem_sobreposicao){$sobreposicao=$true;break}
+        }
+    }
+    return [pscustomobject]@{critico=$critico;alerta=$critico;sobreposicao=$sobreposicao;fixa=$fixa;sem_limite=$semLimite}
 }
 
 # V1.0.90: limite institucional com exceções mensais explícitas.
@@ -9559,6 +10319,16 @@ function Get-PesoBlocoInstitucionalMes([datetime]$ini,[datetime]$fim,[int]$ano,[
 }
 function Get-PesoOpcaoInstitucionalMes($opcao,[int]$ano,[int]$mes){
     if($null -eq $opcao){return [double]0}
+    if($null -eq $script:PerfPesoOpcaoCache){$script:PerfPesoOpcaoCache=@{}}
+    # Prefixos de tamanho tornam a chave inequivoca, inclusive com caracteres especiais.
+    $cacheKey="$ano|$mes|"
+    foreach($v in @([string]$opcao.tipo,[string]$opcao.inicio1,[string]$opcao.fim1,[string]$opcao.inicio2,[string]$opcao.fim2,[string]$opcao.fr_inicio,[string]$opcao.fr_fim)){
+        $cacheKey += ([string]$v.Length)+':'+$v+';'
+    }
+    if($null -ne $opcao.PSObject.Properties['blocos_fixos']){
+        $cacheKey += ($opcao.blocos_fixos | ConvertTo-Json -Depth 5 -Compress)
+    }
+    if($script:PerfPesoOpcaoCache.ContainsKey($cacheKey)){return [double]$script:PerfPesoOpcaoCache[$cacheKey]}
     $comum=[double]0;$radiologica=[double]0
     $blocos=@(Get-OptionBlocksObjeto $opcao)
     if([string]$opcao.tipo -eq '15+15 DIAS'){
@@ -9571,7 +10341,10 @@ function Get-PesoOpcaoInstitucionalMes($opcao,[int]$ano,[int]$mes){
         else{$comum+=$valor}
     }
     # Um profissional = no maximo 1 no mesmo mes, mesmo com modalidades distintas.
-    return [double]([math]::Min(1.0,[math]::Max($comum,$radiologica)))
+    $result=[double]([math]::Min(1.0,[math]::Max($comum,$radiologica)))
+    if($script:PerfPesoOpcaoCache.Count -ge 32768){$script:PerfPesoOpcaoCache.Clear()}
+    $script:PerfPesoOpcaoCache[$cacheKey]=$result
+    return $result
 }
 function Get-ChaveTipoInstitucional($r,$opcao){
     # Uma chave por servidor e aquisitivo: não duplicar 30 e FR no mesmo mês.
@@ -9583,16 +10356,14 @@ function Get-ChaveTipoInstitucional($r,$opcao){
 # V1.0.153: comprometimento REAL (fixas e opcoes efetivamente aprovadas).
 # Nao utiliza primeira opcao para qualquer modalidade ainda pendente.
 # Usa a mesma chave e peso institucional da projeção, sem duplicar FR e comum.
-function Get-ContagemInstitucionalAprovadaMes([int]$ano,[int]$mes){
-    $porChave=@{}
-    foreach($r in $script:Records){
+function Get-OpcaoConfirmadaRegistro($r){
         $op=$null
         if(Test-RegistroFeriasBloqueadas $r){
             $op=Get-OpcaoPlanejamento $r
         }else{
             $nc=Get-NumeroComumConfirmada $r
             $nf=Get-NumeroFRConfirmada $r
-            if($nc -le 0 -and $nf -le 0){continue}
+            if($nc -le 0 -and $nf -le 0){return $null}
             if($nc -gt 0){$op=Get-OpcaoSomenteComum $r.("opcao$nc")}
             else{$op=New-EmptyOptionObject}
             if($nf -gt 0){
@@ -9603,6 +10374,13 @@ function Get-ContagemInstitucionalAprovadaMes([int]$ano,[int]$mes){
                 }
             }
         }
+    return $op
+}
+
+function Get-ContagemInstitucionalAprovadaMes([int]$ano,[int]$mes,$Registros=$script:Records){
+    $porChave=@{}
+    foreach($r in $Registros){
+        $op=Get-OpcaoConfirmadaRegistro $r
         if($null -eq $op){continue}
         $peso=[double](Get-PesoOpcaoInstitucionalMes $op $ano $mes)
         if($peso -le 0){continue}
@@ -9951,7 +10729,31 @@ function Get-GrupoChefiaOverlapInfoCached([string]$grupo,[string]$periodo,[int]$
     return $script:PlanejChefiaOverlapCache[$key]
 }
 
+
+function Get-OpcaoSimulacaoRegistro($registro,$opcao){
+    if($null -eq $registro -or $null -eq $opcao){return $opcao}
+    if([string]$opcao.tipo -eq 'FÉRIAS FIXAS'){return $opcao}
+    # Comum e FR têm decisões independentes. Simular uma não desfaz a outra.
+    $atual=Get-OpcaoPlanejamento $registro
+    $comum=Get-OpcaoSomenteComum $opcao
+    $frI=[string]$opcao.fr_inicio;$frF=[string]$opcao.fr_fim
+    $somenteFR=([string]::IsNullOrWhiteSpace([string]$comum.tipo) -and ($frI -or $frF))
+    if($somenteFR){
+        $comum=Get-OpcaoSomenteComum $atual
+    }else{
+        $nf=Get-NumeroFRConfirmada $registro
+        if($nf -gt 0){
+            $fr=$registro.("opcao$nf");$frI=[string]$fr.fr_inicio;$frF=[string]$fr.fr_fim
+        }elseif(-not $frI -and -not $frF){
+            $frI=[string]$atual.fr_inicio;$frF=[string]$atual.fr_fim
+        }
+    }
+    $comum.fr_inicio=$frI;$comum.fr_fim=$frF
+    return $comum
+}
+
 function Get-SimulacaoSetorPeriodoMes($registro,$opcao,[int]$ano,[int]$mes){
+    $opcao=Get-OpcaoSimulacaoRegistro $registro $opcao
     $setor=([string]$registro.setor).Trim()
     $periodo=([string]$registro.periodo).Trim()
     if([string]::IsNullOrWhiteSpace($periodo)){ $periodo="SEM PERÍODO" }
@@ -10021,6 +10823,7 @@ function Get-SimulacaoSetorPeriodoMes($registro,$opcao,[int]$ano,[int]$mes){
 }
 
 function Get-SimulacaoGrupoChefiaPeriodoMes($registro,$opcao,[int]$ano,[int]$mes){
+    $opcao=Get-OpcaoSimulacaoRegistro $registro $opcao
     $grupo=Get-GrupoChefiaEfetivaRegistro $registro
     if([string]::IsNullOrWhiteSpace($grupo)){
         return [pscustomobject]@{qtd_mes=0;pico=0;dias_pico=@()}
@@ -10092,6 +10895,7 @@ function Get-SimulacaoGrupoChefiaPeriodoMes($registro,$opcao,[int]$ano,[int]$mes
 }
 
 function Get-ContagemInstitucionalMesSimulada($registro,$opcao,[int]$ano,[int]$mes){
+    $opcao=Get-OpcaoSimulacaoRegistro $registro $opcao
     $porChave=@{}
     foreach($r in $script:Records){
         if([int]$r.id -eq [int]$registro.id){ continue }
@@ -10114,8 +10918,8 @@ function Get-ContagemInstitucionalMesSimulada($registro,$opcao,[int]$ano,[int]$m
 function Get-CompetenciasOpcao($opcao){
     $resultado=New-Object 'System.Collections.Generic.HashSet[string]'
     foreach($bl in (Get-OptionBlocksObjeto $opcao)){
-        $cursor=Get-Date -Year $bl.inicio.Year -Month $bl.inicio.Month -Day 1
-        $ultimo=Get-Date -Year $bl.fim.Year -Month $bl.fim.Month -Day 1
+        $cursor=[datetime]::new($bl.inicio.Year,$bl.inicio.Month,1)
+        $ultimo=[datetime]::new($bl.fim.Year,$bl.fim.Month,1)
         while($cursor -le $ultimo){
             [void]$resultado.Add($cursor.ToString("yyyy-MM"))
             $cursor=$cursor.AddMonths(1)
@@ -10124,8 +10928,8 @@ function Get-CompetenciasOpcao($opcao){
     return @($resultado | Sort-Object)
 }
 
-function Get-AvaliacaoOpcaoRegistro($registro,[int]$numeroOpcao){
-    $opcao=$registro."opcao$numeroOpcao"
+function Get-AvaliacaoOpcaoRegistro($registro,[int]$numeroOpcao,$OpcaoSimulada=$null){
+    $opcao=if($null -ne $OpcaoSimulada){$OpcaoSimulada}else{$registro."opcao$numeroOpcao"}
     $rotulo="${numeroOpcao}ª opção"
 
     if($null -eq $opcao -or [string]::IsNullOrWhiteSpace([string]$opcao.tipo)){
@@ -10302,12 +11106,28 @@ function Get-SugestaoOpcaoRegistro($registro){
     }
 
     # Historico desempata a viabilidade operacional antes da preferencia.
-    $melhor=$avaliacoes | Sort-Object criticos,alertas_locais,alertas_institucionais,penal_sem_limite,historico_ocorrencias,opcao | Select-Object -First 1
+    $coberturas=@($avaliacoes | ForEach-Object {
+        (@($_.historico_itens | ForEach-Object { $_.anos } | Where-Object {$_.tem_servidor} | ForEach-Object {[int]$_.ano} | Sort-Object -Unique) -join ',')
+    } | Sort-Object -Unique)
+    $comparavel=($coberturas.Count -eq 1 -and -not [string]::IsNullOrWhiteSpace([string]$coberturas[0]))
+    foreach($a in $avaliacoes){
+        $a|Add-Member NoteProperty historico_comparavel $comparavel -Force
+        if(-not $comparavel){$a.historico+=' Cobertura histórica insuficiente ou diferente entre opções; desempate histórico não aplicado.'}
+    }
+    $ordem=@('criticos','alertas_locais','alertas_institucionais','penal_sem_limite')
+    if($comparavel){$ordem+='historico_ocorrencias'}
+    $ordem+='opcao'
+    $melhor=$avaliacoes | Sort-Object -Property $ordem | Select-Object -First 1
     return $melhor
 }
 
 
-function Refresh-LimiteInstitucionalResumo {
+function Refresh-LimiteInstitucionalResumo($Preparado=$null) {
+    if($null -eq $Preparado){
+        $script:InstitutionalResumoCacheKey=''
+        Request-PlanejamentoRefresh
+        return
+    }
     if($null -eq $script:gridLimiteInstitucional){ return }
     if($null -eq $script:cmbPlanejAno.SelectedItem){ return }
 
@@ -10321,17 +11141,17 @@ function Refresh-LimiteInstitucionalResumo {
     $mesNomes=@("Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez")
 
     for($m=1;$m -le 12;$m++){
-        $qtd=Get-ContagemInstitucionalMes $ano $m
-        $real=Get-ContagemInstitucionalAprovadaMes $ano $m
+        $qtd=$Preparado.Meses[$m].qtd
+        $real=$Preparado.Meses[$m].real
         $pendenteProjecao=[math]::Max(0.0,($qtd-$real))
-        $lim=Get-LimiteInstitucionalMes $m
+        $lim=$Preparado.Meses[$m].limite
         $saldoReal=$lim-$real
         $restrito=(@($script:Config.meses_restritos) -contains $m)
         $pct=[double]$script:Config.percentual_meses_restritos
 
         if($lim -gt 0){
             $txtLim=Format-NumeroBR $lim
-            $detMes=Get-FaixaInstitucionalDetalhes $ano $m $false
+            $detMes=$Preparado.Meses[$m].detalhes
             # Em vez de apresentar apenas a base de decisao, distinguir efetivo/projetado.
             $row.Cells["li$m"].Value="REAL: $(Format-NumeroBR $real) / $(Format-NumeroBR $lim)`r`nPEND: $(Format-NumeroBR $pendenteProjecao)  PROJ: $(Format-NumeroBR $qtd)`r`nSALDO: $(Format-NumeroBR $saldoReal)"
             $row.Cells["li$m"].Style.WrapMode=[Windows.Forms.DataGridViewTriState]::True
@@ -10500,7 +11320,309 @@ function Get-PlanejamentoCellTooltip([string]$setor,[string]$periodo,[int]$ano,[
     return $textoTooltip
 }
 
-function Refresh-PlanejamentoSetor {
+function Get-PlanejamentoViewModel($Filtro){
+    $sw=[Diagnostics.Stopwatch]::StartNew()
+    $ano=[int]$Filtro.Ano
+    $dados=Get-PlanejamentoSetorDados $ano 'TODOS'
+    $mensal=@{}
+    $criticos=@()
+    foreach($m in 1..12){
+        $real=Get-ContagemInstitucionalAprovadaMes $ano $m
+        $lim=Get-LimiteInstitucionalMes $m
+        $det=Get-FaixaInstitucionalDetalhes $ano $m $false
+        # Mesma chave e maior peso por aquisitivo: total ja calculado nos detalhes.
+        $qtd=[double]$det.total
+        $mensal[$m]=[pscustomobject]@{qtd=$qtd;real=$real;limite=$lim;detalhes=$det}
+        if($lim -gt 0 -and $qtd -gt $lim){$criticos+=$m}
+    }
+    $script:PlanejCriticoMeses=@($criticos)
+    $linhas=New-Object 'System.Collections.Generic.List[object]'
+    foreach($item in @($dados.Values|Sort-Object setor,periodo)){
+        if([int]$Filtro.Mes -gt 0 -and $item.solicitacoes[[int]$Filtro.Mes].Count -le 0){continue}
+        if(-not (Test-PlanejamentoLinhaTemBusca $item.setor $item.periodo $ano ([int]$Filtro.Mes) ([string]$Filtro.Busca))){continue}
+        $estado=$null
+        if([string]$Filtro.Situacao -ne 'TODAS AS LINHAS' -or [bool]$Filtro.Sobreposicao){$estado=Get-EstadoLinhaPlanejamento $item $ano ([int]$Filtro.Mes) ([bool]$Filtro.Sobreposicao)}
+        $incluir=$true
+        switch([string]$Filtro.Situacao){
+            'SOMENTE CRÍTICAS' {if(-not $estado.critico){$incluir=$false}}
+            'COM ALERTA' {if(-not ($estado.critico -or $estado.alerta)){$incluir=$false}}
+            'COM FÉRIAS FIXAS' {if(-not $estado.fixa){$incluir=$false}}
+            'SEM LIMITE' {if(-not $estado.sem_limite){$incluir=$false}}
+        }
+        if(-not $incluir){continue}
+        if([bool]$Filtro.Sobreposicao -and -not $estado.sobreposicao){continue}
+        $linhas.Add($item)
+    }
+    $cont=Get-ContadoresPlanejamentoAtual $ano
+    $sw.Stop()
+    return [pscustomobject]@{Ano=$ano;Linhas=@($linhas.ToArray());Contadores=$cont;Meses=$mensal;Criticos=@($criticos);CalculoMs=$sw.ElapsedMilliseconds}
+}
+
+function Get-PlanejamentoSnapshot {
+    $snapshotCrono=[Diagnostics.Stopwatch]::StartNew()
+    $f=[ordered]@{
+        Ano=[int]$script:cmbPlanejAno.SelectedItem
+        Mes=if($null -ne $script:cmbPlanejMes){[int]$script:cmbPlanejMes.SelectedIndex}else{0}
+        Situacao=if($null -ne $script:cmbPlanejSituacao.SelectedItem){[string]$script:cmbPlanejSituacao.SelectedItem}else{'TODAS AS LINHAS'}
+        Busca=if($null -ne $script:txtPlanejBuscaServidor){$script:txtPlanejBuscaServidor.Text.Trim()}else{''}
+        Sobreposicao=($null -ne $script:chkPlanejSobreposicao -and [bool]$script:chkPlanejSobreposicao.Checked)
+        Grupo=[string]$script:PlanejGrupoSelecionado
+        Chefia=if($null -ne $script:cmbPlanejChefia.SelectedItem){[string]$script:cmbPlanejChefia.SelectedItem}else{'TODOS'}
+        Setores=@($script:PlanejSetoresSelecionados)
+        Periodos=@($script:PlanejPeriodosSelecionados)
+    }
+    # A copia JSON ocorre na thread da UI; o worker nao recebe objetos/controles mutaveis dela.
+    $json=([ordered]@{Config=$script:Config;Registros=@($script:Records);Filtro=$f;Hash=[string]$script:LoadedDbHash;Culture=[Globalization.CultureInfo]::CurrentCulture.Name;UICulture=[Globalization.CultureInfo]::CurrentUICulture.Name}|ConvertTo-Json -Depth 20 -Compress)
+    $key=Get-TextSha256 $json
+    $snapshotCrono.Stop()
+    $script:PlanejUltimaCopiaMs=$snapshotCrono.ElapsedMilliseconds
+    return [pscustomobject]@{Key=$key;Json=$json}
+}
+
+function New-PlanejamentoComputation {
+    param([string]$Json,[System.Management.Automation.Runspaces.Runspace]$Runspace)
+    $ps=[PowerShell]::Create()
+    $ownRunspace=$false
+    try {
+        if($null -eq $Runspace){
+            $initial=[Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+            $initial.LanguageMode=$ExecutionContext.SessionState.LanguageMode
+            # Lista fechada de funcoes de consulta. Nao inclui Save, Load, Importacao, UI ou IO da base.
+            foreach($name in @('Convert-ToUpperSemAcento','Get-BlocoFROpcao','Get-BlocosComunsOpcao','Get-ChaveFeriasRegistro','Get-ChaveTipoInstitucional','Get-ContadoresPlanejamentoAtual','Get-ContagemInstitucionalAprovadaMes','Get-ContagemInstitucionalMes','Get-EstadoLinhaPlanejamento','Get-FaixaInstitucionalDetalhes','Get-FixasAdicionais','Get-GrupoAnaliseSetor','Get-GrupoChefiaEfetivaRegistro','Get-GrupoChefiaServidor','Get-GrupoChefiaSetor','Get-LimiteInstitucionalMes','Get-MesesBlocosAno','Get-MesesPlanejamentoRegistro','Get-MesesSolicitacoesRegistro','Get-NomeMesExtenso','Get-NumeroComumConfirmada','Get-NumeroFRConfirmada','Get-OpcaoConfirmadaRegistro','Get-OpcaoPlanejamento','Get-OpcaoSomenteComum','Get-OptionBlocks','Get-OptionBlocksObjeto','Get-OptionBlocksPlanejamento','Get-PesoBlocoInstitucionalMes','Get-PesoOpcaoInstitucionalMes','Get-PlanejamentoOverlapInfo','Get-PlanejamentoSetorDados','Get-PlanejamentoViewModel','Get-SetorPlanejamentoChave','Get-StatusPlanejamentoRegistro','New-EmptyOptionObject','Parse-Date','Test-PlanejamentoLinhaTemBusca','Test-RegistroFeriasBloqueadas','Test-RegistroFixoImportado','Test-SetorPlanejamentoPendente')){
+                $fn=Get-Command -Name $name -CommandType Function -ErrorAction Stop
+                $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new($name,$fn.Definition))
+            }
+            # Consulta explicita compartilhada: nenhuma funcao e recortada por texto.
+            $approved=(Get-Command Get-ContagemInstitucionalAprovadaMes -CommandType Function).Definition
+            $helper='param($r) Get-OpcaoConfirmadaRegistro $r'
+            $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new('Get-OpcaoRealPlanejamentoPrivada',$helper))
+            $approved=$approved.Replace('Get-OpcaoConfirmadaRegistro $r','Get-OpcaoRealPlanejamentoPrivada $r')
+            $initial.Commands.Remove('Get-ContagemInstitucionalAprovadaMes',$null)
+            $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new('Get-ContagemInstitucionalAprovadaMes',$approved))
+            # Memoizacao somente na copia imutavel do worker, reiniciada a cada pedido.
+            # Indice privado da copia evita colisao entre matriculas/IDs ou periodos duplicados.
+            foreach($memoName in @('Get-OpcaoRealPlanejamentoPrivada','Get-OpcaoPlanejamento','Get-OptionBlocksPlanejamento','Get-GrupoChefiaEfetivaRegistro')){
+                $originalName='__PlanejOriginal_'+$memoName
+                $definition=if($memoName -eq 'Get-OpcaoRealPlanejamentoPrivada'){$helper}else{(Get-Command -Name $memoName -CommandType Function -ErrorAction Stop).Definition}
+                $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new($originalName,$definition))
+                $parameter=if($memoName -eq 'Get-GrupoChefiaEfetivaRegistro'){'registro'}else{'r'}
+                $wrapper=@'
+param($__PARAM__)
+$inputObject=$__PARAM__
+if($null -eq $inputObject){return (& '__ORIGINAL__' $inputObject)}
+$property=$inputObject.PSObject.Properties['__PlanejIndiceInternoR3']
+if($null -eq $property){return (& '__ORIGINAL__' $inputObject)}
+$key=[int]$property.Value
+if(-not $script:PlanejMemo.ContainsKey('__NAME__')){$script:PlanejMemo['__NAME__']=@{}}
+$table=$script:PlanejMemo['__NAME__']
+if(-not $table.ContainsKey($key)){
+    $table[$key]=[pscustomobject]@{Values=@(& '__ORIGINAL__' $inputObject)}
+}
+$entry=$table[$key]
+return $entry.Values
+'@
+                $wrapper=$wrapper.Replace('__PARAM__',$parameter).Replace('__ORIGINAL__',$originalName).Replace('__NAME__',$memoName)
+                $initial.Commands.Remove($memoName,$null)
+                $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new($memoName,$wrapper))
+            }
+            $initial.Commands.Add([Management.Automation.Runspaces.SessionStateFunctionEntry]::new('Write-DiagLog','param($Message,$Level,$ErrorRecord)'))
+            $Runspace=[RunspaceFactory]::CreateRunspace($initial)
+            $Runspace.Open()
+            $ownRunspace=$true
+        }
+        $ps.Runspace=$Runspace
+        [void]$ps.AddScript({
+            param($snapshotJson)
+            $ErrorActionPreference='Stop'
+            $snapshot=$snapshotJson|ConvertFrom-Json -ErrorAction Stop
+            [Threading.Thread]::CurrentThread.CurrentCulture=[Globalization.CultureInfo]::GetCultureInfo([string]$snapshot.Culture)
+            [Threading.Thread]::CurrentThread.CurrentUICulture=[Globalization.CultureInfo]::GetCultureInfo([string]$snapshot.UICulture)
+            $script:Config=$snapshot.Config
+            $script:Records=@($snapshot.Registros)
+            $script:PlanejMemo=@{}
+            $privateIndex=0
+            foreach($record in $script:Records){
+                $record|Add-Member NoteProperty __PlanejIndiceInternoR3 $privateIndex -Force
+                $privateIndex++
+            }
+            $script:PlanejGrupoSelecionado=[string]$snapshot.Filtro.Grupo
+            $script:PlanejSetoresSelecionados=@($snapshot.Filtro.Setores)
+            $script:PlanejPeriodosSelecionados=@($snapshot.Filtro.Periodos)
+            $script:cmbPlanejChefia=[pscustomobject]@{SelectedItem=[string]$snapshot.Filtro.Chefia}
+            Get-PlanejamentoViewModel $snapshot.Filtro
+        }.ToString()).AddArgument($Json)
+        $handle=$ps.BeginInvoke()
+        return [pscustomobject]@{PowerShell=$ps;Handle=$handle;Runspace=$Runspace}
+    } catch {
+        $ps.Dispose()
+        if($ownRunspace -and $null -ne $Runspace){$Runspace.Dispose()}
+        throw
+    }
+}
+
+function Get-PlanejamentoInstitucionalPronto([int]$Ano){
+    if($null -eq $script:PlanejAsync -or $null -eq $script:PlanejAsync.Ready){return $null}
+    $ready=$script:PlanejAsync.Ready
+    if([int]$ready.Model.Ano -ne $Ano){return $null}
+    $current=Get-PlanejamentoSnapshot
+    if($current.Key -ne $ready.Key){return $null}
+    return $ready.Model
+}
+
+function Test-PlanejamentoVisivel {
+    return ($null -ne $script:tabsPrincipal -and $null -ne $script:tabPlanejamentoPrincipal -and
+            $script:tabsPrincipal.SelectedTab -eq $script:tabPlanejamentoPrincipal)
+}
+
+function Set-PlanejamentoUiCalculando {
+    if(-not (Test-PlanejamentoVisivel)){return}
+    $script:gridPlanejSetor.Enabled=$false
+    $script:gridLimiteInstitucional.Enabled=$false
+    $script:lblPlanejResumo.Text='Calculando o planejamento em segundo plano... A janela continua disponivel. Aguarde os dados atualizados.'
+}
+
+function Set-PlanejamentoUiFalha([string]$Mensagem){
+    $script:InstitutionalResumoCacheKey=''
+    $script:PlanejRefreshDirty=$true
+    if($null -ne $script:PlanejAsync){$script:PlanejAsync.Ready=$null}
+    if(-not (Test-PlanejamentoVisivel)){return}
+    # Liberar controles sem permitir consultas baseadas nas linhas antigas.
+    try {
+        $script:gridPlanejSetor.Rows.Clear()
+        foreach($row in $script:gridLimiteInstitucional.Rows){
+            foreach($cell in $row.Cells){$cell.Value=$null;$cell.ToolTipText=''}
+        }
+    } finally {
+        $script:gridPlanejSetor.Enabled=$true
+        $script:gridLimiteInstitucional.Enabled=$true
+        $script:lblPlanejResumo.Text=$Mensagem
+    }
+}
+
+function Request-PlanejamentoComputation($Snapshot){
+    if($null -eq $script:PlanejAsync){
+        $timer=New-Object Windows.Forms.Timer
+        $timer.Interval=60
+        $timer.add_Tick({Receive-PlanejamentoComputation})
+        $script:PlanejAsync=@{Timer=$timer;Job=$null;Pending=$null;Ready=$null;Wanted='';Closing=$false;Runspace=$null}
+    }
+    $state=$script:PlanejAsync
+    if($state.Closing){return}
+    $state.Wanted=$Snapshot.Key
+    if($null -ne $state.Ready -and $state.Ready.Key -eq $Snapshot.Key){
+        $state.Pending=$null
+        if(Test-PlanejamentoVisivel){Refresh-PlanejamentoSetor $state.Ready.Model}else{$script:PlanejRefreshDirty=$true}
+        return
+    }
+    if($null -ne $state.Job -and $state.Job.Key -eq $Snapshot.Key){$state.Pending=$null;Set-PlanejamentoUiCalculando;return}
+    # Substitui pedidos intermediarios: somente o filtro mais recente sera executado em seguida.
+    $state.Pending=$Snapshot
+    $script:PlanejRefreshDirty=$true
+    Set-PlanejamentoUiCalculando
+    $state.Timer.Start()
+    Start-PlanejamentoPending
+}
+
+function Start-PlanejamentoPending {
+    $state=$script:PlanejAsync
+    if($null -eq $state -or $state.Closing -or $null -ne $state.Job -or $null -eq $state.Pending){return}
+    $pedido=$state.Pending;$state.Pending=$null
+    try {
+        $job=New-PlanejamentoComputation -Json $pedido.Json -Runspace $state.Runspace
+        $job|Add-Member -NotePropertyName Key -NotePropertyValue $pedido.Key
+        $state.Runspace=$job.Runspace
+        $state.Job=$job
+    } catch {
+        Write-DiagLog 'CORR-R6: falha ao iniciar calculo de planejamento em segundo plano.' 'ERROR' $_
+        Set-PlanejamentoUiFalha 'Nao foi possivel iniciar o calculo. Clique Atualizar analise; consulte o log se persistir.'
+        $state.Timer.Stop()
+    }
+}
+
+function Receive-PlanejamentoComputation {
+    $state=$script:PlanejAsync
+    if($null -eq $state -or $state.Closing){return}
+    if($null -eq $state.Job){Start-PlanejamentoPending;return}
+    if(-not $state.Job.Handle.IsCompleted){return}
+    $job=$state.Job;$state.Job=$null
+    try {
+        $output=$job.PowerShell.EndInvoke($job.Handle)
+        if($output.Count -ne 1){throw 'O calculo do planejamento nao retornou um resultado unico.'}
+        $model=$output[0]
+        if($job.Key -eq $state.Wanted){
+            # Revalidar a COPIA atual: Save/importacao/filtros podem ter mudado durante o calculo.
+            $atual=Get-PlanejamentoSnapshot
+            if($job.Key -eq $atual.Key){
+                $state.Ready=[pscustomobject]@{Key=$job.Key;Model=$model}
+                if($script:tabsPrincipal.SelectedTab -eq $script:tabPlanejamentoPrincipal){
+                    Refresh-PlanejamentoSetor $model
+                } else {$script:PlanejRefreshDirty=$true}
+                Write-DiagLog "CORR-R6: calculo de planejamento=$($model.CalculoMs)ms | linhas=$(@($model.Linhas).Count) | thread=worker" 'INFO'
+            } elseif($script:tabsPrincipal.SelectedTab -eq $script:tabPlanejamentoPrincipal){
+                $state.Wanted=$atual.Key;$state.Pending=$atual
+            } else {$script:PlanejRefreshDirty=$true}
+        }
+    } catch {
+        Write-DiagLog 'CORR-R6: falha no calculo/aplicacao do planejamento; nenhum dado foi gravado pelo worker.' 'ERROR' $_
+        # Uma falha de pedido antigo nao apaga um resultado/filtro mais recente.
+        if($job.Key -eq $state.Wanted -and $null -eq $state.Pending){
+            Set-PlanejamentoUiFalha 'Falha ao calcular o planejamento. Clique Atualizar analise ou consulte o log.'
+        }
+    } finally {$job.PowerShell.Dispose()}
+    if($null -ne $state.Pending){Start-PlanejamentoPending}else{$state.Timer.Stop()}
+}
+
+# Prepara o primeiro resultado depois da carga/sincronizacao inicial.
+# O timer apenas agenda; o calculo continua no worker de leitura existente.
+function Start-PlanejamentoWarmup {
+    if($script:PlanejWarmupClosed -or $script:PlanejBootSyncPending){return}
+    if($null -eq $script:cmbPlanejAno -or $null -eq $script:cmbPlanejAno.SelectedItem){return}
+    $state=$script:PlanejAsync
+    # Nunca substitui um pedido que o usuario ja iniciou.
+    if($null -ne $state -and ($state.Closing -or $null -ne $state.Job -or $null -ne $state.Pending)){return}
+    try {
+        $snapshot=Get-PlanejamentoSnapshot
+        if($null -ne $state -and $null -ne $state.Ready -and $state.Ready.Key -eq $snapshot.Key){return}
+        Write-DiagLog 'CORR-R6: preparando planejamento apos carga inicial, em segundo plano.' 'INFO'
+        Request-PlanejamentoComputation $snapshot
+    } catch {
+        Write-DiagLog 'CORR-R6: preparo antecipado falhou; abertura da aba tentara normalmente.' 'WARN' $_
+        $script:PlanejRefreshDirty=$true
+    }
+}
+
+function Request-PlanejamentoWarmup {
+    if($script:PlanejWarmupClosed -or $script:PlanejBootSyncPending){return}
+    if($null -ne $script:PlanejWarmupTimer){return}
+    $script:PlanejWarmupTimer=New-Object Windows.Forms.Timer
+    $script:PlanejWarmupTimer.Interval=300
+    $script:PlanejWarmupTimer.add_Tick({
+        try {$script:PlanejWarmupTimer.Stop();$script:PlanejWarmupTimer.Dispose()}catch{}
+        $script:PlanejWarmupTimer=$null
+        Start-PlanejamentoWarmup
+    })
+    $script:PlanejWarmupTimer.Start()
+}
+
+function Stop-PlanejamentoComputation {
+    $script:PlanejWarmupClosed=$true
+    if($null -ne $script:PlanejWarmupTimer){
+        try {$script:PlanejWarmupTimer.Stop();$script:PlanejWarmupTimer.Dispose()}catch{}
+        $script:PlanejWarmupTimer=$null
+    }
+    if($null -eq $script:PlanejAsync){return}
+    $state=$script:PlanejAsync;$state.Closing=$true;$state.Pending=$null
+    try{$state.Timer.Stop();$state.Timer.Dispose()}catch{}
+    if($null -ne $state.Job){
+        try{$state.Job.PowerShell.Stop()}catch{}
+        try{[void]$state.Job.PowerShell.EndInvoke($state.Job.Handle)}catch{}
+        try{$state.Job.PowerShell.Dispose()}catch{}
+    }
+    if($null -ne $state.Runspace){try{$state.Runspace.Close();$state.Runspace.Dispose()}catch{}}
+    $script:PlanejAsync=$null
+}
+
+function Refresh-PlanejamentoSetor($Preparado=$null) {
     if($null -eq $script:gridPlanejSetor){ return }
     if($null -eq $script:cmbPlanejAno.SelectedItem){ return }
     # Atualizacoes de abas ocultas ficam pendentes para a proxima visita.
@@ -10508,6 +11630,12 @@ function Refresh-PlanejamentoSetor {
     if($null -ne $script:tabsPrincipal -and $null -ne $script:tabPlanejamentoPrincipal -and
        $script:tabsPrincipal.SelectedTab -ne $script:tabPlanejamentoPrincipal){
         $script:PlanejRefreshDirty=$true
+        return
+    }
+    if($null -eq $Preparado){
+        $snapshot=Get-PlanejamentoSnapshot
+        if($script:PlanejUltimaCopiaMs -ge 150){Write-DiagLog "CORR-R6: copia de dados para calculo=$($script:PlanejUltimaCopiaMs)ms" 'INFO'}
+        Request-PlanejamentoComputation $snapshot
         return
     }
     $script:PlanejRefreshDirty=$false
@@ -10533,7 +11661,6 @@ function Refresh-PlanejamentoSetor {
     $busca=if($null -ne $script:txtPlanejBuscaServidor){$script:txtPlanejBuscaServidor.Text.Trim()}else{""}
     $somenteSobreposicao=($null -ne $script:chkPlanejSobreposicao -and [bool]$script:chkPlanejSobreposicao.Checked)
 
-    $dados=Get-PlanejamentoSetorDados $ano $periodoFiltro
     $script:gridPlanejSetor.Rows.Clear()
 
     foreach($m in 1..12){
@@ -10544,44 +11671,30 @@ function Refresh-PlanejamentoSetor {
     }
 
     # Calculo institucional por mes ocorre uma so vez por atualizacao da grade.
-    $script:PlanejCriticoMeses=@()
-    foreach($mesRef in 1..12){
-        $limRef=Get-LimiteInstitucionalMes $mesRef
-        if($limRef -gt 0 -and (Get-ContagemInstitucionalMes $ano $mesRef) -gt $limRef){$script:PlanejCriticoMeses+= $mesRef}
-    }
+    $script:PlanejCriticoMeses=@($Preparado.Criticos)
     $mesCriticoIndice=@{}
     foreach($mesCritico in @($script:PlanejCriticoMeses)){ $mesCriticoIndice[[int]$mesCritico]=$true }
     $visiveis=0
-    $itens=@($dados.Values | Sort-Object setor,periodo)
+    $itens=@($Preparado.Linhas)
+    $rowBuffer=New-Object 'System.Collections.Generic.List[System.Windows.Forms.DataGridViewRow]'
+    $columnIndexes=@{}
+    foreach($column in $script:gridPlanejSetor.Columns){$columnIndexes[$column.Name]=$column.Index}
 
     foreach($item in $itens){
-        if($mesFoco -gt 0 -and $item.solicitacoes[$mesFoco].Count -le 0){ continue }
-        if(-not (Test-PlanejamentoLinhaTemBusca $item.setor $item.periodo $ano $mesFoco $busca)){ continue }
-
-        # O estado detalhado pesquisa todos os servidores; calcule apenas quando o filtro exige.
-        $precisaEstado=($situacao -ne 'TODAS AS LINHAS' -or $somenteSobreposicao)
-        $estado=if($precisaEstado){Get-EstadoLinhaPlanejamento $item $ano $mesFoco}else{$null}
-        switch($situacao){
-            "SOMENTE CRÍTICAS" { if(-not $estado.critico){ continue } }
-            "COM ALERTA" { if(-not ($estado.critico -or $estado.alerta)){ continue } }
-            "COM FÉRIAS FIXAS" { if(-not $estado.fixa){ continue } }
-            "SEM LIMITE" { if(-not $estado.sem_limite){ continue } }
-        }
-        if($somenteSobreposicao -and -not $estado.sobreposicao){ continue }
-
-        $i=$script:gridPlanejSetor.Rows.Add()
-        $row=$script:gridPlanejSetor.Rows[$i]
-        $row.Cells["psSetor"].Value=$item.setor
-        $row.Cells["psPeriodo"].Value=$item.periodo
+        $row=New-Object System.Windows.Forms.DataGridViewRow
+        $row.Height=$script:gridPlanejSetor.RowTemplate.Height
+        $row.CreateCells($script:gridPlanejSetor)
+        $row.Cells[$columnIndexes["psSetor"]].Value=$item.setor
+        $row.Cells[$columnIndexes["psPeriodo"]].Value=$item.periodo
         if(Test-SetorPlanejamentoPendente $item.setor){
-            $row.Cells["psSetor"].Style.BackColor=[Drawing.Color]::FromArgb(255,244,204)
-            $row.Cells["psSetor"].Style.ForeColor=[Drawing.Color]::DarkRed
-            $row.Cells["psSetor"].Style.Font=New-Object Drawing.Font("Segoe UI",9,[Drawing.FontStyle]::Bold)
-            $row.Cells["psSetor"].ToolTipText="Solicitação existente, mas o servidor ainda não tem Setor informado. Corrija em Lançamentos ou na planilha-base."
+            $row.Cells[$columnIndexes["psSetor"]].Style.BackColor=[Drawing.Color]::FromArgb(255,244,204)
+            $row.Cells[$columnIndexes["psSetor"]].Style.ForeColor=[Drawing.Color]::DarkRed
+            $row.Cells[$columnIndexes["psSetor"]].Style.Font=New-Object Drawing.Font("Segoe UI",9,[Drawing.FontStyle]::Bold)
+            $row.Cells[$columnIndexes["psSetor"]].ToolTipText="Solicitação existente, mas o servidor ainda não tem Setor informado. Corrija em Lançamentos ou na planilha-base."
         }
 
         # Coluna historica de limite local apenas informativa, sem consulta pesada.
-        $row.Cells["psLimite"].Value="—"
+        $row.Cells[$columnIndexes["psLimite"]].Value="—"
 
         $totalBase=0
         $totalSolic=0
@@ -10592,49 +11705,53 @@ function Refresh-PlanejamentoSetor {
             $totalSolic += $qtdSolic
 
             if($qtdSolic -gt $qtd){
-                $row.Cells["ps$m"].Value="B:$qtd | S:$qtdSolic"
+                $row.Cells[$columnIndexes["ps$m"]].Value="B:$qtd | S:$qtdSolic"
             } else {
-                $row.Cells["ps$m"].Value=$qtd
+                $row.Cells[$columnIndexes["ps$m"]].Value=$qtd
             }
 
             if($qtd -gt 0){
                 # Regras atuais: somente o limite institucional e os limites especiais
                 # definem alertas. Setor/periodo/chefia nao geram restricoes.
                 if($mesCriticoIndice.ContainsKey([int]$m)){
-                    $row.Cells["ps$m"].Style.BackColor=[Drawing.Color]::MistyRose
-                    $row.Cells["ps$m"].ToolTipText="ATENCAO: limite institucional desse mes ultrapassado. Base nesta linha: $qtd; solicitacoes: $qtdSolic. Clique para consultar servidores."
+                    $row.Cells[$columnIndexes["ps$m"]].Style.BackColor=[Drawing.Color]::MistyRose
+                    $row.Cells[$columnIndexes["ps$m"]].ToolTipText="ATENCAO: limite institucional desse mes ultrapassado. Base nesta linha: $qtd; solicitacoes: $qtdSolic. Clique para consultar servidores."
                 } else {
-                    $row.Cells["ps$m"].Style.BackColor=[Drawing.Color]::FromArgb(226,239,218)
-                    $row.Cells["ps$m"].ToolTipText="Base de decisao: $qtd servidor(es); solicitacoes: $qtdSolic. Fixas e aceitas ja comprometem a capacidade; alternativas nao. Clique para consultar."
+                    $row.Cells[$columnIndexes["ps$m"]].Style.BackColor=[Drawing.Color]::FromArgb(226,239,218)
+                    $row.Cells[$columnIndexes["ps$m"]].ToolTipText="Base de decisao: $qtd servidor(es); solicitacoes: $qtdSolic. Fixas e aceitas ja comprometem a capacidade; alternativas nao. Clique para consultar."
                 }
                 if($qtdSolic -gt $qtd){
-                    $row.Cells["ps$m"].ToolTipText += "`r`nHa opcoes alternativas neste mes; nao representam vagas confirmadas."
+                    $row.Cells[$columnIndexes["ps$m"]].ToolTipText += "`r`nHa opcoes alternativas neste mes; nao representam vagas confirmadas."
                 }
             } elseif($qtdSolic -gt 0) {
                 # Há pedidos para o mês, mas apenas como opções alternativas.
-                $row.Cells["ps$m"].Style.BackColor=[Drawing.Color]::FromArgb(255,248,220)
-                $row.Cells["ps$m"].Style.ForeColor=[Drawing.Color]::FromArgb(156,101,0)
-                $row.Cells["ps$m"].ToolTipText="SOLICITAÇÕES: $qtdSolic servidor(es) têm pelo menos uma opção neste mês.`r`nNenhuma dessas alternativas integra a base de decisão atual. Clique para ver os servidores."
+                $row.Cells[$columnIndexes["ps$m"]].Style.BackColor=[Drawing.Color]::FromArgb(255,248,220)
+                $row.Cells[$columnIndexes["ps$m"]].Style.ForeColor=[Drawing.Color]::FromArgb(156,101,0)
+                $row.Cells[$columnIndexes["ps$m"]].ToolTipText="SOLICITAÇÕES: $qtdSolic servidor(es) têm pelo menos uma opção neste mês.`r`nNenhuma dessas alternativas integra a base de decisão atual. Clique para ver os servidores."
             } else {
-                $row.Cells["ps$m"].ToolTipText=""
+                $row.Cells[$columnIndexes["ps$m"]].ToolTipText=""
             }
         }
 
         if($totalSolic -gt $totalBase){
-            $row.Cells["psTotal"].Value="B:$totalBase | S:$totalSolic"
+            $row.Cells[$columnIndexes["psTotal"]].Value="B:$totalBase | S:$totalSolic"
         } else {
-            $row.Cells["psTotal"].Value=$totalBase
+            $row.Cells[$columnIndexes["psTotal"]].Value=$totalBase
         }
+        $rowBuffer.Add($row)
         $visiveis++
     }
 
-    $cont=Get-ContadoresPlanejamentoAtual $ano
+    if($rowBuffer.Count -gt 0){$script:gridPlanejSetor.Rows.AddRange([System.Windows.Forms.DataGridViewRow[]]$rowBuffer.ToArray())}
+    $cont=$Preparado.Contadores
     $foco=if($mesFoco -gt 0){" | Mês em foco: $([string]$script:cmbPlanejMes.SelectedItem)"}else{""}
     $chefiaTxt=if($null -ne $script:cmbPlanejChefia -and $null -ne $script:cmbPlanejChefia.SelectedItem){" | Chefia: $([string]$script:cmbPlanejChefia.SelectedItem)"}else{""}
     $script:lblPlanejResumo.Text="Grupo: $($script:PlanejGrupoSelecionado)$chefiaTxt | FIXAS: $($cont.fixas) | Aceitas: $($cont.aceitas) | Pendentes com solicitação no ano: $($cont.pendentes) | Linhas exibidas: $visiveis$foco | B=base de decisão / S=todas as solicitações"
-    Refresh-LimiteInstitucionalResumo
+    Refresh-LimiteInstitucionalResumo $Preparado
+    $script:gridPlanejSetor.Enabled=$true
+    $script:gridLimiteInstitucional.Enabled=$true
     $swPerf.Stop()
-    if($swPerf.ElapsedMilliseconds -ge 250){ Write-DiagLog "PERF Refresh-PlanejamentoSetor: $($swPerf.ElapsedMilliseconds) ms | linhas=$visiveis | modo=institucional_sem_overlap_local" "WARN" }
+    if($swPerf.ElapsedMilliseconds -ge 250){ Write-DiagLog "PERF Refresh-PlanejamentoSetor: $($swPerf.ElapsedMilliseconds) ms | linhas=$visiveis | modo=renderizacao_CORR-R6" "WARN" }
     } finally {
         $script:gridPlanejSetor.ResumeLayout()
     }
@@ -10723,7 +11840,7 @@ function Abrir-AjusteFeriasFixa($r,$owner){
 
     $btnSalvar=New-Button "SALVAR AJUSTE" 400 380 150 36; $btnSalvar.BackColor=[Drawing.Color]::FromArgb(205,235,205); $dlg.Controls.Add($btnSalvar)
     $btnCancel=New-Button "Cancelar" 560 380 95 36; $dlg.Controls.Add($btnCancel)
-    $ok=$false
+    $estadoAjuste=[pscustomobject]@{Ok=$false}
     $btnCancel.add_Click({$dlg.Close()})
     $btnSalvar.add_Click({
         if(-not $dtIni.Checked -or -not $dtFim.Checked){ [Windows.Forms.MessageBox]::Show("Informe início e fim do novo período.","Validação") | Out-Null; return }
@@ -10757,10 +11874,10 @@ function Abrir-AjusteFeriasFixa($r,$owner){
         }
         Write-DiagLog "Férias fixa ajustada | ID=$($r.id) | Matrícula=$($r.matricula) | $($oldIni.ToString('yyyy-MM-dd'))..$($oldFim.ToString('yyyy-MM-dd')) -> $($ni.ToString('yyyy-MM-dd'))..$($nf.ToString('yyyy-MM-dd')) | Motivo=$([string]$cmbMot.SelectedItem)"
         $script:PlanejOverlapCache=@{}; $script:PlanejChefiaOverlapCache=@{}; $script:PlanejCellIndex=@{}; $script:PlanejCellIndexBuilt=@{}
-        $ok=$true; $dlg.Close()
+        $estadoAjuste.Ok=$true; $dlg.Close()
     })
     [void]$dlg.ShowDialog($owner)
-    return $ok
+    return $estadoAjuste.Ok
 }
 
 function Get-PlanejamentoCellIds([string]$setor,[string]$periodo,[int]$ano,[int]$mes){
@@ -11167,9 +12284,10 @@ function Format-AvaliacaoCentral($registro,[int]$numeroOpcao,$avaliacao){
 # Usa o MESMO motor de regras já existente para Setor/Período, Grupo de Chefia e Institucional.
 # ==========================================================================================
 function Abrir-CentralAprovacaoServidor {
+    $centralAberturaCrono=[Diagnostics.Stopwatch]::StartNew()
     $dlg=New-Object Windows.Forms.Form
     Apply-AppBranding $dlg
-    $dlg.Text="CENTRAL ÚNICA DE APROVAÇÃO | Férias DCE — V1.1.04"
+    $dlg.Text="CENTRAL ÚNICA DE APROVAÇÃO | Férias DCE — V1.1.04 | CORR-R6"
     $dlg.Size=New-Object Drawing.Size(1420,820)
     $dlg.MinimumSize=New-Object Drawing.Size(1220,700)
     $dlg.StartPosition="CenterParent"
@@ -11664,32 +12782,36 @@ function Abrir-CentralAprovacaoServidor {
         }
     }
     $right.add_SizeChanged({ &$ajustarCentralDireita })
-    $dlg.add_Shown({ &$ajustarCentralDireita })
+    $dlg.add_Shown({
+        &$ajustarCentralDireita
+        $centralAberturaCrono.Stop()
+        Write-DiagLog "CENTRAL CORR-R6: montagem=$($centralAberturaCrono.ElapsedMilliseconds)ms" 'INFO'
+    })
 
     Apply-ProfessionalGridStyle $grid
     Apply-ProfessionalGridStyle $gridInst
     Apply-ProfessionalGridStyle $gridSetor
     Apply-ProfessionalGridStyle $gridChefia
 
-    $centralSuppressEvents=$false
+    $centralUiState=@{SuppressEvents=$false; Stamp=""; FaixaKey=""; SuppressOptionEvent=$false; SuppressCompetenciaEvent=$false}
     $tmrCentralGrid=New-Object Windows.Forms.Timer
     $tmrCentralGrid.Interval=180
     $tmrCentralGrid.add_Tick({
         $tmrCentralGrid.Stop()
-        if(-not $centralSuppressEvents){ &$refreshGrid }
+        if(-not $centralUiState.SuppressEvents){ &$refreshGrid }
     })
     $tmrCentralSelecao=New-Object Windows.Forms.Timer
     $tmrCentralSelecao.Interval=120
     $tmrCentralSelecao.add_Tick({
         $tmrCentralSelecao.Stop()
-        if(-not $centralSuppressEvents){ &$carregarSelecionado }
+        if(-not $centralUiState.SuppressEvents){ &$carregarSelecionado }
     })
     $requestCentralGrid={
-        if($centralSuppressEvents){ return }
+        if($centralUiState.SuppressEvents){ return }
         $tmrCentralGrid.Stop(); $tmrCentralGrid.Start()
     }
     $requestCentralSelecao={
-        if($centralSuppressEvents){ return }
+        if($centralUiState.SuppressEvents){ return }
         $tmrCentralSelecao.Stop(); $tmrCentralSelecao.Start()
     }
 
@@ -11830,22 +12952,23 @@ function Abrir-CentralAprovacaoServidor {
     # V1.0.135-R2: Cache efemero da CENTRAL para filtros repetidos.
     # Dependencia: hash da base, numero de registros, ano e id.
     # Nunca serializar esse cache nem reutilizar apos gravacao.
-    $centralCacheStamp=''
+    $centralUiState.Stamp=''
     $centralCacheAnoMes=@{}
     $centralCacheMarcas=@{}
-    $centralFaixaCacheKey=''
+    $centralUiState.FaixaKey=''
     $refreshInstitucional={
         $ano=[int][string]$cmbAno.SelectedItem
         # Filtros/seleção não modificam a faixa institucional. Evita 12 recálculos
         # em cada pesquisa; Save-Database altera LoadedDbHash após decisões.
         $keyFaixa="$ano|$([string]$script:LoadedDbHash)|$(@($script:Records).Count)|$([int]$script:Config.total_enfermeiros_planejamento)|$([string]($script:Config.meses_restritos -join ","))|$([string]($script:Config.limites_especiais_mensais | ConvertTo-Json -Compress))"
-        if($centralFaixaCacheKey -eq $keyFaixa){ return }
+        if($centralUiState.FaixaKey -eq $keyFaixa){ return }
         $row=$gridInst.Rows[0]
+        $institucionalPronto=Get-PlanejamentoInstitucionalPronto $ano
         for($m=1;$m -le 12;$m++){
-            $det=Get-FaixaInstitucionalDetalhes $ano $m $false
+            $det=if($null -ne $institucionalPronto){$institucionalPronto.Meses[$m].detalhes}else{Get-FaixaInstitucionalDetalhes $ano $m $false}
             # Valores distintos: aprovado (real) nao inclui primeira opcao pendente.
             # Projecao mantem o criterio de decisao usado pela Central.
-            $real=[double](Get-ContagemInstitucionalAprovadaMes $ano $m)
+            $real=if($null -ne $institucionalPronto){[double]$institucionalPronto.Meses[$m].real}else{[double](Get-ContagemInstitucionalAprovadaMes $ano $m)}
             $projecao=[double]$det.total
             $limite=[double]$det.limite
             $saldoReal=$limite-$real
@@ -11868,7 +12991,7 @@ function Abrir-CentralAprovacaoServidor {
             else{$cor=[Drawing.Color]::White}
             $row.Cells["m$m"].Style.BackColor=$cor
         }
-        $centralFaixaCacheKey=$keyFaixa
+        $centralUiState.FaixaKey=$keyFaixa
     }
 
     # V1.0.135-R2: prepara uma vez as 12 marcas mensais de cada registro.
@@ -11908,13 +13031,13 @@ function Abrir-CentralAprovacaoServidor {
         $centralGridCrono=[Diagnostics.Stopwatch]::StartNew()
         $idAntes=[int]$script:CentralServidorCurrentId
         # Invalida imediatamente depois de gravacao, sincronizacao ou troca da base.
-        $stamp="$( [string]$script:LoadedDbHash )|$(@($script:Records).Count)|$([string]$script:Config.total_enfermeiros_planejamento)"
-        if($centralCacheStamp -ne $stamp){
+        $stamp="$( [string]$script:LoadedDbHash )|$(@($script:Records).Count)|$([string]$script:Config.total_enfermeiros_planejamento)|$([Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($script:Records))"
+        if($centralUiState.Stamp -ne $stamp){
             $centralCacheAnoMes.Clear()
             $centralCacheMarcas.Clear()
-            $centralCacheStamp=$stamp
+            $centralUiState.Stamp=$stamp
         }
-        $centralSuppressEvents=$true
+        $centralUiState.SuppressEvents=$true
         $grid.SuspendLayout()
         try {
             $grid.Rows.Clear()
@@ -11929,7 +13052,7 @@ function Abrir-CentralAprovacaoServidor {
 
         $fonteFixa=New-Object Drawing.Font("Segoe UI",8,[Drawing.FontStyle]::Bold)
         # Ordenacao cacheada entre pesquisas, invalidada pela assinatura da base.
-        $fonteStamp="$($script:LoadedDbHash)|$(@($script:Records).Count)"
+        $fonteStamp="$($script:LoadedDbHash)|$(@($script:Records).Count)|$([Runtime.CompilerServices.RuntimeHelpers]::GetHashCode($script:Records))"
         if($null -eq $script:CentralFonteOrdenada -or $script:CentralFonteStamp -ne $fonteStamp){
             $script:CentralFonteOrdenada=@($script:Records | Sort-Object nome,aquisitivo_inicio)
             $script:CentralFonteStamp=$fonteStamp
@@ -12024,7 +13147,7 @@ function Abrir-CentralAprovacaoServidor {
         }
         } finally {
             $grid.ResumeLayout()
-            $centralSuppressEvents=$false
+            $centralUiState.SuppressEvents=$false
         }
         # Garantir o editor atualizado mesmo com um único registro na grade.
         if($grid.Rows.Count -gt 0){ &$requestCentralSelecao }
@@ -12035,6 +13158,8 @@ function Abrir-CentralAprovacaoServidor {
     }
 
     $refreshImpacto={
+        $centralUiState.SuppressCompetenciaEvent=$true
+        try {
         $gridSetor.Rows.Clear()
         $gridChefia.Rows.Clear()
         $txtAnalise.Text=""
@@ -12104,6 +13229,8 @@ function Abrir-CentralAprovacaoServidor {
 
         foreach($comp in (Get-CompetenciasOpcao $op)){ [void]$cmbCompetencia.Items.Add($comp) }
         if($cmbCompetencia.Items.Count -gt 0){$cmbCompetencia.SelectedIndex=0}else{return}
+        } finally {$centralUiState.SuppressCompetenciaEvent=$false}
+        if($cmbCompetencia.SelectedIndex -ge 0){&$refreshCompetencia}
     }
 
     $refreshCompetencia={
@@ -12250,14 +13377,16 @@ function Abrir-CentralAprovacaoServidor {
     }
 
     $carregarSelecionado={
-        $gridComparativo.Rows.Clear()
-        $lblCompInfo.Text="Clique em Atualizar para comparar os 12 meses"
-        if($centralSuppressEvents){ return }
+        if($centralUiState.SuppressEvents){ return }
         if($grid.SelectedRows.Count -eq 0){return}
         $id=[int]$grid.SelectedRows[0].Cells["id"].Value
         if(-not $script:CentralForcarRender -and [int]$script:CentralUltimoRenderId -eq $id){ return }
+        $gridComparativo.Rows.Clear()
+        $lblCompInfo.Text="Clique em Atualizar para comparar os 12 meses"
         $r=$script:Records | Where-Object {[int]$_.id -eq $id} | Select-Object -First 1
         if($null -eq $r){return}
+        $centralDetalheCrono=[Diagnostics.Stopwatch]::StartNew()
+        try {
         $script:CentralForcarRender=$false
         $script:CentralUltimoRenderId=$id
         $script:CentralServidorCurrentId=$id
@@ -12277,7 +13406,9 @@ function Abrir-CentralAprovacaoServidor {
         $btnDesfazerFR.Enabled=(-not $bloqueioFR -and $nFRAtual -gt 0)
         $ap=0; try{$ap=[int]$r.opcao_aprovada}catch{$ap=0}
         $alvoOpcao=if($ap -ge 1 -and $ap -le 3){$ap-1}else{0}
-        if($cmbOpcao.SelectedIndex -ne $alvoOpcao){$cmbOpcao.SelectedIndex=$alvoOpcao}
+        $centralUiState.SuppressOptionEvent=$true
+        try{if($cmbOpcao.SelectedIndex -ne $alvoOpcao){$cmbOpcao.SelectedIndex=$alvoOpcao}}
+        finally{$centralUiState.SuppressOptionEvent=$false}
         $bloq=Test-RegistroFeriasBloqueadas $r
         $btnAprovar.Enabled=(-not $bloq)
         $btnAprovarProx.Enabled=(-not $bloq)
@@ -12287,6 +13418,10 @@ function Abrir-CentralAprovacaoServidor {
         $cmbOpcao.Enabled=(-not $bloq)
         &$refreshImpacto
         &$refreshHistoricoCentral
+        } finally {
+            $centralDetalheCrono.Stop()
+            if($centralDetalheCrono.ElapsedMilliseconds -ge 200){Write-DiagLog "CENTRAL CORR-R6: detalhes=$($centralDetalheCrono.ElapsedMilliseconds)ms | id=$id" 'INFO'}
+        }
     }
 
     $aprovarAtual={
@@ -12323,9 +13458,8 @@ function Abrir-CentralAprovacaoServidor {
             return $false
         }
 
-        $cloneComum=($r | ConvertTo-Json -Depth 10 | ConvertFrom-Json)
-        foreach($k in 1..3){$oc=$cloneComum.("opcao$k");$oc.fr_inicio='';$oc.fr_fim=''}
-        $aval=Get-AvaliacaoOpcaoRegistro $cloneComum $n
+        # Avaliar a candidata comum preservando o registro que contém a decisão FR.
+        $aval=Get-AvaliacaoOpcaoRegistro $r $n -OpcaoSimulada $op
         $just=([string]$txtJust.Text).Trim()
         if([string]$aval.nivel -eq "CRÍTICA" -and [string]::IsNullOrWhiteSpace($just)){
             [Windows.Forms.MessageBox]::Show("Esta opção possui CONFLITO CRÍTICO pelas regras atuais.`n`nPara confirmar excepcionalmente, informe uma justificativa no campo abaixo das opções.","Justificativa obrigatória",[Windows.Forms.MessageBoxButtons]::OK,[Windows.Forms.MessageBoxIcon]::Warning)|Out-Null
@@ -12404,11 +13538,10 @@ function Abrir-CentralAprovacaoServidor {
         if($choqueAquisitivo){[Windows.Forms.MessageBox]::Show($choqueAquisitivo,'Sobreposição entre aquisitivos')|Out-Null;return}
         $texto='Aprovar apenas a FR radiológica '+$n+'ª opção para '+[string]$r.nome+'?'+"`r`n"+$a.ToString('dd/MM/yyyy')+' a '+$b.ToString('dd/MM/yyyy')+"`r`nA decisão comum não será alterada."
         if([Windows.Forms.MessageBox]::Show($texto,'Confirmar FR',[Windows.Forms.MessageBoxButtons]::YesNo,[Windows.Forms.MessageBoxIcon]::Question) -ne [Windows.Forms.DialogResult]::Yes){return}
-        $cloneFR=($r | ConvertTo-Json -Depth 10 | ConvertFrom-Json)
         $somenteFR=New-EmptyOptionObject
         $somenteFR.tipo='FR 20 DIAS';$somenteFR.fr_inicio=[string]$op.fr_inicio;$somenteFR.fr_fim=[string]$op.fr_fim
-        $cloneFR.("opcao$n")=$somenteFR
-        $avaliacaoFR=Get-AvaliacaoOpcaoRegistro $cloneFR $n
+        # A mesma opção pode conter a escolha comum já aprovada; não apagá-la na cópia.
+        $avaliacaoFR=Get-AvaliacaoOpcaoRegistro $r $n -OpcaoSimulada $somenteFR
         $justFR=([string]$txtJust.Text).Trim()
         if(-not $avaliacaoFR.valida){[Windows.Forms.MessageBox]::Show([string]$avaliacaoFR.motivo,'FR invalida')|Out-Null;return}
         if([string]$avaliacaoFR.nivel -eq 'CRÍTICA' -and [string]::IsNullOrWhiteSpace($justFR)){
@@ -12507,12 +13640,12 @@ function Abrir-CentralAprovacaoServidor {
     $grid.add_SelectionChanged({ &$requestCentralSelecao })
     $btnHistoricoRapido.add_Click({ &$abrirHistoricoRapido })
     $btnConcorrentesRapido.add_Click({ &$abrirConcorrentesRapido })
-    $cmbOpcao.add_SelectedIndexChanged({ &$refreshImpacto; &$refreshHistoricoCentral; $script:CentralForcarRender=$false })
-    $cmbCompetencia.add_SelectedIndexChanged({ &$refreshCompetencia; &$refreshHistoricoCentral })
+    $cmbOpcao.add_SelectedIndexChanged({ if($centralUiState.SuppressOptionEvent){return}; &$refreshImpacto; &$refreshHistoricoCentral; $script:CentralForcarRender=$false })
+    $cmbCompetencia.add_SelectedIndexChanged({ if($centralUiState.SuppressCompetenciaEvent -or $cmbCompetencia.SelectedIndex -lt 0){return}; &$refreshCompetencia; &$refreshHistoricoCentral })
     $btnAprovar.add_Click({ [void](&$aprovarAtual $false) })
     $btnAprovarProx.add_Click({ [void](&$aprovarAtual $true) })
 
-    $btnAtualizar.add_Click({ $centralFaixaCacheKey=''; $centralCacheStamp=''; &$refreshGrid })
+    $btnAtualizar.add_Click({ $centralUiState.FaixaKey=''; $centralUiState.Stamp=''; &$refreshGrid })
     $txtBusca.add_TextChanged({ &$requestCentralGrid })
     $cmbStatus.add_SelectedIndexChanged({ &$requestCentralGrid })
     $cmbAno.add_SelectedIndexChanged({ &$requestCentralGrid })
@@ -12677,6 +13810,7 @@ for($m=1;$m -le 12;$m++){ [void]$script:gridLimiteInstitucional.Columns.Add("li$
 $panelPlanejTop.Controls.Add($script:gridLimiteInstitucional)
 $script:gridLimiteInstitucional.add_CellClick({
     param($sender,$e)
+    if($script:PlanejRefreshDirty){return}
     if($e.RowIndex -ge 0 -and $e.ColumnIndex -ge 0 -and $e.ColumnIndex -lt 12){
         try { Show-DetalhesFaixaInstitucional ([int]$script:cmbPlanejAno.SelectedItem) ([int]$e.ColumnIndex+1) }
         catch { Write-DiagLog ('Detalhe mensal Planejamento: '+$_.Exception.Message) 'ERROR' }
@@ -13010,7 +14144,7 @@ $panelLoteTop.BackColor=[Drawing.Color]::FromArgb(245,248,252)
 $tabLote.Controls.Add($panelLoteTop)
 
 $lblLote=New-Object Windows.Forms.Label
-$lblLote.Text="Cole do Excel quatro colunas: Matrícula | Nome | Setor | Período"
+$lblLote.Text="Cole do Excel cinco colunas: Matrícula | Nome | Setor | Período | CP"
 $lblLote.Location=New-Object Drawing.Point(20,14)
 $lblLote.Size=New-Object Drawing.Size(760,24)
 $lblLote.Font=New-Object Drawing.Font("Segoe UI",10,[Drawing.FontStyle]::Bold)
@@ -13023,7 +14157,7 @@ $btnDesfazerLote=New-Button "Desfazer último lote" 435 50 165 34; $panelLoteTop
 $btnLimparLote=New-Button "Limpar grade" 610 50 120 34; $panelLoteTop.Controls.Add($btnLimparLote)
 
 $lblLoteInfo=New-Object Windows.Forms.Label
-$lblLoteInfo.Text="Confira matrícula, nome, setor e período antes de processar. O sistema faz backup e permite desfazer o último lote. Setor e período são informativos no limite institucional."
+$lblLoteInfo.Text="Confira matrícula, nome, setor, período e CP obrigatório antes de processar. O sistema faz backup e permite desfazer o último lote. Setor e período são informativos no limite institucional."
 $lblLoteInfo.Location=New-Object Drawing.Point(20,95)
 $lblLoteInfo.Size=New-Object Drawing.Size(900,35)
 $panelLoteTop.Controls.Add($lblLoteInfo)
@@ -13037,6 +14171,7 @@ $script:gridLote.RowHeadersVisible=$false
 $script:gridLote.BackgroundColor=[Drawing.Color]::White
 foreach($c in @(
     @("lmat","Matrícula"),
+    @("lcp","CP obrigatório"),
     @("lnome","Nome"),
     @("lsetor","Setor"),
     @("lperiodo","Período"),
@@ -13047,6 +14182,7 @@ foreach($c in @(
 }
 $script:gridLote.Columns["lstatus"].ReadOnly=$true
 $script:gridLote.Columns["lmsg"].ReadOnly=$true
+$script:gridLote.Columns["lcp"].FillWeight=15
 $script:gridLote.Columns["lnome"].FillWeight=32
 $script:gridLote.Columns["lsetor"].FillWeight=22
 $script:gridLote.Columns["lmsg"].FillWeight=28
@@ -13166,7 +14302,7 @@ $lblFixasNota.Text="Antes de importar, uma tela de conferência mostra o que ser
 $lblFixasNota.Location=New-Object Drawing.Point(15,184); $lblFixasNota.Size=New-Object Drawing.Size(1180,35); $grpFixasImp.Controls.Add($lblFixasNota)
 
 $grpHistImp=New-Object Windows.Forms.GroupBox
-$grpHistImp.Text="2. Histórico 2024–2026 — CRITÉRIO DE DESEMPATE"; $grpHistImp.Location=New-Object Drawing.Point(15,352); $grpHistImp.Size=New-Object Drawing.Size(1240,255)
+$grpHistImp.Text="2. Histórico de férias — CRITÉRIO DE DESEMPATE"; $grpHistImp.Location=New-Object Drawing.Point(15,352); $grpHistImp.Size=New-Object Drawing.Size(1240,255)
 $tabCfgImport.Controls.Add($grpHistImp)
 $lblHistExp=New-Object Windows.Forms.Label
 $lblHistExp.Text="Use a planilha histórica com células amarelas. São importados somente registros de Cargo = Enfermeiro. Ausência de um ano é tratada como SEM REGISTRO — nunca como prova de que o servidor não tirou férias."
@@ -13179,7 +14315,10 @@ $script:lblHistoricoImportStatus=New-Object Windows.Forms.Label
 $script:lblHistoricoImportStatus.Location=New-Object Drawing.Point(15,150); $script:lblHistoricoImportStatus.Size=New-Object Drawing.Size(1190,28); $script:lblHistoricoImportStatus.Font=New-Object Drawing.Font("Segoe UI",9,[Drawing.FontStyle]::Bold); $grpHistImp.Controls.Add($script:lblHistoricoImportStatus)
 $lblHistNota=New-Object Windows.Forms.Label
 $lblHistNota.Text="Histórico serve exclusivamente como apoio ao desempate entre solicitações equivalentes. Não cria limite por setor, período ou chefia e não invalida quinzena única já confirmada como férias fixa."
-$lblHistNota.Location=New-Object Drawing.Point(15,184); $lblHistNota.Size=New-Object Drawing.Size(1180,52); $grpHistImp.Controls.Add($lblHistNota)
+$lblHistNota.Location=New-Object Drawing.Point(15,184); $lblHistNota.Size=New-Object Drawing.Size(900,52); $grpHistImp.Controls.Add($lblHistNota)
+$btnRecuperarHistorico=New-Button "Recuperar histórico de backup" 950 184 260 32
+$grpHistImp.Controls.Add($btnRecuperarHistorico)
+$btnRecuperarHistorico.add_Click({Recuperar-HistoricoBackup})
 
 $grpAnuladosImp=New-Object Windows.Forms.GroupBox
 $grpAnuladosImp.Text="3. Central de inconsistências / pendências da planilha-base"; $grpAnuladosImp.Location=New-Object Drawing.Point(15,622); $grpAnuladosImp.Size=New-Object Drawing.Size(1240,165)
@@ -13258,7 +14397,7 @@ $l=New-Object Windows.Forms.Label; $l.Text="Remove somente as opções ACEITAS/d
 $btnResetFixas=New-Button "Remover férias fixas importadas" 20 92 250 38; $grpReset.Controls.Add($btnResetFixas)
 $l=New-Object Windows.Forms.Label; $l.Text="Remove somente as férias fixas vindas da planilha de 2027. Não remove férias fixas marcadas manualmente."; $l.Location=New-Object Drawing.Point(290,92); $l.Size=New-Object Drawing.Size(900,42); $grpReset.Controls.Add($l)
 
-$btnResetHistorico=New-Button "Limpar histórico 2024–2026" 20 152 250 38; $grpReset.Controls.Add($btnResetHistorico)
+$btnResetHistorico=New-Button "Limpar histórico importado" 20 152 250 38; $grpReset.Controls.Add($btnResetHistorico)
 $l=New-Object Windows.Forms.Label; $l.Text="Apaga somente o histórico usado no desempate. Lançamentos e cadastros atuais permanecem."; $l.Location=New-Object Drawing.Point(290,152); $l.Size=New-Object Drawing.Size(900,42); $grpReset.Controls.Add($l)
 
 $btnZerarPlanejamento=New-Button "ZERAR PLANEJAMENTO ATUAL" 20 212 250 42; $btnZerarPlanejamento.BackColor=[Drawing.Color]::FromArgb(255,244,204); $btnZerarPlanejamento.Font=New-Object Drawing.Font("Segoe UI",9,[Drawing.FontStyle]::Bold); $grpReset.Controls.Add($btnZerarPlanejamento)
@@ -13289,7 +14428,11 @@ $script:tmrGridFilter=New-Object Windows.Forms.Timer
 $script:tmrGridFilter.Interval=220
 $script:tmrGridFilter.add_Tick({
     $script:tmrGridFilter.Stop()
-    if(-not $script:SuppressReactiveRefresh){ Refresh-Grid }
+    if(-not $script:SuppressReactiveRefresh){
+        if($null -ne $script:tabsPrincipal -and $script:tabsPrincipal.SelectedTab -ne $tabLanc){
+            $script:LancamentosFiltroPendente=$true
+        }else{Refresh-Grid;$script:LancamentosFiltroPendente=$false}
+    }
 })
 
 $script:tmrPlanejamento=New-Object Windows.Forms.Timer
@@ -13303,14 +14446,22 @@ $script:tmrDashboard=New-Object Windows.Forms.Timer
 $script:tmrDashboard.Interval=160
 $script:tmrDashboard.add_Tick({
     $script:tmrDashboard.Stop()
-    if(-not $script:SuppressReactiveRefresh){ Refresh-Dashboard }
+    if(-not $script:SuppressReactiveRefresh){
+        if($null -ne $script:tabsPrincipal -and $script:tabsPrincipal.SelectedTab -ne $tabDash){
+            $script:UiLazyLoaded.Painel=$false
+        }else{Refresh-Dashboard;$script:UiLazyLoaded.Painel=$true}
+    }
 })
 
 $script:tmrPreviaImpacto=New-Object Windows.Forms.Timer
 $script:tmrPreviaImpacto.Interval=360
 $script:tmrPreviaImpacto.add_Tick({
     $script:tmrPreviaImpacto.Stop()
-    if(-not $script:SuppressReactiveRefresh){ Refresh-PreviaImpacto }
+    if(-not $script:SuppressReactiveRefresh){
+        if($null -ne $script:tabsPrincipal -and $script:tabsPrincipal.SelectedTab -ne $tabLanc){
+            $script:PreviaImpactoPendente=$true
+        }else{Refresh-PreviaImpacto;$script:PreviaImpactoPendente=$false}
+    }
 })
 
 function Request-GridRefresh {
@@ -13342,7 +14493,7 @@ function Abrir-HTMLRelatorioFerias([string]$Html,[string]$Arquivo) {
 }
 
 function Show-RelatorioAceitesEnfermagem {
-    # V157: calculo autocontido. Nao depende de funcoes do modulo em eventos WinForms.
+    # CORR-R6: equivalencia e consulta de aprovacoes compartilhadas com a Central.
     try {
         $culture=[Globalization.CultureInfo]::GetCultureInfo('pt-BR')
         $parseLocal={ param($str)
@@ -13411,46 +14562,12 @@ function Show-RelatorioAceitesEnfermagem {
         $blocos=New-Object 'System.Collections.Generic.List[object]'
         foreach($r in @($script:Records)){
             if($null -eq $r){continue}
-            $key=([string]$r.matricula)+'|'+([string]$r.aquisitivo_inicio)+'|'+([string]$r.aquisitivo_fim)
-            if([bool]$r.ferias_bloqueadas){
-                if([string]$r.fixo_inicio -and [string]$r.fixo_fim){
-                    $a=& $parseLocal $r.fixo_inicio;$z=& $parseLocal $r.fixo_fim
-                    if($null -ne $a -and $null -ne $z -and $z -ge $a){
-                        [void]$blocos.Add([pscustomobject]@{Key=$key;Inicio=$a;Fim=$z;Etapa=1;Fixa=$true;Matricula=[string]$r.matricula;Nome=[string]$r.nome;Setor=[string]$r.setor})
-                    }
-                }
-                $order=2
-                foreach($fx in @($r.fixos_adicionais | Where-Object {$_ -and $_.inicio -and $_.fim} | Sort-Object inicio)){
-                    $a=& $parseLocal $fx.inicio;$z=& $parseLocal $fx.fim
-                    if($null -ne $a -and $null -ne $z -and $z -ge $a){
-                        [void]$blocos.Add([pscustomobject]@{Key=$key;Inicio=$a;Fim=$z;Etapa=$order;Fixa=$true;Matricula=[string]$r.matricula;Nome=[string]$r.nome;Setor=[string]$r.setor});$order++
-                    }
-                }
-            }else{
-                $n=0;try{$n=[int]$r.opcao_aprovada}catch{}
-                if($n -ge 1 -and $n -le 3){
-                    $op=$r.("opcao$n")
-                    if($op -and [string]$op.tipo -ne '20 DIAS'){
-                        foreach($j in 1..2){
-                            $ia=if($j -eq 1){[string]$op.inicio1}else{[string]$op.inicio2}
-                            $ib=if($j -eq 1){[string]$op.fim1}else{[string]$op.fim2}
-                            $a=& $parseLocal $ia;$z=& $parseLocal $ib
-                            if($null -ne $a -and $null -ne $z -and $z -ge $a){
-                                [void]$blocos.Add([pscustomobject]@{Key=$key;Inicio=$a;Fim=$z;Etapa=$j;Fixa=$false;Matricula=[string]$r.matricula;Nome=[string]$r.nome;Setor=[string]$r.setor})
-                            }
-                        }
-                    }
-                }
-                $f=0;try{$f=[int]$r.fr_opcao_aprovada}catch{}
-                if($f -ge 1 -and $f -le 3){
-                    $op=$r.("opcao$f")
-                    if($op){
-                        $a=& $parseLocal $op.fr_inicio;$z=& $parseLocal $op.fr_fim
-                        if($null -ne $a -and $null -ne $z -and ($z-$a).Days -eq 19){
-                            [void]$blocos.Add([pscustomobject]@{Key=$key;Inicio=$a;Fim=$z;Etapa=0;Fixa=$false;Matricula=[string]$r.matricula;Nome=[string]$r.nome;Setor=[string]$r.setor})
-                        }
-                    }
-                }
+            $key=Get-ChaveFeriasRegistro $r
+            foreach($bl in @(Get-BlocosConfirmadosRegistro $r)){
+                $a=[datetime]$bl.inicio;$z=[datetime]$bl.fim
+                if($z -lt $a){continue}
+                $etapa=if(($z-$a).Days -eq 19){0}elseif($null -ne $bl.PSObject.Properties['bloco']){[int]$bl.bloco}else{1}
+                [void]$blocos.Add([pscustomobject]@{Key=$key;Registro=[int]$r.id;RegistroFonte=$r;Inicio=$a;Fim=$z;Etapa=$etapa;Fixa=(Test-RegistroFeriasBloqueadas $r);Matricula=[string]$r.matricula;Nome=[string]$r.nome;Setor=[string]$r.setor})
             }
         }
         $rows=New-Object 'System.Collections.Generic.List[object]'
@@ -13495,6 +14612,8 @@ function Show-RelatorioAceitesEnfermagem {
                         else{$c15b++;$categoria='f15'}
                     }
                     [void]$nominais.Add([pscustomobject]@{
+                        chave=$b.Key
+                        registro=[int]$b.Registro
                         mes=($months[$month-1]+'/'+[string]$year)
                         setor=([string]$b.Setor).Trim()
                         matricula=[string]$b.Matricula
@@ -13505,9 +14624,10 @@ function Show-RelatorioAceitesEnfermagem {
                         origem=$(if([bool]$b.Fixa){'Fixa'}else{'Aprovada'})
                         categoria=$categoria
                         peso=$w
+                        peso_institucional=[double](Get-PesoOpcaoInstitucionalMes (Get-OpcaoConfirmadaRegistro $b.RegistroFonte) $year $month)
                     })
                 }
-                $eq=[double]$c30+(([double]$c15a+[double]$c15b)/2.0)
+                $eq=[double](Get-ContagemInstitucionalAprovadaMes $year $month)
                 $limit=[double]$limitesCapturados[$month]
                 $class=if($limit -le 0){'unconfigured'}elseif($eq -gt $limit + 0.00001){'over'}elseif([math]::Abs($eq-$limit) -lt 0.00001){'at'}else{'under'}
                 [void]$rows.Add([pscustomobject]@{Month=$months[$month-1]+'/'+[string]$year;Days30=$c30;Start15=$c15a;End15=$c15b;Total=$eq;Limit=$limit;Class=$class})
@@ -13521,7 +14641,7 @@ function Show-RelatorioAceitesEnfermagem {
         $sb=New-Object Text.StringBuilder
         [void]$sb.Append('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de aceites 2027–2028 | consulta nominal</title><style>@page{size:A4 portrait;margin:10mm}body{font:13px Arial;margin:18px;color:#182430}h1{font-size:22px;margin-bottom:6px}p{line-height:1.4}.cards{display:flex;gap:16px;margin:15px 0}.card{border:1px solid #9cabb6;padding:12px;border-radius:6px;min-width:180px}.card strong{font-size:23px;display:block;margin-top:6px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #a2adb4;padding:6px;text-align:center}th{background:#dce9f1}.under{background:#237a40;color:#fff;font-weight:bold}.at{background:#f0cc43;color:#111;font-weight:bold}.over{background:#bb2533;color:#fff;font-weight:bold}.unconfigured{background:#e3e8eb;color:#222}.total{background:#e9f2f8;font-weight:bold}.toolbar{text-align:right}.filtros{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.filtros select{padding:6px;min-width:240px}.clicavel{cursor:pointer;text-decoration:underline;text-underline-offset:2px}.clicavel:hover{filter:brightness(.88)}#detalhes{margin-top:16px}#detalhes table{font-size:12px}#detalhes td{text-align:left}.hidden{display:none} @media print{.toolbar{display:none}thead{display:table-header-group}}</style></head><body>')
         [void]$sb.Append('<div class="toolbar"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório de aceites — 2027 e 2028</h1>')
-        [void]$sb.Append('<p>Férias fixas e opções efetivamente aprovadas. FR de 20 dias incluídas na coluna 30 DIAS. Quinzenas de 15 dias = 0,5 cada. Valores por competência institucional.</p>')
+        [void]$sb.Append('<p>Férias fixas e opções efetivamente aprovadas. FR de 20 dias incluídas na coluna 30 DIAS. Quinzenas de 15 dias = 0,5 cada. Valores por competência institucional. As colunas de modalidades contam parcelas; o total mensal usa o maior peso entre comum e FR, limitado a 1 por servidor/aquisitivo, e pode diferir da soma dessas colunas.</p>')
         [void]$sb.Append('<div class="cards"><div class="card">TOTAL IDEAL MÊS<strong>'+(& $fmt $baseLim)+'</strong></div><div class="card">TOTAL ENFERMEIROS<strong>'+$totalEnf+'</strong></div></div>')
         [void]$sb.Append('<div class="filtros"><label for="filtro-setor">Setor:</label><select id="filtro-setor"><option value="">TODOS OS SETORES</option></select><button id="limpar" type="button">Limpar filtro</button><span id="contador"></span></div>')
         [void]$sb.Append('<p>Clique em qualquer quantidade para consultar os servidores e períodos correspondentes. O filtro por setor recalcula toda a tabela.</p>')
@@ -13552,7 +14672,9 @@ function Show-RelatorioAceitesEnfermagem {
     listaMeses.forEach(m=>{
       const linha=dados.filter(r=>r.mes===m.mes);
       const d30=linha.filter(r=>r.categoria==='d30').length,i15=linha.filter(r=>r.categoria==='i15').length,f15=linha.filter(r=>r.categoria==='f15').length;
-      const eq=d30+(i15+f15)/2; totals.d30+=d30;totals.i15+=i15;totals.f15+=f15;totals.eq+=eq;
+      const porAquisitivo=new Map();
+      linha.forEach(r=>porAquisitivo.set(r.chave,Math.max(porAquisitivo.get(r.chave)||0,Number(r.peso_institucional))));
+      const eq=Array.from(porAquisitivo.values()).reduce((sum,peso)=>sum+peso,0); totals.d30+=d30;totals.i15+=i15;totals.f15+=f15;totals.eq+=eq;
       const tr=document.createElement('tr');
       [m.mes,d30,i15,f15,number(eq),number(m.limite)].forEach((value,index)=>{
         const td=document.createElement('td');td.textContent=value;
@@ -13604,7 +14726,7 @@ function Show-RelatorioConferenciaOpcoes {
     # V1.0.140 - janela organizada em dois blocos fixos (resumo acima + detalhes abaixo),
     # sem sobreposicao visual e com cabecalhos nativos sempre visiveis.
     $dialog=New-Object Windows.Forms.Form
-    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - V1.0.157'
+    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - HIST-R13'
     $dialog.Size=New-Object Drawing.Size(1365,910)
     $dialog.MinimumSize=New-Object Drawing.Size(1120,760)
     $dialog.StartPosition='CenterScreen'
@@ -13627,7 +14749,7 @@ function Show-RelatorioConferenciaOpcoes {
     $lbl=New-Object Windows.Forms.Label;$lbl.Text='Opcao:';$lbl.SetBounds(12,11,55,23);$top.Controls.Add($lbl)
     $select=New-Object Windows.Forms.ComboBox
     $select.DropDownStyle='DropDownList';$select.SetBounds(68,9,150,27)
-    [void]$select.Items.AddRange([object[]]@('1a opcao','2a opcao','3a opcao'))
+    [void]$select.Items.AddRange([object[]]@('1a opcao','2a opcao','3a opcao','Férias aceitas'))
     $select.SelectedIndex=0;$top.Controls.Add($select)
 
     $lblAno=New-Object Windows.Forms.Label;$lblAno.Text='Ano:';$lblAno.SetBounds(232,11,40,23);$top.Controls.Add($lblAno)
@@ -13765,15 +14887,17 @@ function Show-RelatorioConferenciaOpcoes {
         'Periodo FR 20'='fr_periodo';
         'Fixa inicio'='fixo_inicio';'Fixa fim'='fixo_fim';
         'Opcao comum aprovada'='opcao_aprovada';'Opcao FR aprovada'='fr_opcao_aprovada';
-        'Situacao'='situacao';'Observacoes'='observacoes'
+        'Situacao'='situacao';'Conflitos no setor'='conflitos_setor';'Observacoes'='observacoes'
     }
     foreach($name in $fields.Keys){
         $ix=$checks.Items.Add($name)
-        if(@('Matricula','Servidor','Setor','Periodo trabalho','Aquisitivo inicio','Aquisitivo fim','Modalidade','Periodo no mes','Tipo ferias comuns','Periodo FR 20') -contains $name){$checks.SetItemChecked($ix,$true)}
+        if(@('Matricula','Servidor','Setor','Periodo trabalho','Aquisitivo inicio','Aquisitivo fim','Modalidade','Periodo no mes','Tipo ferias comuns','Periodo FR 20','Conflitos no setor') -contains $name){$checks.SetItemChecked($ix,$true)}
     }
 
     $store=[pscustomobject]@{Rows=@();Records=@();Shown=$null;Monthly=$null;Refreshing=$false}
     $dbPathForReport=[string]$script:DbFile
+    # Preservar o escopo original da leitura dentro dos callbacks GetNewClosure.
+    $readSnapshotForReport=(Get-Command -Name 'Read-DatabaseSnapshotWithRetry' -CommandType Function -ErrorAction Stop).ScriptBlock
     $store.Records=@($script:Records)
 
     $getChosen={
@@ -13799,6 +14923,8 @@ function Show-RelatorioConferenciaOpcoes {
 
     $pesoInstitucionalRelatorio = (Get-Command -Name 'Get-PesoBlocoInstitucionalMes' -CommandType Function -ErrorAction Stop).ScriptBlock
     $limiteInstitucionalRelatorio = (Get-Command -Name 'Get-LimiteInstitucionalMes' -CommandType Function -ErrorAction Stop).ScriptBlock
+    $contagemAceitasRelatorio=(Get-Command Get-ContagemInstitucionalAprovadaMes -CommandType Function -ErrorAction Stop).ScriptBlock
+    $conflitosAceitasRelatorio=(Get-Command Get-ConflitosConferenciaAceitas -CommandType Function -ErrorAction Stop).ScriptBlock
 
     # V137: configurar colunas diretamente no mesmo evento, sem scriptblock aninhado.
     # DataGridView gera as colunas a partir do DataTable, com cabeçalhos nativos.
@@ -13812,7 +14938,13 @@ function Show-RelatorioConferenciaOpcoes {
       if($store.Refreshing){return};$store.Refreshing=$true
       $etapa='Iniciar filtros'
       try {
+        $aceitas=($select.SelectedIndex -eq 3)
+        $modo.Enabled=-not $aceitas
+        if($aceitas -and [string]$modo.SelectedItem -ne 'Programacao aprovada'){$modo.SelectedItem='Programacao aprovada'}
+        $analysis=if($aceitas){'Programacao aprovada'}else{[string]$modo.SelectedItem}
         $n=$select.SelectedIndex+1;$y=[int]$year.SelectedItem;$m=$month.SelectedIndex
+        $conflitos=@{}
+        if($analysis -eq 'Programacao aprovada'){$conflitos=& $conflitosAceitasRelatorio $store.Records $y $m}
         $choice=[string]$modality.SelectedItem;$term=$search.Text.Trim()
         $sect=[string]$sector.SelectedItem;$per=[string]$period.SelectedItem
         $chosen=@(& $getChosen)
@@ -13830,7 +14962,6 @@ function Show-RelatorioConferenciaOpcoes {
             if($sect -and $sect -ne 'Todos' -and [string]$r.setor -ne $sect){continue}
             if($per -and $per -ne 'Todos' -and [string]$r.periodo -ne $per){continue}
             if($term -and ([string]$r.nome -notlike "*$term*") -and ([string]$r.matricula -notlike "*$term*")){continue}
-            $analysis=[string]$modo.SelectedItem
             $apC=[int]$r.opcao_aprovada
             $apF=[int]$r.fr_opcao_aprovada
             $modalities=New-Object Collections.Generic.List[object]
@@ -13843,7 +14974,7 @@ function Show-RelatorioConferenciaOpcoes {
                 if($apC -gt 0){$nC=0}
                 if($apF -gt 0){$nF=0}
             }
-            if($nC -ge 1 -and $nC -le 3){
+            if(-not [bool]$r.ferias_bloqueadas -and $nC -ge 1 -and $nC -le 3){
                 $opC=$r.("opcao$nC")
                 if($null -ne $opC -and [string]$opC.inicio1 -and [string]$opC.fim1 -and [string]$opC.tipo -ne '20 DIAS'){
                     $ranges=New-Object Collections.Generic.List[object]
@@ -13852,14 +14983,18 @@ function Show-RelatorioConferenciaOpcoes {
                     [void]$modalities.Add([pscustomobject]@{Kind='Comuns';Op=$opC;Numero=$nC;Ranges=$ranges.ToArray()})
                 }
             }
-            if($nF -ge 1 -and $nF -le 3){
+            if(-not [bool]$r.ferias_bloqueadas -and $nF -ge 1 -and $nF -le 3){
                 $opF=$r.("opcao$nF")
                 if($null -ne $opF -and [string]$opF.fr_inicio -and [string]$opF.fr_fim){
                     [void]$modalities.Add([pscustomobject]@{Kind='FR 20 dias';Op=$opF;Numero=$nF;Ranges=@([pscustomobject]@{S=[string]$opF.fr_inicio;E=[string]$opF.fr_fim})})
                 }
             }
             if($analysis -ne 'Pendencias' -and [bool]$r.ferias_bloqueadas -and [string]$r.fixo_inicio -and [string]$r.fixo_fim){
-                [void]$modalities.Add([pscustomobject]@{Kind='Fixas';Op=$null;Numero=0;Ranges=@([pscustomobject]@{S=[string]$r.fixo_inicio;E=[string]$r.fixo_fim})})
+                $faixasFixas=@([pscustomobject]@{S=[string]$r.fixo_inicio;E=[string]$r.fixo_fim})
+                foreach($adicional in @($r.fixos_adicionais)){
+                    if($null -ne $adicional -and [string]$adicional.inicio -and [string]$adicional.fim){$faixasFixas += [pscustomobject]@{S=[string]$adicional.inicio;E=[string]$adicional.fim}}
+                }
+                [void]$modalities.Add([pscustomobject]@{Kind='Fixas';Op=$null;Numero=0;Ranges=$faixasFixas})
             }
 
             foreach($item in $modalities){
@@ -13889,14 +15024,16 @@ function Show-RelatorioConferenciaOpcoes {
                             $pesoItem += [double](& $pesoInstitucionalRelatorio $ddI $ddF $y $mm)
                         }
                     }
-                    $chavePeso=[string]$r.id+'|'+$kind
-                    $counts[$mm].Peso[$chavePeso]=$pesoItem
+                    $chavePeso=([string]$r.matricula)+'|'+([string]$r.aquisitivo_inicio)+'|'+([string]$r.aquisitivo_fim)
+                    if(-not $counts[$mm].Peso.ContainsKey($chavePeso)){$counts[$mm].Peso[$chavePeso]=@{Comum=[double]0;FR=[double]0}}
+                    $campoPeso=if($kind -eq 'FR 20 dias'){'FR'}else{'Comum'}
+                    $counts[$mm].Peso[$chavePeso][$campoPeso]=[math]::Max([double]$counts[$mm].Peso[$chavePeso][$campoPeso],$pesoItem)
                 }
                 if($choice -eq '30 dias' -and ($kind -ne 'Comuns' -or [string]$op.tipo -match '15\s*\+\s*15')){continue}
                 elseif($choice -eq '15+15' -and ($kind -ne 'Comuns' -or [string]$op.tipo -notmatch '15\s*\+\s*15')){continue}
                 elseif($choice -notin @('Todas','30 dias','15+15') -and $choice -ne $kind){continue}
                 if($m -gt 0 -and -not $hitMonths.Contains($m)){continue}
-                $items.Add([pscustomobject]@{R=$r;Op=$op;Kind=$kind;Numero=[int]$item.Numero})
+                $items.Add([pscustomobject]@{R=$r;Op=$op;Kind=$kind;Numero=[int]$item.Numero;Ranges=$item.Ranges})
             }
         }
 
@@ -13911,7 +15048,9 @@ function Show-RelatorioConferenciaOpcoes {
             $rr['FR 20 dias']=[string]$counts[$mm].F.Count
             $rr['Total solicit.']=[string]($counts[$mm].X.Count+$counts[$mm].C.Count+$counts[$mm].F.Count)
             $rr['Servidores distintos']=[string]$counts[$mm].All.Count
-            $equiv=[double]0; foreach($peso in $counts[$mm].Peso.Values){$equiv += [double]$peso}
+            $equiv=[double]0; foreach($peso in $counts[$mm].Peso.Values){$equiv += [math]::Min([double]1.0,[math]::Max([double]$peso.Comum,[double]$peso.FR))}
+            # Saldo institucional usa toda a base aprovada, independente dos filtros nominais.
+            if($analysis -eq 'Programacao aprovada'){$equiv=[double](& $contagemAceitasRelatorio $y $mm $store.Records)}
             $limite=[double](& $limiteInstitucionalRelatorio $mm)
             $rr['Equivalentes']=$equiv.ToString('0.##',[Globalization.CultureInfo]::GetCultureInfo('pt-BR'))
             $rr['Limite']=$limite.ToString('0.##',[Globalization.CultureInfo]::GetCultureInfo('pt-BR'))
@@ -13926,7 +15065,7 @@ function Show-RelatorioConferenciaOpcoes {
             $r=$item.R;$op=$item.Op;$row=$dt.NewRow()
             $matchedRanges=@()
             if($item.Kind -eq 'Fixas'){
-                $matchedRanges=,[pscustomobject]@{S=[string]$r.fixo_inicio;E=[string]$r.fixo_fim}
+                $matchedRanges=@($item.Ranges | Where-Object {$m -eq 0 -or (& $monthHit ([string]$_.S) ([string]$_.E) $y $m)})
             } elseif($item.Kind -eq 'FR 20 dias') {
                 $matchedRanges=,[pscustomobject]@{S=[string]$op.fr_inicio;E=[string]$op.fr_fim}
             } else {
@@ -13952,6 +15091,11 @@ function Show-RelatorioConferenciaOpcoes {
                             $parts+=('{0} a {1}' -f (& $dateBR ([string]$rg.S)),(& $dateBR ([string]$rg.E)))
                         }
                         $v=([string]::Join(' | ', [string[]]$parts))
+                    }
+                    'conflitos_setor' {
+                        if($analysis -ne 'Programacao aprovada'){$v='Consulte em Férias aceitas'}
+                        elseif($conflitos.ContainsKey([string]$r.id)){$v=$conflitos[[string]$r.id] -join ' | '}
+                        else{$v='Sem coincidência no setor'}
                     }
                     'modalidade' { $v=[string]$item.Kind }
                     'situacao' {
@@ -13987,8 +15131,8 @@ function Show-RelatorioConferenciaOpcoes {
                             $v=((& $dateBR ([string]$op.fr_inicio))+' a '+(& $dateBR ([string]$op.fr_fim))).Trim()
                         }
                     }
-                    'fixo_inicio' { if($item.Kind -eq 'Fixas'){$v=[string]$r.fixo_inicio} }
-                    'fixo_fim' { if($item.Kind -eq 'Fixas'){$v=[string]$r.fixo_fim} }
+                    'fixo_inicio' { if($item.Kind -eq 'Fixas'){$v=([string[]]@($matchedRanges | ForEach-Object {& $dateBR ([string]$_.S)})) -join ' | '} }
+                    'fixo_fim' { if($item.Kind -eq 'Fixas'){$v=([string[]]@($matchedRanges | ForEach-Object {& $dateBR ([string]$_.E)})) -join ' | '} }
                     default { $v=[string]$r.$f }
                 }
                 if($f -match '^(aquisitivo_inicio|aquisitivo_fim|inicio1|fim1|inicio2|fim2|fixo_inicio|fixo_fim)$'){$v=& $dateBR $v}
@@ -14021,6 +15165,7 @@ function Show-RelatorioConferenciaOpcoes {
             if($columnWidths.ContainsKey([string]$c.Name)){$c.Width=[int]$columnWidths[[string]$c.Name]}
             elseif($c.Name -eq 'Servidor'){$c.Width=250}
             elseif($c.Name -eq 'Setor'){$c.Width=175}
+            elseif($c.Name -eq 'Conflitos no setor'){$c.Width=380}
             elseif($c.Name -eq 'Periodo no mes'){$c.Width=210}
             else{$c.Width=125}
         }
@@ -14043,7 +15188,12 @@ function Show-RelatorioConferenciaOpcoes {
             if($detailTop -ge 0 -and $detailTop -lt $grid.Rows.Count){$grid.FirstDisplayedScrollingRowIndex=$detailTop}
             if($detailLeft -ge 0){$grid.HorizontalScrollingOffset=$detailLeft}
         }catch{}
-        $info.Text="Resumo acima: demanda da opcao + fixas, nao apenas aprovadas | Registros: $($dt.Rows.Count) | Analise: $analysis | Opcao: $n | Ano: $y | Mes: $([string]$month.SelectedItem) | Solicitações: comum / FR / fixa (nao equivalentes institucionais)"
+        $baseResumo=if($analysis -eq 'Programacao aprovada'){'Aceitas + fixas | Equivalentes e saldo: toda a base aprovada; quantidades: filtros atuais'}else{'Solicitações da opção + fixas | Saldo do cenário filtrado'}
+        $opcaoResumo=if($aceitas){'Férias aceitas'}else{[string]$n}
+        $info.Text="$baseResumo | Registros: $($dt.Rows.Count) | Analise: $analysis | Opcao: $opcaoResumo | Ano: $y"
+        $summary.Columns['Equivalentes'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Equiv. base aceita'}else{'Equivalentes'}
+        $summary.Columns['Saldo'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Saldo aprovado'}else{'Saldo cenário'}
+        $summary.Columns['Total solicit.'].HeaderText=if($analysis -eq 'Programacao aprovada'){'Compromissos'}else{'Total solicitações'}
       } catch {
         $info.Text='Falha ('+$etapa+'): '+$_.Exception.Message
         [Windows.Forms.MessageBox]::Show('Etapa: '+$etapa+[Environment]::NewLine+($_.Exception.ToString() + [Environment]::NewLine + 'Linha: ' + [string]$_.InvocationInfo.ScriptLineNumber + ' | Instrucao: ' + [string]$_.InvocationInfo.Line),'Relatorio de conferencia')|Out-Null
@@ -14052,7 +15202,7 @@ function Show-RelatorioConferenciaOpcoes {
 
     $loadRecords={
         try{
-            $snapshot=Read-DatabaseSnapshotWithRetry $dbPathForReport 3 150
+            $snapshot=& $readSnapshotForReport $dbPathForReport 3 150
             $obj=$snapshot.Db
             $store.Records=@($obj.registros)
             $oldS=[string]$sector.SelectedItem;$oldP=[string]$period.SelectedItem
@@ -14126,6 +15276,15 @@ function Show-RelatorioConferenciaOpcoes {
         }catch{}
     }.GetNewClosure())
 
+    $grid.add_CellFormatting({param($sender,$e)
+        if($e.RowIndex -lt 0 -or $e.ColumnIndex -lt 0){return}
+        if($sender.Columns[$e.ColumnIndex].Name -ne 'Conflitos no setor'){return}
+        $texto=[string]$e.Value
+        if($texto -match 'CRITICO:'){$e.CellStyle.BackColor=[Drawing.Color]::MistyRose;$e.CellStyle.ForeColor=[Drawing.Color]::DarkRed}
+        elseif($texto -match 'ATENCAO:'){$e.CellStyle.BackColor=[Drawing.Color]::LightYellow;$e.CellStyle.ForeColor=[Drawing.Color]::DarkGoldenrod}
+        $sender.Rows[$e.RowIndex].Cells[$e.ColumnIndex].ToolTipText=$texto
+    }.GetNewClosure())
+
     $btnCsv.add_Click({
         if($null -eq $store.Shown){return}
         $save=New-Object Windows.Forms.SaveFileDialog;$save.Filter='CSV Excel (*.csv)|*.csv'
@@ -14148,6 +15307,7 @@ function Show-RelatorioConferenciaOpcoes {
             [void]$sb.Append('<div class="toolbar"><button onclick="window.print()">Imprimir / Salvar em PDF</button> (No navegador, escolha a impressora Salvar como PDF.)</div>')
             [void]$sb.Append('<h2>Conferencia de ferias - '+([System.Net.WebUtility]::HtmlEncode([string]$modo.SelectedItem))+' - '+([System.Net.WebUtility]::HtmlEncode([string]$select.SelectedItem))+'</h2>')
             [void]$sb.Append('<p>Ano: '+([System.Net.WebUtility]::HtmlEncode([string]$year.SelectedItem))+' | Mes: '+([System.Net.WebUtility]::HtmlEncode([string]$month.SelectedItem))+' | Modalidade: '+([System.Net.WebUtility]::HtmlEncode([string]$modality.SelectedItem))+' | Registros: '+$store.Shown.Rows.Count+'</p>')
+            [void]$sb.Append('<p>'+[System.Net.WebUtility]::HtmlEncode([string]$info.Text)+'</p>')
             [void]$sb.Append('<h3>Resumo mensal - Fixas / Comuns / FR / Total / Limite / Saldo</h3><table><thead><tr>')
             foreach($col in $store.Monthly.Columns){[void]$sb.Append('<th>'+[System.Net.WebUtility]::HtmlEncode([string]$col.ColumnName)+'</th>')}
             [void]$sb.Append('</tr></thead><tbody>')
@@ -14172,13 +15332,12 @@ function Show-RelatorioConferenciaOpcoes {
 $numTotalEnf.add_ValueChanged({ Refresh-PoliticaMensalInfo })
 $numPctRestrito.add_ValueChanged({ Refresh-PoliticaMensalInfo })
 $btnSalvarPoliticaMensal.add_Click({
-    $script:Config.total_enfermeiros_planejamento=[int]$numTotalEnf.Value
-    $script:Config.percentual_meses_restritos=[int]$numPctRestrito.Value
+    $novoTotal=[int]$numTotalEnf.Value
+    $novoPercentual=[int]$numPctRestrito.Value
     $meses=@()
     for($i=0;$i -lt $script:chkMesRestrito.Count;$i++){
         if($script:chkMesRestrito[$i].Checked){ $meses += ($i+1) }
     }
-    $script:Config.meses_restritos=@($meses)
     $limitesNovos=@{}
     for($i=0;$i -lt 12;$i++){
         if($script:chkMesRestrito[$i].Checked -and [decimal]$script:numLimiteEspecialMes[$i].Value -le 0){
@@ -14187,6 +15346,9 @@ $btnSalvarPoliticaMensal.add_Click({
         }
         if([decimal]$script:numLimiteEspecialMes[$i].Value -gt 0){ $limitesNovos[[string]($i+1)]=[double]$script:numLimiteEspecialMes[$i].Value }
     }
+    $script:Config.total_enfermeiros_planejamento=$novoTotal
+    $script:Config.percentual_meses_restritos=$novoPercentual
+    $script:Config.meses_restritos=@($meses)
     $script:Config | Add-Member -NotePropertyName limites_especiais_mensais -NotePropertyValue $limitesNovos -Force
     Save-Database
     $script:InstitutionalResumoCacheKey=""
@@ -14306,6 +15468,7 @@ $script:PlanejPeriodosSelecionados=@()
     if($script:cmbFiltroChefia.Items.Count -gt 0){ $script:cmbFiltroChefia.SelectedIndex=0 }
     if($script:cmbFiltroSolicitacao.Items.Count -gt 0){ $script:cmbFiltroSolicitacao.SelectedIndex=0 }
     if($script:cmbFiltroJustificativa.Items.Count -gt 0){ $script:cmbFiltroJustificativa.SelectedIndex=0 }
+    if($null -ne $script:cmbFiltroCP){$script:cmbFiltroCP.SelectedIndex=0}
     Update-SetoresFiltroResumo
     Refresh-Grid
 })
@@ -14316,6 +15479,7 @@ $script:cmbFiltroGrupoAnalise.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroChefia.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroSolicitacao.add_SelectedIndexChanged({ Request-GridRefresh })
 $script:cmbFiltroJustificativa.add_SelectedIndexChanged({ Request-GridRefresh })
+$script:cmbFiltroCP.add_SelectedIndexChanged({ Request-GridRefresh })
 
 $script:grid.add_KeyDown({
     param($sender,$e)
@@ -14437,6 +15601,9 @@ $btnSalvarCadastro.add_Click({Save-ServidorCadastro})
 $btnAutorizacao.add_Click({Gerar-AutorizacaoFeriasServidor})
 $btnRelConferencia.add_Click({Show-RelatorioConferenciaOpcoes})
 $btnRelAceites.add_Click({Show-RelatorioAceitesEnfermagem})
+$btnExportarAccess.add_Click({Exportar-AceitasAccess})
+$btnImportacaoAccess.add_Click({Exportar-ArquivoImportacaoFeriasAccess})
+$btnExportarListaServidores.add_Click({Exportar-ListaServidoresExcel})
 $btnSalvar.add_Click({Save-Editor})
 $btnCorrigirPeriodo.add_Click({ Corrigir-PeriodoSelecionado })
 $btnNovaFixa.add_Click({ Cadastrar-FeriasFixaManual })
@@ -14806,6 +15973,7 @@ $script:chkPlanejSobreposicao.add_CheckedChanged({ Request-PlanejamentoRefresh }
 $script:txtPlanejBuscaServidor.add_TextChanged({ Request-PlanejamentoRefresh })
 $script:gridPlanejSetor.add_CellDoubleClick({
     param($sender,$e)
+    if($script:PlanejRefreshDirty){return}
     if($e.RowIndex -lt 0 -or $e.ColumnIndex -lt 3 -or $e.ColumnIndex -gt 14){ return }
     $setor=[string]$script:gridPlanejSetor.Rows[$e.RowIndex].Cells["psSetor"].Value
     $periodoLinha=[string]$script:gridPlanejSetor.Rows[$e.RowIndex].Cells["psPeriodo"].Value
@@ -14895,7 +16063,7 @@ $tabs.add_SelectedIndexChanged({
     if($tabs.SelectedTab -eq $tabLanc){
         try {
             $revAtual=[long]$script:LoadedRevision
-            if([long]$script:LancamentosRevisionVista -ne $revAtual){
+            if([long]$script:LancamentosRevisionVista -ne $revAtual -or $script:LancamentosFiltroPendente){
                 $script:tmrGridFilter.Stop()
                 $script:tmrPreviaImpacto.Stop()
                 $matAtual=([string]$script:CurrentMatricula).Trim()
@@ -14924,11 +16092,13 @@ $tabs.add_SelectedIndexChanged({
                     $script:grid.ResumeLayout($true)
                 }
                 $script:LancamentosRevisionVista=$revAtual
+                $script:LancamentosFiltroPendente=$false
             }
         } catch {
             # Nao marcar revisao sincronizada se falhar; a proxima visita tentara novamente.
             Write-DiagLog ('Falha ao sincronizar Lancamentos ao voltar da Central: '+$_.Exception.Message) 'WARN'
         }
+        if($script:PreviaImpactoPendente){$script:PreviaImpactoPendente=$false;Request-PreviaImpacto}
     } elseif($tabs.SelectedTab -eq $tabHistorico){
         if(-not $script:UiLazyLoaded.Historico){ Refresh-HistoricoFeriasUI; $script:UiLazyLoaded.Historico=$true }
     } elseif($tabs.SelectedTab -eq $tabPlanejSetor){
@@ -14996,7 +16166,7 @@ $btnImportarFixas.add_Click({ Importar-FeriasFixas2027 })
 $btnSelecionarHistorico.add_Click({
     $dlg=New-Object Windows.Forms.OpenFileDialog
     $dlg.Filter="Planilha Excel (*.xlsx;*.xlsm)|*.xlsx;*.xlsm"
-    $dlg.Title="Selecionar histórico de férias 2024 a 2026"
+    $dlg.Title="Selecionar histórico de férias"
     if(-not [string]::IsNullOrWhiteSpace([string]$script:Config.planilha_historico_ferias)){ try{$dlg.InitialDirectory=Split-Path -Parent ([string]$script:Config.planilha_historico_ferias)}catch{} }
     if($dlg.ShowDialog() -eq [Windows.Forms.DialogResult]::OK){
         $script:Config.planilha_historico_ferias=$dlg.FileName
@@ -15050,6 +16220,9 @@ Write-DiagLog "FASE 3/5 concluída."
 $script:StartupPhase="AUTO_SYNC"
 Write-DiagLog "FASE 4/5 - sincronização automática será iniciada somente depois que a janela principal estiver visível."
 $script:AutoSyncTimer=$null
+$script:PlanejWarmupTimer=$null
+$script:PlanejWarmupClosed=$false
+$script:PlanejBootSyncPending=$false
 $form.add_Shown({
     if(-not $script:UiLazyLoaded.Painel){
         $tmrBootPainel=New-Object Windows.Forms.Timer
@@ -15057,7 +16230,7 @@ $form.add_Shown({
         $tmrBootPainel.add_Tick({
             param($sender,$eventArgs)
             try { $sender.Stop(); $sender.Dispose() } catch {}
-            if(-not $script:UiLazyLoaded.Painel){
+            if(-not $script:UiLazyLoaded.Painel -and $tabs.SelectedTab -eq $tabDash){
                 Refresh-Dashboard
                 $script:UiLazyLoaded.Painel=$true
             }
@@ -15068,6 +16241,7 @@ $form.add_Shown({
 $form.add_Shown({
     if([bool]$script:Config.sincronizar_ao_abrir -and -not [string]::IsNullOrWhiteSpace([string]$script:Config.planilha_base)){
         if($null -ne $script:lblSyncStatus){ $script:lblSyncStatus.Text="Janela aberta. Sincronização automática será verificada em instantes..." }
+        $script:PlanejBootSyncPending=$true
         $script:AutoSyncTimer=New-Object Windows.Forms.Timer
         $script:AutoSyncTimer.Interval=900
         $script:AutoSyncTimer.add_Tick({
@@ -15075,15 +16249,28 @@ $form.add_Shown({
             $script:AutoSyncTimer=$null
             $script:StartupPhase="AUTO_SYNC_APOS_JANELA"
             Write-DiagLog "Executando sincronização automática após a exibição da janela principal."
-            Sync-FromBase $true
-            $script:StartupPhase="SHOW_DIALOG"
+            try { Sync-FromBase $true } finally {
+                $script:StartupPhase="SHOW_DIALOG"
+                $script:PlanejBootSyncPending=$false
+                Request-PlanejamentoWarmup
+            }
         })
         $script:AutoSyncTimer.Start()
-    }
+    } else { Request-PlanejamentoWarmup }
 })
 $script:StartupPhase="SHOW_DIALOG"
 Write-DiagLog "FASE 5/5 - exibindo janela principal."
+$form.add_FormClosed({
+    $script:PlanejWarmupClosed=$true
+    if($null -ne $script:PlanejWarmupTimer){$script:PlanejWarmupTimer.Stop()}
+    if($null -ne $script:PlanejAsync){
+        $script:PlanejAsync.Closing=$true
+        $script:PlanejAsync.Pending=$null
+        $script:PlanejAsync.Timer.Stop()
+    }
+})
 [void]$form.ShowDialog()
+Stop-PlanejamentoComputation
 $script:StartupPhase="CLOSED"
 Write-DiagLog "Janela principal encerrada normalmente."
 if($script:InstanceMutexOwned -and $null -ne $script:InstanceMutex){

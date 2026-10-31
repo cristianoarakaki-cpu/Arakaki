@@ -1,5 +1,0 @@
-{
-  "versionCode": 16,
-  "versionName": "1.9.4",
-  "notes": "Reconstrução da base Android do Folha PDF+ a partir do Folha original e dos assets 1.9.3. Versão correta no atualizador, recebimento de PDFs e compilação automatizada. Requer validação funcional em aparelho."
-}
