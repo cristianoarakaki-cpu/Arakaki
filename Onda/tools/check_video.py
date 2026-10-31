@@ -8,9 +8,14 @@ def shell(*a):return adb('shell',shlex.join(str(v) for v in a))
 # Always preserve the actual failure screen, including early UI failures.
 import sys
 def on_failure(kind,value,tb):
-    try:
-        nodes();capture('failure-screen')
-        (OUTPUT/'failure-logcat.txt').write_bytes(adb('logcat','-d'))
+    # Capture diagnostics independently: a busy accessibility tree must not hide logs.
+    try:(OUTPUT/'failure-screen.png').write_bytes(adb('exec-out','screencap','-p'))
+    except Exception:pass
+    try:(OUTPUT/'failure-media-session.txt').write_bytes(shell('dumpsys','media_session'))
+    except Exception:pass
+    try:(OUTPUT/'failure-logcat.txt').write_bytes(adb('logcat','-d'))
+    except Exception:pass
+    try:nodes();capture('failure-screen')
     except Exception:pass
     sys.__excepthook__(kind,value,tb)
 sys.excepthook=on_failure
@@ -403,7 +408,14 @@ else:raise AssertionError('Restore did not finish')
 capture('25-backup-restaurado');tap('Voltar do backup')
 menu_action('Menu da biblioteca','Playlists');tap_text('BackupTeste\n1 músicas');tap('Opções da playlist');tap_text('Excluir playlist');tap_text('Excluir');tap('Voltar das playlists')
 menu_action('Menu da biblioteca','Minhas frases');assert locate('Editar frase: meu backup') is not None;tap('Voltar')
-voice('meu backup');assert 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode(),'Restored voice favorite command did not play';voice('pause');voice('remova dos favoritos')
+voice('meu backup')
+# Recognizing the alias and preparing a cold decoder are asynchronous operations.
+restored_until=time.monotonic()+10
+while time.monotonic()<restored_until:
+ if 'PlaybackState {state=3,' in shell('dumpsys','media_session').decode():break
+ time.sleep(.2)
+else:raise AssertionError('Restored voice favorite command did not play within 10 seconds')
+voice('pause');voice('remova dos favoritos')
 menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: meu backup');tap_text('Excluir');tap_text('Excluir');tap('Voltar')
 (OUTPUT/'backup-tests.json').write_text(json.dumps({'export':True,'cancelPreservesData':True,'restorePlaylists':True,'restoreFavorites':True,'restoreVoicePhrases':True,'voiceAddsOnce':True}))
 
