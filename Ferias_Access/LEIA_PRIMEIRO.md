@@ -1,6 +1,8 @@
-# Férias DCE → Access — HIST-R12
+# Férias DCE → Access — HIST-R13
 
-Esta atualização parte do FeriasDCE.ps1 HIST-R11 enviado em 31/10/2026. Mantém a exportação Excel e acrescenta um caminho de importação conferida no Access, com os mesmos 13 campos da tabela apresentada. Não altera o JSON, Dados, Backups, nem o inicializador gráfico existente.
+Correção atual: veja CORRECAO_HIST_R13.md. A coleta de intervalos foi corrigida para Windows PowerShell 5.1; basta substituir o PS1 e gerar os arquivos novamente. O módulo Access não mudou.
+
+O fluxo de importação HIST-R12 parte do FeriasDCE.ps1 HIST-R11 enviado em 31/10/2026. Mantém a exportação Excel e acrescenta um caminho de importação conferida no Access, com os mesmos 13 campos da tabela apresentada. Não altera o JSON, Dados, Backups, nem o inicializador gráfico existente.
 
 ## Instalar
 

@@ -2,7 +2,7 @@
 #requires -PSEdition Desktop
 # Otimizacao CORR-R6: caches puros limitados e eventos/cache da Central corrigidos.
 # Patch SMB: File.Replace com alternativa de renomeacao, sem sobrescrita direta.
-# Férias DCE V1.0.136-R12 — otimização seletiva de retorno às abas; decisões e formulários preservados.
+# Férias DCE V1.0.136-R13 — otimização seletiva de retorno às abas; decisões e formulários preservados.
 # Base V1.0.45 preservada, com validação também na sincronização da planilha de lançamentos.
 $script:AppRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:DataDir = Join-Path $script:AppRoot "Dados"
@@ -45,7 +45,7 @@ function Write-DiagLog {
     }
 }
 
-Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R12 HIST-R12 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
+Write-DiagLog "INÍCIO do FeriasDCE.ps1 V1.0.136-R13 HIST-R13 | PowerShell $($PSVersionTable.PSVersion) | PID=$PID"
 try {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     Add-Type -AssemblyName System.Drawing -ErrorAction Stop
@@ -1264,6 +1264,20 @@ function Exportar-ListaServidoresExcel {
     }catch{[Windows.Forms.MessageBox]::Show(('Não foi possível gerar a lista: '+$_.Exception.Message),'Lista de servidores')|Out-Null}finally{$save.Dispose()}
 }
 
+function Get-DetalheDatasExportacaoAccess($Registro,[int]$Numero,[bool]$Radiologicas){
+    $op=$Registro.("opcao$Numero")
+    $partes=New-Object 'System.Collections.Generic.List[string]'
+    [void]$partes.Add(('Aquisitivo {0} a {1}; opcao aceita {2}; tipo "{3}"' -f [string]$Registro.aquisitivo_inicio,[string]$Registro.aquisitivo_fim,$Numero,[string]$op.tipo))
+    $pares=if($Radiologicas){@([pscustomobject]@{Inicio='fr_inicio';Fim='fr_fim';Rotulo='FR'})}else{@([pscustomobject]@{Inicio='inicio1';Fim='fim1';Rotulo='Periodo 1'},[pscustomobject]@{Inicio='inicio2';Fim='fim2';Rotulo='Periodo 2'})}
+    foreach($par in $pares){
+        $inicio=[string]$op.($par.Inicio);$fim=[string]$op.($par.Fim)
+        $di=Parse-Date $inicio;$df=Parse-Date $fim
+        $duracao=if($null -ne $di -and $null -ne $df){'{0} dias inclusivos' -f (($df-$di).Days+1)}else{'data ausente ou invalida'}
+        [void]$partes.Add(('{0}: inicio="{1}", fim="{2}" ({3})' -f $par.Rotulo,$inicio,$fim,$duracao))
+    }
+    return ($partes.ToArray() -join '; ')
+}
+
 function Get-ExportacaoAceitasAccess {
     $headers=@('Codigo do Servidor','Observação','Periodo Aquisitivo_1','Periodo Aquisitivo_2','Agendar Após','Ferias_30_Inicio','Ferias_30_Final','Ferias_Par_1QIn','Ferias_Par_1QFin','Ferias_Par_2QIn','Ferias_Par_2QFin','Programacao_Ano','Processo_20Dias')
     $cpPorMat=@{}
@@ -1296,16 +1310,17 @@ function Get-ExportacaoAceitasAccess {
             if($null -eq $ai -or $null -eq $af -or $af -lt $ai -or $af -gt [datetime]'9999-12-29'){$motivo='Período aquisitivo inválido'}
             $obs=([string]$r.observacoes).Trim()
             if($obs.Length -gt 255){$motivo='Observação ultrapassa 255 caracteres do campo Texto Curto'}
-            $blocks=if($modalidade -eq 'Comum'){@(Get-BlocosComunsOpcao $r $nc)}else{@(Get-BlocoFROpcao $r $nf)}
+            # Manter ARRAY inclusive com um unico intervalo: PSCustomObject.Count nao existe no Windows PowerShell 5.1.
+            $blocks=@(if($modalidade -eq 'Comum'){Get-BlocosComunsOpcao $r $nc}else{Get-BlocoFROpcao $r $nf})
             $i30=$null;$f30=$null;$i1=$null;$f1=$null;$i2=$null;$f2=$null
             if($modalidade -eq 'FR 20 dias'){
-                if($blocks.Count -ne 1){$motivo='FR aceita sem intervalo válido de 20 dias'}else{$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
+                if($blocks.Count -ne 1){$motivo='FR aceita sem intervalo válido de 20 dias. '+(Get-DetalheDatasExportacaoAccess $r $nf $true)}else{$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
             }else{
                 $op=$r.("opcao$nc");$tipo=([string]$op.tipo -replace ' \+ FR 20 DIAS$','')
                 if($tipo -eq '30 DIAS' -and $blocks.Count -eq 1 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 29){$i30=$blocks[0].inicio;$f30=$blocks[0].fim}
                 elseif($tipo -eq '15+15 DIAS' -and $blocks.Count -eq 2 -and ($blocks[0].fim-$blocks[0].inicio).Days -eq 14 -and ($blocks[1].fim-$blocks[1].inicio).Days -eq 14 -and -not (Test-Overlap $blocks[0].inicio $blocks[0].fim $blocks[1].inicio $blocks[1].fim)){
                     $i1=$blocks[0].inicio;$f1=$blocks[0].fim;$i2=$blocks[1].inicio;$f2=$blocks[1].fim
-                }else{$motivo='Opção aceita sem datas válidas de 30 dias ou 15+15 dias; conferir cadastro'}
+                }else{$motivo='Opção aceita sem datas válidas de 30 dias ou 15+15 dias. '+(Get-DetalheDatasExportacaoAccess $r $nc $false)}
             }
             $audit=[pscustomobject][ordered]@{Matricula=$mat;Nome=[string]$r.nome;CP=($cps -join ' / ');Modalidade=$modalidade;Motivo=$motivo}
             if($motivo){[void]$pendencias.Add($audit);continue}
@@ -7700,7 +7715,7 @@ $script:StartupPhase="BUILD_UI"
 Write-DiagLog "FASE 2/5 - construindo interface principal."
 $form=New-Object Windows.Forms.Form
 Apply-AppBranding $form
-$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R12 | HIST-R12"
+$form.Text="Planejamento de Férias DCE 2027/2028 - V1.0.136-R13 | HIST-R13"
 $form.Size=New-Object Drawing.Size(1320,700); $form.StartPosition="CenterScreen"; $form.MinimumSize=New-Object Drawing.Size(1180,650)
 $form.WindowState=[Windows.Forms.FormWindowState]::Maximized
 Write-DiagLog "V1.0.90: exclusão múltipla segura de servidores na grade de Lançamentos, lista persistente de excluídos para impedir reimportação automática e opção de liberar reimportação. Gravação UNC/SMB e histórico preservados."
@@ -14711,7 +14726,7 @@ function Show-RelatorioConferenciaOpcoes {
     # V1.0.140 - janela organizada em dois blocos fixos (resumo acima + detalhes abaixo),
     # sem sobreposicao visual e com cabecalhos nativos sempre visiveis.
     $dialog=New-Object Windows.Forms.Form
-    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - HIST-R12'
+    $dialog.Text='Conferencia de ferias | opcoes, meses e modalidades - HIST-R13'
     $dialog.Size=New-Object Drawing.Size(1365,910)
     $dialog.MinimumSize=New-Object Drawing.Size(1120,760)
     $dialog.StartPosition='CenterScreen'

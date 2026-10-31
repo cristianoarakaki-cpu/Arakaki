@@ -9,6 +9,26 @@ function Check($name,$actual,$expected){if($actual -cne $expected){throw "$name 
 function New-Employee($mat,$cp){
  [pscustomobject]@{matricula=$mat;nome='TESTE & <SEM DADOS REAIS>';cp_relatorio=$cp;ferias_bloqueadas=$false;opcao_aprovada=1;fr_opcao_aprovada=0;aquisitivo_inicio='2025-01-01';aquisitivo_fim='2025-12-31';observacoes="Observação & <texto> 'aspas'`nsegunda linha";opcao1=[pscustomobject]@{tipo='30 DIAS';inicio1='2027-01-01';fim1='2027-01-30';inicio2='';fim2='';fr_inicio='';fr_fim=''}}
 }
+# Simular explicitamente a ausencia de Count no PSCustomObject do Windows PowerShell 5.1.
+$exportAst=$a.EndBlock.Statements | Where-Object {$_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -eq 'Get-ExportacaoAceitasAccess'}
+$blockAssignment=$exportAst.FindAll({param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -eq '$blocks'},$true)[0]
+Check 'interval assignment keeps outer array expression' ($blockAssignment.Right.Extent.Text.Trim().StartsWith('@(')) $true
+$sim=$exportAst.Extent.Text.Replace('function Get-ExportacaoAceitasAccess {','function Test-ExportacaoCount51 {').Replace('$blocks.Count','$(if($blocks -is [array]){$blocks.Count}else{$null})')
+. ([scriptblock]::Create($sim))
+$script:HistoricoFerias=@()
+foreach($n in 1..3){
+ $case=New-Employee '000001' '1323'
+ if($n -gt 1){$case | Add-Member NoteProperty ("opcao$n") ($case.opcao1 | ConvertTo-Json | ConvertFrom-Json)}
+ $case.opcao_aprovada=$n
+ $case.("opcao$n").inicio1='2027-02-15';$case.("opcao$n").fim1='2027-03-16'
+ $script:Records=@($case);$d=Test-ExportacaoCount51
+ Check 'PS51 modeled single interval with accepted option' $d.Linhas.Count 1
+ Check 'inclusive thirty days across February' $d.Linhas[0].Ferias_30_Final.ToString('yyyy-MM-dd') '2027-03-16'
+}
+$case.opcao3.fim1='2027-03-15';$d=Get-ExportacaoAceitasAccess
+Check 'true invalid interval remains blocked' $d.Linhas.Count 0
+Check 'invalid interval names approved option' ($d.Pendencias[0].Motivo -match 'opcao aceita 3') $true
+Check 'invalid interval includes detected inclusive duration' ($d.Pendencias[0].Motivo -match '29 dias inclusivos') $true
 $script:HistoricoFerias=@();$r=New-Employee '000001' '1323';$script:Records=@($r)
 $d=Get-ExportacaoAceitasAccess
 Check 'approved ordinary row' $d.Linhas.Count 1
@@ -65,6 +85,9 @@ try{
   $script:Records=@($obj.registros);$script:HistoricoFerias=@($obj.historico_ferias)
   $prior=$obj|ConvertTo-Json -Depth 100 -Compress
   $d=Get-ExportacaoAceitasAccess
+  $simulated=Test-ExportacaoCount51
+  Check 'real data Count51 model matches normal valid rows' $simulated.Linhas.Count $d.Linhas.Count
+  Check 'real data Count51 model matches normal pending rows' $simulated.Pendencias.Count $d.Pendencias.Count
   Write-ArquivoImportacaoFeriasAccess (Join-Path $OutputDir 'base-enviada.xml') $d
   Check 'source file unchanged on real data' (Get-FileHash -LiteralPath $RealData -Algorithm SHA256).Hash $hash
   Check 'real source objects unchanged' ($obj|ConvertTo-Json -Depth 100 -Compress) $prior
