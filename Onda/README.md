@@ -1,3 +1,11 @@
+## Onda 0.56.0 — conversão com leitura direta
+
+O conversor local evita copiar o vídeo inteiro para o cache quando o arquivo/provedor permite acesso por posição e leitura pelo MediaExtractor. Mantém o caminho por cópia para provedores incompatíveis. Descritores com início/comprimento são respeitados e fechados ao terminar/cancelar. A saída permanece temporária até a gravação no destino.
+
+**M4A rápido** extrai AAC sem recodificar, preservando os pacotes. **MP3** mantém as taxas 128–320 kbps e a qualidade do LAME; a escrita passa a usar buffer fixo de 256 KiB. Não troca formatos automaticamente nem reduz a qualidade para acelerar. A fonte temporária da preparação é removida antes de gravar a saída no destino. Interface explica quando a extração evita recodificação.
+
+Testes nativos incluem descritores com offset, MP3 igual ao caminho por arquivo, AAC preservado, cancelamento, fechamento de pipe e conversão pelo serviço de vídeo do MediaStore com 32 MiB de preenchimento sem importar a fonte. Não há percentual de ganho ou bateria medido em aparelho físico; a velocidade depende da fonte, aparelho e provedor. Mantém a retirada dos tetos de tamanho/duração de 0.55 e todos os recursos anteriores.
+
 ## Onda 0.55.0 — arquivos grandes
 
 Downloads, extração AAC e conversão local sem os antigos tetos de 512 MB, 30 minutos por arquivo e 2 horas por fila. Buffers fixos, tamanho em 64 bits e verificação de espaço real. É necessário espaço temporário para a fonte e saída; o destino, o site e o Android podem impor suas próprias restrições. Não promete tamanho infinito nem download de qualquer site.

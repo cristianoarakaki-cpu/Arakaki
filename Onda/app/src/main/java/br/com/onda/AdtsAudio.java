@@ -7,7 +7,7 @@ import java.nio.*;
 final class AdtsAudio {
  static final int[] RATES={96000,88200,64000,48000,44100,32000,24000,22050,16000,12000,11025,8000,7350};
  static void extract(File source,File output,DownloadMux.Cancel cancel)throws IOException{
-  MediaExtractor ex=new MediaExtractor();try(OutputStream out=new BufferedOutputStream(new FileOutputStream(output))){
+  MediaExtractor ex=new MediaExtractor();try(OutputStream out=new BufferedOutputStream(new FileOutputStream(output),256*1024)){
    cancel.check();ex.setDataSource(source.getPath());MediaFormat format=null;for(int i=0;i<ex.getTrackCount();i++)if("audio/mp4a-latm".equals(ex.getTrackFormat(i).getString(MediaFormat.KEY_MIME))){format=ex.getTrackFormat(i);ex.selectTrack(i);break;}if(format==null)throw new IOException("Faixa AAC indisponível neste arquivo.");
    int rate=format.getInteger(MediaFormat.KEY_SAMPLE_RATE),channels=format.getInteger(MediaFormat.KEY_CHANNEL_COUNT),index=-1;for(int i=0;i<RATES.length;i++)if(RATES[i]==rate)index=i;
    ByteBuffer csd=format.getByteBuffer("csd-0");if(csd==null||csd.remaining()<2)throw new IOException("Configuração AAC indisponível.");ByteBuffer config=csd.duplicate();int a=config.get()&255,b=config.get()&255,profile=a>>3,frequency=((a&7)<<1)|(b>>7),channelConfig=(b>>3)&15;

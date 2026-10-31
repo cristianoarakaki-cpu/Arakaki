@@ -11,11 +11,12 @@ final class Mp3Converter {
  private static native int encode(long handle,short[] pcm,int frames,byte[] bytes,int channels)throws IOException;
  private static native int flush(long handle,byte[] bytes)throws IOException;
  private static native void close(long handle);
- static void convert(File source,File output,int bitrate,DownloadMux.Cancel cancel)throws IOException {
+ static void convert(File source,File output,int bitrate,DownloadMux.Cancel cancel)throws IOException {convertInput(MediaInput.file(source),output,bitrate,cancel);}
+ static void convertInput(MediaInput source,File output,int bitrate,DownloadMux.Cancel cancel)throws IOException {
   if(!Mp3Quality.valid(bitrate))throw new IOException("Qualidade MP3 inválida");
   MediaExtractor ex=new MediaExtractor();MediaCodec decoder=null;long encoder=0;boolean started=false;
-  try(OutputStream out=new FileOutputStream(output)){
-   ex.setDataSource(source.getPath());int track=AudioTracks.select(ex);MediaFormat format=ex.getTrackFormat(track);ex.selectTrack(track);
+  try(OutputStream out=new BufferedOutputStream(new FileOutputStream(output),256*1024)){
+   source.bind(ex);int track=AudioTracks.select(ex);MediaFormat format=ex.getTrackFormat(track);ex.selectTrack(track);
    if("audio/raw".equals(format.getString(MediaFormat.KEY_MIME))){
     int channels=format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);encoder=open(format.getInteger(MediaFormat.KEY_SAMPLE_RATE),channels,bitrate);
     ByteBuffer raw=ByteBuffer.allocate(65536).order(ByteOrder.LITTLE_ENDIAN);short[] pcm=new short[32768];byte[] bytes=new byte[32768];

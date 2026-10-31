@@ -29,7 +29,21 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — downloads grandes e playlists sem corte fixo
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — conversão com leitura direta
+
+Conversor local: para arquivos que oferecem acesso por posição e são reconhecidos pelo Android, lê o áudio diretamente pelo descritor autorizado, sem copiar o vídeo inteiro para o cache antes de converter. Respeita início e comprimento dos descritores que representam apenas um trecho de arquivo. O descritor fica aberto apenas durante a conversão e fecha ao concluir ou cancelar. Se o provedor não oferecer leitura direta utilizável, mantém a preparação por cópia e o caminho de conversão anterior. Não inclui novo acesso a arquivos nem nova permissão.
+
+M4A rápido, quando a fonte tem AAC, remonta a faixa de áudio sem recodificação, preservando os pacotes e a compatibilidade anterior com AAC multicanal. MP3 continua decodificando e codificando com LAME, nas mesmas opções de 128, 192, 256 e 320 kbps e mesma qualidade do codificador. A escolha de formato permanece explícita. O botão e a explicação do conversor destacam M4A como opção que evita recodificar; outras fontes mantêm M4A desativado quando incompatíveis.
+
+MP3 agrupa as pequenas gravações em um buffer fixo de 256 KiB; AAC ADTS também usa buffer de 256 KiB. A cópia de preparação e gravação final da conversão usam blocos fixos de 256 KiB. Retira uma análise redundante antes de abrir o conversor, mantendo a validação no extrator/codificador. A fonte temporária do caminho de cópia é liberada depois da conversão, antes de gravar o resultado no destino. Mantém originais, cancelamento, taxa escolhida, pastas, histórico e limpeza de saídas incompletas. Não reduz qualidade para simular ganho de velocidade, não troca MP3 por outro formato automaticamente e não adiciona API paga.
+
+Validação nativa dedicada: descritor com início/comprimento dentro de arquivo maior; MP3 idêntico byte a byte ao caminho por arquivo para a mesma fonte e configuração; pacotes AAC preservados em M4A; áudio MP3 realmente decodificável; rejeição de pipe para leitura direta e fechamento de recursos; cópia de preparação preservada e cancelamento. Um vídeo real no MediaStore com bloco livre adicional de 32 MiB é convertido pelo serviço para M4A e MP3 sem importar bytes da fonte para o cache, e o original permanece disponível. A suíte anterior e a atualização sem desinstalar continuam obrigatórias.
+
+A melhoria elimina trabalho de preparação e reduz pequenas gravações. Não promete porcentagem de velocidade ou bateria, nem tempo fixo em aparelho físico. MP3 continua exigindo processamento; velocidade depende do aparelho, da fonte e do provedor. A saída ainda é preparada em arquivo temporário e depois salva no destino. Provedores em nuvem ou incompatíveis com acesso direto podem exigir a cópia inicial. M4A sem recodificação só vale para AAC.
+
+Mantém os avanços de 0.55.0: downloads e conversões sem os antigos tetos de 512 MB, 30 minutos por arquivo e 2 horas por fila; paginação explícita de playlists sem o corte de 100/50 faixas, arquivos grandes e seleção fora do Binder; preserva a verificação de espaço livre e as restrições próprias do Android, do destino e dos sites. Mantém todos os demais recursos. Instale sobre a versão atual, sem desinstalar.
+
+Recursos anteriores — arquivos grandes e playlists sem corte fixo
 
 Retira os tetos anteriores de 512 MB por arquivo, 30 minutos por arquivo e 2 horas por fila no download, extração AAC e conversor local. A transferência usa buffers fixos e contadores de 64 bits, sem carregar o arquivo inteiro na memória. Mantém reconexões HTTP Range validadas, cancelamento, limpeza de temporários/saídas incompletas e arquivos concluídos. Retira também o teto global de 512 requisições de partes, que poderia interromper arquivos grandes. Prazos de conexão/leitura e detecção de decoder travado continuam sendo tratamento de falhas de comunicação, não limite de duração da mídia.
 

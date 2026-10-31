@@ -8,13 +8,15 @@ import java.util.*;
 /** Remux compatible AAC/H.264 tracks without re-encoding or degrading quality. */
 final class DownloadMux {
  interface Cancel {void check()throws IOException;}
- static void merge(File first,File second,File output,boolean audioOnly,Cancel cancel)throws IOException {
+ static void merge(File first,File second,File output,boolean audioOnly,Cancel cancel)throws IOException {mergeSources(first==null?null:MediaInput.file(first),second==null?null:MediaInput.file(second),output,audioOnly,cancel);}
+ static void extract(MediaInput source,File output,Cancel cancel)throws IOException{mergeSources(source,null,output,true,cancel);}
+ private static void mergeSources(MediaInput first,MediaInput second,File output,boolean audioOnly,Cancel cancel)throws IOException {
   List<MediaExtractor> readers=new ArrayList<>();MediaMuxer mux=null;boolean started=false;
   try{
    mux=new MediaMuxer(output.getPath(),MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
    List<Map<Integer,Integer>> maps=new ArrayList<>();boolean audio=false,video=false;
-   for(File file:new File[]{first,second}){
-    if(file==null)continue;MediaExtractor ex=new MediaExtractor();readers.add(ex);ex.setDataSource(file.getPath());int chosen=-1;Map<Integer,Integer> map=new HashMap<>();maps.add(map);
+   for(MediaInput file:new MediaInput[]{first,second}){
+    if(file==null)continue;MediaExtractor ex=new MediaExtractor();readers.add(ex);file.bind(ex);int chosen=-1;Map<Integer,Integer> map=new HashMap<>();maps.add(map);
     for(int i=0;i<ex.getTrackCount();i++){
      MediaFormat format=ex.getTrackFormat(i);String mime=format.getString(MediaFormat.KEY_MIME);
      boolean takeAudio="audio/mp4a-latm".equals(mime)&&!audio;

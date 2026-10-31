@@ -81,7 +81,7 @@ try:
   if any('Áudio AAC compatível' in n.attrib.get('text','') for n in nodes()):break
   time.sleep(.3)
  else:raise AssertionError('Local AAC inspection did not complete')
- capture('76-conversor-local');tap('Extrair M4A • sem recodificar');tap('Salvar na pasta Onda')
+ capture('76-conversor-local');tap('M4A rápido • sem recodificar');tap('Salvar na pasta Onda')
  until=time.monotonic()+60
  while time.monotonic()<until:
   time.sleep(.3);conversion=prefs('downloads').get('status','')
