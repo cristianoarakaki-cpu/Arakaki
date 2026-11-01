@@ -31,6 +31,8 @@ audio=Path('/tmp/Onda-Audio.mp3')
 subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(fixture),'-vn','-c:a','libmp3lame','-b:a','64k','-metadata','title=Onda-Audio','-metadata','artist=Onda Sessions',str(audio)],check=True,timeout=90)
 adb('push',str(audio),'/sdcard/Music/OndaDemo/Onda-Audio.mp3');shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Music/OndaDemo/Onda-Audio.mp3')
 adb('push',str(fixture),'/sdcard/Movies/OndaDemo/Onda-Background.mp4');shell('am','broadcast','-a','android.intent.action.MEDIA_SCANNER_SCAN_FILE','-d','file:///sdcard/Movies/OndaDemo/Onda-Background.mp4');time.sleep(1)
+old_trace=shell('getprop','log.tag.OndaVideoBg').decode().strip()
+shell('setprop','log.tag.OndaVideoBg','DEBUG')
 try:
  shell('am','force-stop',P);adb('logcat','-c')
  open_file(media('audio','Onda-Audio.mp3'),'audio/mpeg')
@@ -89,4 +91,5 @@ try:
 except Exception:
  (OUT/'open-background-logcat.txt').write_bytes(adb('logcat','-d'));(OUT/'open-background-failure.png').write_bytes(adb('exec-out','screencap','-p'));raise
 finally:
+ shell('setprop','log.tag.OndaVideoBg',old_trace)
  shell('input','keyevent','224');shell('wm','dismiss-keyguard');shell('am','force-stop',P)

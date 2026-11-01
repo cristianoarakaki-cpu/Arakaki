@@ -33,12 +33,12 @@ public class LyricsActivity extends Activity {
     private long manualUntil = 0;
     private boolean durationKnown = false;
     private boolean screenStarted = false;
-    private int lastScrolled = -1;
+    private int lastScrolled = -1;private long lyricUpdates;
     private final Runnable tick = new Runnable() { public void run() {
-        if (!screenStarted) return;
+        if (!screenStarted) return;lyricUpdates++;
         if (player != null) {
             followSong();
-            play.setText(player.isPlaying() ? "Pausar" : "Reproduzir");
+            String action=player.isPlaying()?"Pausar":"Reproduzir";if(!action.contentEquals(play.getText()))play.setText(action);
             int index = Lrc.active(lines, player.getCurrentPosition());
             if (index != highlighted) {
                 if (highlighted >= 0 && highlighted < labels.size()) style(labels.get(highlighted), false);
@@ -51,7 +51,7 @@ public class LyricsActivity extends Activity {
                 if (Math.abs(scroll.getScrollY() - target) > dp(8)) scroll.smoothScrollTo(0, target);
             }
         }
-        if (player != null && player.isPlaying()) handler.postDelayed(this, 500);
+        if(player!=null&&player.isPlaying()){long delay=PowerPolicy.lyricDelay(lines,highlighted,player.getCurrentPosition(),player.getPlaybackParameters().speed,manualUntil-SystemClock.uptimeMillis(),highlighted>=0&&lastScrolled!=highlighted);if(delay>=0)handler.postDelayed(this,delay);}
     }};
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -65,7 +65,7 @@ public class LyricsActivity extends Activity {
         artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(Ui.MUTED);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");Ui.input(artist);searchFields.addView(artist,new LinearLayout.LayoutParams(0,dp(52),1));
         Button search=button("Buscar letra",v->load());LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,dp(48));searchParams.topMargin=dp(8);root.addView(search,searchParams);
         scroll = new ScrollView(this);linesView = column();scroll.addView(linesView);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;return false;});
+        scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;if(e.getActionMasked()==android.view.MotionEvent.ACTION_UP||e.getActionMasked()==android.view.MotionEvent.ACTION_CANCEL)restartTick();return false;});
         play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});Ui.primary(play);root.addView(play);
         root.addView(text("Letras: LRCLIB • título e artista são enviados para buscar.\nA disponibilidade e a sincronização variam por música.",11,Ui.MUTED));
         connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
