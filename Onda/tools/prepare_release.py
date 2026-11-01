@@ -29,7 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — remover a aba Sites
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — tela cheia no YouTube
+
+Corrige a ausência de suporte à tela cheia do player HTML do YouTube. Ao solicitar tela cheia pelo controle do vídeo, o Onda oculta cabeçalho, busca, favoritos, abas e botão de download, apresenta o player em paisagem e esconde as barras do sistema. Voltar ou sair da tela cheia restaura a interface e a orientação anterior sem recarregar o navegador. A rotação mantém a mesma WebView. Ao sair do aplicativo, libera a visualização e mantém a pausa/encerramento do navegador em segundo plano. O bloqueio de tela acesa é restaurado ao sair da tela cheia.
+
+Mantém Links e YouTube, sem a aba Sites. Downloads, compartilhamento, favoritos, voz, proteção de anúncios e melhorias de bateria são preservados. A disponibilidade dos controles e dos vídeos continua dependendo do YouTube. Testes Android verificam um pedido real de tela cheia feito por gesto em um vídeo HTML de teste, retorno pelo botão Voltar, rotação sem recriar a WebView e liberação ao sair da tela.
+
+Recursos anteriores preservados
+
+Onda Música {version_name} — remover a aba Sites
 
 Retira a aba Sites e o navegador de TikTok, Instagram e Facebook, incluindo a Activity, o registro no manifesto e os auxiliares exclusivos dessa tela. Downloads volta a exibir somente Links e YouTube.
 
