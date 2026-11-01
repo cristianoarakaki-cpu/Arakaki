@@ -32,7 +32,7 @@
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".IptvActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".IptvPlayerActivity" android:exported="false" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" />
-        <activity android:name=".YouTubeActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".YouTubeActivity" android:enableOnBackInvokedCallback="true" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".YouTubeFavoritesActivity" android:exported="false" />
         <activity android:name=".AppearanceActivity" android:exported="false" />
         <activity android:name=".DeleteMediaActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />

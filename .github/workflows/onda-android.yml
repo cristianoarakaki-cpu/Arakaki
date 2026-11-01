@@ -172,6 +172,7 @@ jobs:
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             mkdir -p Onda/ui-preview
+            adb shell settings put secure immersive_mode_confirmations confirmed
             adb logcat -c
             adb logcat -v threadtime > /tmp/onda-android35-logcat.txt 2>&1 &
             adb shell am instrument -w -e skip_fullscreen_capture true -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }

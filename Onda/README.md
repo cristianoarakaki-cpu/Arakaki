@@ -1,3 +1,9 @@
+## Onda 0.63.1 — Voltar da tela cheia no Android recente
+
+Registra o retorno da tela cheia do YouTube também no dispatcher de Voltar do Android 13 ou mais recente, com prioridade durante a visualização. Remove o callback ao sair, pausar ou destruir a tela. Preserva o tratamento tradicional para Android anteriores, a mesma WebView na rotação, a orientação anterior e os controles do Onda. Os testes validam vídeo HTML realmente avançando, saída por Voltar e liberação do estado de tela cheia no Android 10 e 15; a captura opcional de imagem é desativada somente no emulador Android 15 devido à falha do ambiente durante a captura.
+
+Mantém o suporte IPTV M3U/M3U8, a aba Sites removida e os demais recursos da 0.63.0. O app não fornece canais ou assinatura; importe sua lista quando tiver uma. Mesmo pacote e assinatura para atualizar sem desinstalar.
+
 ## Onda 0.63.0 — listas IPTV e tela cheia do YouTube
 
 Menu da biblioteca ou dos vídeos → IPTV. Importa uma lista M3U/M3U8 por arquivo ou link HTTPS, mantém uma cópia privada para reabrir, permite buscar canais e filtrar grupos. Atualização somente manual. Não fornece lista, assinatura ou canais. Aceita endereços de transmissão HTTP/HTTPS; links de listas sem HTTPS precisam ser importados por arquivo. Listas HLS por HTTPS são tratadas como uma transmissão, sem mostrar os segmentos como canais. Sem Xtream Codes nesta edição.
