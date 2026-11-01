@@ -154,13 +154,14 @@ jobs:
         with:
           api-level: 35
           avd-name: onda-delete-35
+          ram-size: 2048M
           disk-size: 2048M
           target: google_apis
           arch: x86_64
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none -no-snapshot-save
           script: |
             adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
@@ -171,7 +172,7 @@ jobs:
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             mkdir -p Onda/ui-preview
-            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt
+            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
             cat /tmp/onda-youtube-fullscreen-35-tests.txt
             for part in video lifecycle failure; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-35-$part.json" || true; done
             adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen-35.png || true
