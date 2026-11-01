@@ -140,6 +140,12 @@ jobs:
               wav.writeframes(tone+b'\x00'*16000*2*8+tone*3)
           PYVOICE
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
+      - name: Liberar espaço do servidor para os emuladores
+        run: |
+          # All ARM and x86_64 compilation has finished. These are runner-only toolchains.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          rm -rf "$ANDROID_SDK_ROOT/ndk" "$ANDROID_SDK_ROOT/cmake"
+          df -h /
       - name: Habilitar aceleração do emulador
         run: sudo chmod 666 /dev/kvm
       - name: Conferir exclusão no Android 15
@@ -346,6 +352,8 @@ jobs:
             /tmp/onda-fast-conversion-tests.txt
             /tmp/onda-share-tests.txt
             /tmp/onda-share-shortcuts-tests.txt
+            /tmp/onda-power-tests.txt
+            /tmp/onda-video-share-tests.txt
             /tmp/onda-youtube-recovery-tests.txt
             /tmp/onda-delete-29-tests.txt
             /tmp/onda-youtube-favorites-tests.txt
