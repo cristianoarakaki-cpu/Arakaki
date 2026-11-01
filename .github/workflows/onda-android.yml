@@ -170,6 +170,14 @@ jobs:
             cat /tmp/onda-delete-35-tests.txt
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
+            mkdir -p Onda/ui-preview
+            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt
+            cat /tmp/onda-youtube-fullscreen-35-tests.txt
+            for part in video lifecycle failure; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-35-$part.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen-35.png || true
+            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-35-failure.png || true
+            python -c 's=open("/tmp/onda-youtube-fullscreen-35-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
       - name: Liberar disco após o Android 15
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" delete avd --name onda-delete-35
@@ -369,6 +377,7 @@ jobs:
             /tmp/onda-power-tests.txt
             /tmp/onda-video-share-tests.txt
             /tmp/onda-youtube-fullscreen-tests.txt
+            /tmp/onda-youtube-fullscreen-35-tests.txt
             /tmp/onda-iptv-tests.txt
             /tmp/onda-youtube-recovery-tests.txt
             /tmp/onda-delete-29-tests.txt
