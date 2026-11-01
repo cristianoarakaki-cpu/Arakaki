@@ -1,3 +1,15 @@
+## Onda 0.57.0 — TikTok, conversão direta e compartilhamento
+
+**YouTube:** a exigência de confirmação de robô passa a oferecer ações para abrir o conteúdo oficial e retomar a seleção no Onda. A confirmação é feita pelo serviço e a análise independente pode continuar restrita; isso não garante desbloqueio automático. Não reutiliza cookies da conta nem resolve CAPTCHA. A disponibilidade da playlist informada é registrada separadamente nos testes.
+
+**Compartilhar:** segure uma música ou vídeo → Compartilhar, ou use o menu para o item atual. O Android mostra WhatsApp e outros aplicativos instalados; o usuário confirma o destino/envio. Arquivos content:// usam concessão temporária somente de leitura; file:// usa cópia temporária em provedor privado restrito à pasta `cache/shares`. Links online são compartilhados como texto. Originais preservados, sem destinatário automático ou nova permissão. Os aplicativos de destino podem ter seus próprios limites.
+
+A sessão anônima recebida da página do TikTok agora acompanha a verificação do MP4 e a transferência/conversão. Cookies respeitam domínio, caminho, HTTPS e expiração; não vêm da conta/WebView do usuário nem são persistidos no histórico. Isso corrige uma causa reproduzida no link fornecido: HTTP 403 sem sessão e arquivo MP4 válido com a mesma sessão mantida.
+
+O código Java corrigido baixou o arquivo completo de **9.767.322 bytes**, SHA-256 `88b4f356b5eb8295912b7c220b42f3ea692b2f187d71c5fd998d654cd3f9045e`; inspeção confirmou H.264, AAC estéreo e cerca de 32,93 segundos. O arquivo do usuário não é publicado no repositório/APK. Esse teste comprova o link e a rede utilizados, sem garantir todo conteúdo do TikTok ou Instagram.
+
+Fallback de Range rejeitado para um GET normal, alternativas de mídia preservadas, fonte `video.download.url`, encaminhamento HTML curto oficial e passagem interna validada da sessão. Continua sem login, solução de verificações, DRM, servidor externo ou API paga. Instagram permanece sujeito ao analisador genérico de mídia declarada. Mantém conversão local com leitura direta e os downloads sem os antigos tetos de tamanho/duração.
+
 ## Onda 0.56.0 — conversão com leitura direta
 
 O conversor local evita copiar o vídeo inteiro para o cache quando o arquivo/provedor permite acesso por posição e leitura pelo MediaExtractor. Mantém o caminho por cópia para provedores incompatíveis. Descritores com início/comprimento são respeitados e fechados ao terminar/cancelar. A saída permanece temporária até a gravação no destino.

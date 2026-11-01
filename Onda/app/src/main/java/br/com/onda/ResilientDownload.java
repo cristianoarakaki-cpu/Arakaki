@@ -11,6 +11,7 @@ final class ResilientDownload {
   void check()throws IOException;
   default void size(long expected,long stored)throws IOException{}
   void opened(HttpURLConnection connection);
+  default void response(HttpURLConnection connection)throws IOException{}
   void closed(HttpURLConnection connection);
   void bytes(int count,long stored,long expected)throws IOException;
   void retry(int number,long stored)throws IOException;
@@ -32,17 +33,18 @@ final class ResilientDownload {
   return network||e instanceof Changed||(e instanceof HttpFailure&&(((HttpFailure)e).status==408||((HttpFailure)e).status==500||((HttpFailure)e).status==502||((HttpFailure)e).status==503||((HttpFailure)e).status==504));
  }
  static void fetch(String link,File target,long maxBytes,String agent,Control control)throws IOException {fetch(link,target,maxBytes,agent,control,"");}
- static void fetch(String link,File target,long maxBytes,String agent,Control control,String referer)throws IOException {fetch(link,target,maxBytes,agent,control,url->{HttpURLConnection c=PublicMediaHttp.open(url);if(referer!=null&&!referer.isEmpty()){try{c.setRequestProperty("Referer",MediaLinks.referer(referer));}catch(Exception e){c.disconnect();throw new IOException("Origem do vídeo inválida",e);}}return c;},Thread::sleep);}
+ static void fetch(String link,File target,long maxBytes,String agent,Control control,String referer)throws IOException {fetch(link,target,maxBytes,agent,control,referer,null);}
+ static void fetch(String link,File target,long maxBytes,String agent,Control control,String referer,MediaSession session)throws IOException {fetch(link,target,maxBytes,agent,control,url->{HttpURLConnection c=PublicMediaHttp.open(url);if(session!=null){String cookie=session.header(url.toString());if(!cookie.isEmpty())c.setRequestProperty("Cookie",cookie);}if(referer!=null&&!referer.isEmpty()){try{c.setRequestProperty("Referer",MediaLinks.referer(referer));}catch(Exception e){c.disconnect();throw new IOException("Origem do vídeo inválida",e);}}return c;},Thread::sleep);}
  static void fetch(String link,File target,long maxBytes,String agent,Control control,Factory factory,Sleeper sleeper)throws IOException {
   URL initial=new URL(link);https(initial);if(maxBytes<=0)throw new IOException("Limite de tamanho atingido");
-  try(RandomAccessFile fresh=new RandomAccessFile(target,"rw")){fresh.setLength(0);}long expected=-1;String validator=null;boolean useEtag=false;int failures=0;
+  try(RandomAccessFile fresh=new RandomAccessFile(target,"rw")){fresh.setLength(0);}long expected=-1;String validator=null;boolean useEtag=false,useRanges=true;int failures=0;
   while(true){control.check();long offset=target.length();if(expected>0&&offset==expected)return;if(offset>=maxBytes)throw new IOException("Limite de tamanho atingido");long end=Math.min(maxBytes-1,offset+Math.min(CHUNK,maxBytes-offset)-1);HttpURLConnection c=null;
    try{
     URL url=initial;int redirects=0;
-    while(true){control.check();https(url);c=factory.open(url);control.opened(c);c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent",agent);c.setRequestProperty("Accept-Encoding","identity");c.setRequestProperty("Connection","close");c.setRequestProperty("Range","bytes="+offset+"-"+end);if(offset>0&&validator!=null)c.setRequestProperty("If-Range",validator);
-     int status=c.getResponseCode();if(status==301||status==302||status==303||status==307||status==308){String location=c.getHeaderField("Location");if(location==null||++redirects>3)throw new ProtocolException("Redirecionamento inválido");URL next=new URL(url,location);https(next);control.closed(c);c.disconnect();c=null;url=next;continue;}break;
+    while(true){control.check();https(url);c=factory.open(url);control.opened(c);c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent",agent);c.setRequestProperty("Accept-Encoding","identity");c.setRequestProperty("Connection","close");if(useRanges)c.setRequestProperty("Range","bytes="+offset+"-"+end);if(useRanges&&offset>0&&validator!=null)c.setRequestProperty("If-Range",validator);
+     int status=c.getResponseCode();control.response(c);if(status==301||status==302||status==303||status==307||status==308){String location=c.getHeaderField("Location");if(location==null||++redirects>3)throw new ProtocolException("Redirecionamento inválido");URL next=new URL(url,location);https(next);control.closed(c);c.disconnect();c=null;url=next;continue;}break;
     }
-    int code=c.getResponseCode();if(code!=200&&code!=206)throw new HttpFailure(code);String encoding=c.getHeaderField("Content-Encoding");if(encoding!=null&&!encoding.isEmpty()&&!"identity".equalsIgnoreCase(encoding))throw new ProtocolException("Resposta comprimida incompatível com continuação");
+    int code=c.getResponseCode();if(useRanges&&(code==403||code==416)){useRanges=false;continue;}if(code!=200&&code!=206)throw new HttpFailure(code);String encoding=c.getHeaderField("Content-Encoding");if(encoding!=null&&!encoding.isEmpty()&&!"identity".equalsIgnoreCase(encoding))throw new ProtocolException("Resposta comprimida incompatível com continuação");
     String etag=c.getHeaderField("ETag");if(etag!=null&&etag.startsWith("W/"))etag=null;String modified=c.getHeaderField("Last-Modified");String current=offset>0&&validator!=null?(useEtag?etag:modified):(etag!=null?etag:modified);long responseLength=c.getContentLengthLong(),wanted;
     if(code==206){Range part=range(c.getHeaderField("Content-Range"));if(part.start!=offset||part.end>end)throw new ProtocolException("Servidor retornou bytes diferentes dos solicitados");if(part.total>maxBytes)throw new IOException("Arquivo excede o limite de tamanho");if((expected>0&&part.total!=expected)||(offset>0&&validator!=null&&current!=null&&!validator.equals(current)))throw new Changed();expected=part.total;wanted=part.end-part.start+1;if(responseLength>=0&&responseLength!=wanted)throw new ProtocolException("Tamanho da resposta incompatível com a faixa solicitada");}
     else{offset=0;expected=responseLength;wanted=responseLength;if(expected==0)throw new IOException("O servidor retornou um arquivo vazio");if(expected>maxBytes)throw new IOException("Arquivo excede o limite de tamanho");}
