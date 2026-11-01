@@ -4,6 +4,7 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
 /** A completed local MP4 is handed to Android, never a CDN URL or partial file. */
+@androidx.media3.common.util.UnstableApi
 final class VideoShare {
  static final String EXTRA="share_video_source",REQUEST="share_video_request",READY="share_video_ready_request";
  static String source(String raw){try{if(MediaLinks.isYoutube(raw)){String video=YouTubeShare.video(raw);if(!video.isEmpty())return video;}return MediaLinks.resolve(raw);}catch(Exception e){return "";}}
