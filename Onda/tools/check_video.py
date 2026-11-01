@@ -131,8 +131,11 @@ assert any('2 músicas • 2 disponíveis' in n.attrib.get('text','') for n in n
 tap_text('1. DJ-2\nDJ Artist 2');tap_text('Mover para baixo')
 assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
 tap('Opções da playlist');tap_text('Renomear')
-# The name field already owns focus. Tapping the existing word opens Android's
-# spelling suggestions over the dialog; append at the end using the keyboard.
+# Focus the empty right edge rather than the existing word: Android's spell
+# checker can otherwise open a suggestion popup over the Save button.
+name_field=locate('Nome da playlist')
+x1,y1,x2,y2=[int(x) for x in re.findall(r'\d+',name_field.attrib['bounds'])]
+shell('input','tap',x2-12,(y1+y2)//2);time.sleep(.5)
 assert locate('Nome da playlist').attrib.get('focused')=='true','Rename field should own keyboard focus'
 shell('input','keyevent','123');shell('input','text','Editada');tap_text('Salvar')
 assert any(n.attrib.get('text')=='TesteOndaEditada' for n in nodes()),'Renamed playlist not displayed'
