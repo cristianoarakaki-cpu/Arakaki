@@ -155,6 +155,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          # Pin the API35 test runtime: emulator 37.2.13 exits in WebView surface transitions.
+          emulator-build: 12414864
           avd-name: onda-delete-35
           ram-size: 2048M
           disk-size: 2048M
