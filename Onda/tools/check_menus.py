@@ -35,19 +35,30 @@ try:
   assert bounds(close)[1]>=bounds(listing)[3], 'Close button must remain outside the scrolling list'
   for _ in range(18):
    ns=nodes();listing=next(n for n in ns if n.attrib.get('content-desc')=='Opções do menu')
-   last=next((n for n in ns if n.attrib.get('text')=='Minhas frases'),None)
+   last=next((n for n in ns if n.attrib.get('text')=='Compartilhar música atual'),None)
    if last is not None and bounds(last)[3]-bounds(last)[1]>=int(48*density)-2:break
    left,top,right,bottom=bounds(listing);x=(left+right)//2
    shell('input','swipe',x,top+int((bottom-top)*.9),x,top+int((bottom-top)*.1),250);time.sleep(.2)
   else:raise AssertionError('Last menu item not fully reachable on '+name)
-  capture('00-menu-'+name+'-fim');tap(last)
+  capture('00-menu-'+name+'-fim')
+  # Sharing is now the last action. Also reach and open the preceding voice screen;
+  # at the bottom of a short landscape viewport that preceding row can be clipped.
+  for _ in range(6):
+   ns=nodes();listing=next(n for n in ns if n.attrib.get('content-desc')=='Opções do menu')
+   voice=next((n for n in ns if n.attrib.get('text')=='Minhas frases'),None)
+   left,top,right,bottom=bounds(listing)
+   if voice is not None and bounds(voice)[1]>=top and bounds(voice)[3]<=bottom and bounds(voice)[3]-bounds(voice)[1]>=int(48*density)-2:break
+   x=(left+right)//2
+   shell('input','swipe',x,top+int((bottom-top)*.2),x,top+int((bottom-top)*.6),250);time.sleep(.2)
+  else:raise AssertionError('Voice phrases item not fully reachable on '+name)
+  tap(voice)
   assert find('Adicionar frase de voz') is not None, 'Last item must open its actual screen'
   shell('input','keyevent','4');time.sleep(.3);tap(find('Menu da biblioteca'))
   tap(next(n for n in nodes() if n.attrib.get('resource-id')=='android:id/button2'))
   assert not any(n.attrib.get('content-desc')=='Opções do menu' for n in nodes()),'Close did not dismiss menu'
   tap(find('Menu da biblioteca'));shell('input','keyevent','4');time.sleep(.3)
   assert not any(n.attrib.get('content-desc')=='Opções do menu' for n in nodes()),'Back did not dismiss menu'
-  results.append({'layout':name,'size':size,'fontScale':float(font),'lastItemReachable':True,'lastItemOpensScreen':True,'fixedClose':True,'backDismisses':True})
+  results.append({'layout':name,'size':size,'fontScale':float(font),'lastItemReachable':True,'voiceItemOpensScreen':True,'lastItem':'Compartilhar música atual','fixedClose':True,'backDismisses':True})
  print('Bounded menus passed: small portrait with large font, landscape, last item, fixed close and Back.')
 except Exception:
  try:nodes();capture('00-menu-failure');(OUT/'menu-failure-logcat.txt').write_bytes(adb('logcat','-d'))
