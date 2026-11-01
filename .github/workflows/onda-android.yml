@@ -121,6 +121,8 @@ jobs:
           def run(*args): subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",*args],check=True,timeout=90)
           run("-f","lavfi","-i","color=c=blue:s=320x180:r=15","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","3","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"combined.mp4"))
           run("-i",str(root/"combined.mp4"),"-an","-c:v","copy",str(root/"video.mp4"))
+          # VP8 exercises real WebView playback without the emulator host H.264 decoder.
+          run("-i",str(root/"combined.mp4"),"-c:v","libvpx","-b:v","200k","-c:a","libvorbis",str(root/"fullscreen.webm"))
           run("-f","lavfi","-i","color=c=blue:s=160x90:r=1","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","25","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"power-background.mp4"))
           run("-i",str(root/"power-background.mp4"),"-c","copy","-f","mpegts",str(root/"iptv-channel.ts"))
           run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
@@ -173,9 +175,10 @@ jobs:
             adb shell am force-stop br.com.onda.musica
             mkdir -p Onda/ui-preview
             adb shell settings put secure immersive_mode_confirmations confirmed
+            adb shell 'echo "_ --disable-accelerated-video-decode" > /data/local/tmp/webview-command-line'
             adb logcat -c
             adb logcat -v threadtime > /tmp/onda-android35-logcat.txt 2>&1 &
-            adb shell am instrument -w -e skip_fullscreen_capture true -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
+            adb shell am instrument -w -e skip_fullscreen_capture true -e fullscreen_webm true -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
             cat /tmp/onda-youtube-fullscreen-35-tests.txt
             for part in video lifecycle failure; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-35-$part.json" || true; done
             adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen-35.png || true
