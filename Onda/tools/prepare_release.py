@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — tela cheia no YouTube
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — listas IPTV e tela cheia do YouTube
+
+Menu da biblioteca ou dos vídeos → IPTV. Importa uma lista M3U/M3U8 por arquivo ou link HTTPS, mantém uma cópia privada para reabrir, permite buscar canais e filtrar grupos. Atualização somente manual. Não fornece lista, assinatura ou canais. Aceita endereços de transmissão HTTP/HTTPS; links de listas sem HTTPS precisam ser importados por arquivo. Listas HLS por HTTPS são tratadas como uma transmissão, sem mostrar os segmentos como canais. Sem Xtream Codes nesta edição.
+
+Player IPTV nativo com LibVLC já incluído no aplicativo, em paisagem e tela cheia, com controles que somem durante a reprodução e reaparecem ao tocar. Não abre páginas de sites. Usa decodificação de hardware e tenta software uma vez se necessário. Ao sair ou pausar, interrompe o fluxo e libera o áudio e a tela acesa; não há serviço IPTV permanente, busca de logos ou atualização em segundo plano. A reprodução depende da conexão, do servidor, dos codecs e da autorização da lista; DRM/login adicional não são resolvidos pelo aplicativo. Uma importação inválida mantém a lista anterior. URLs e tokens não aparecem na lista de canais nem nos relatórios.
+
+Inclui a correção de tela cheia HTML do YouTube: oculta a interface do Onda e as barras do sistema, apresenta o player em paisagem e restaura a orientação/interface com Voltar sem recriar a WebView. A aba Sites continua removida. Mantém downloads, compartilhamento de MP4, favoritos, voz, PDFs/OCR e melhorias de bateria, sem nova dependência ou permissão.
+
+Testes incluem parser M3U UTF-8, grupos e títulos com vírgulas, links relativos, rejeição de esquemas de arquivo/script, HLS sem confundir segmentos, importação real HTTPS/arquivo, busca e preservação da lista anterior em falha. O teste do player decodifica vídeo HLS HTTP servido localmente no emulador e confere a parada ao sair. Testes do YouTube usam um pedido de tela cheia real por toque em vídeo HTML, rotação e retorno pelo botão Voltar. Mesmo pacote e certificado para atualizar sem desinstalar.
+
+Recursos anteriores preservados
+
+Onda Música {version_name} — tela cheia no YouTube
 
 Corrige a ausência de suporte à tela cheia do player HTML do YouTube. Ao solicitar tela cheia pelo controle do vídeo, o Onda oculta cabeçalho, busca, favoritos, abas e botão de download, apresenta o player em paisagem e esconde as barras do sistema. Voltar ou sair da tela cheia restaura a interface e a orientação anterior sem recarregar o navegador. A rotação mantém a mesma WebView. Ao sair do aplicativo, libera a visualização e mantém a pausa/encerramento do navegador em segundo plano. O bloqueio de tela acesa é restaurado ao sair da tela cheia.
 
