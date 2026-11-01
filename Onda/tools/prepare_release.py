@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — TikTok com sessão pública, conversão direta e compartilhamento
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — clipes Vevo/YouTube e páginas públicas
+
+Reconhece links HTTPS de players oficiais YouTube e youtube-nocookie.com. Em uma página com apenas um clipe YouTube declarado por iframe, Open Graph ou VideoObject, encaminha esse vídeo ao fluxo já existente. Útil para páginas de clipes, inclusive os distribuídos por canais Vevo. Se a página contiver vários clipes, pede o link do vídeo específico. A página institucional inicial do Vevo não é tratada como um vídeo. Regras de disponibilidade, confirmação e formatos do YouTube permanecem; não promete eliminar a verificação do serviço.
+
+Análise de páginas públicas ampliada para tipos Schema.org em listas/URLs, contentUrl em listas/objetos e encoding, além de data-src de mídia declarada. Detecta arquivos MP4/M4A/MP3/AAC sem extensão pelo conteúdo e lê até 64 KiB para análise quando identifica mídia, sem baixar tudo antes de apresentar formatos. HTML preserva o orçamento anterior; o download final permanece completo. Mantém URL assinada, Referer, confirmação dos bytes, HTTPS/DNS público e limites de trabalho da análise. Não há redução de qualidade, API paga, permissão nova, novo runtime ou atividade contínua em segundo plano.
+
+Fontes que apontam para o mesmo arquivo não duplicam opções. Mensagens distinguem mídia não declarada de arquivos recusados e preservam códigos HTTP sem expor endereços assinados. Páginas curtas de verificação do TikTok recebem diagnóstico específico. A disponibilidade pode variar entre consultas; não resolve CAPTCHA/login, não altera DRM nem garante downloads em qualquer site. Instagram/Facebook permanecem dependentes de arquivos públicos declarados, sem novo extrator especializado.
+
+Validação inclui casos positivos/negativos de players oficiais, ambiguidade entre clipes, URLs maliciosas, conteúdo falso e metadados estruturados; integração Android usa uma página pública real com encoding JSON-LD. A suíte Android anterior e atualização sem desinstalar continuam obrigatórias. Mesmos codecs, recursos e certificado persistente. Instale sobre a versão atual.
+
+Recursos anteriores preservados
+
+Onda Música {version_name} — TikTok com sessão pública, conversão direta e compartilhamento
 
 Compartilhar músicas e vídeos pelo seletor padrão do Android. Segure um item na biblioteca e escolha Compartilhar; os menus também oferecem compartilhar a música ou vídeo atual. Abre as opções dos aplicativos instalados, como WhatsApp, sem escolher contato ou enviar automaticamente. Conteúdo online compartilha o link. Arquivos locais content:// usam acesso temporário somente de leitura ao arquivo escolhido; file:// é preparado em uma cópia temporária dentro de uma pasta privada específica e disponibilizado por FileProvider, preservando o original. A cópia pode exigir espaço disponível; arquivos do armazenamento com content:// não são copiados. Cache temporário antigo é limpo na próxima preparação por arquivo. Cada aplicativo de destino pode impor seus próprios formatos e limites. Sem nova permissão ou serviço de envio em segundo plano.
 

@@ -12,15 +12,17 @@ final class DownloadLinks {
    URI u=new URI(input.trim());String host=u.getHost();
    if(!"https".equalsIgnoreCase(u.getScheme())||host==null||u.getUserInfo()!=null||u.getPort()!=-1)throw new IllegalArgumentException();
    String id=null,path=u.getPath();
+   if(host.toLowerCase(java.util.Locale.ROOT).endsWith("youtube-nocookie.com")&&!path.startsWith("/embed/"))throw new IllegalArgumentException();
    if(host.equalsIgnoreCase("youtu.be")){id=path.substring(1);}
-   else if(host.equalsIgnoreCase("youtube.com")||host.equalsIgnoreCase("www.youtube.com")||host.equalsIgnoreCase("m.youtube.com")||host.equalsIgnoreCase("music.youtube.com")){
+   else if(host.equalsIgnoreCase("youtube.com")||host.equalsIgnoreCase("www.youtube.com")||host.equalsIgnoreCase("m.youtube.com")||host.equalsIgnoreCase("music.youtube.com")||host.equalsIgnoreCase("www.youtube-nocookie.com")||host.equalsIgnoreCase("youtube-nocookie.com")){
     if("/watch".equals(path)&&u.getRawQuery()!=null){for(String q:u.getRawQuery().split("&"))if(q.startsWith("v=")){if(id!=null)throw new IllegalArgumentException();id=q.substring(2);}}
+    else if(path.startsWith("/embed/")){id=path.substring(7);if(id.equals("videoseries")||id.equals("live_stream"))throw new IllegalArgumentException();}
     else if(path.startsWith("/shorts/"))id=path.substring(8);
     else if(path.startsWith("/live/"))id=path.substring(6);
    }
    if(id==null||!ID.matcher(id).matches())throw new IllegalArgumentException();
    return "https://www.youtube.com/watch?v="+id;
-  }catch(Exception e){throw new IllegalArgumentException("Cole um link HTTPS de um vídeo do YouTube (watch, youtu.be ou Shorts).");}
+  }catch(Exception e){throw new IllegalArgumentException("Cole um link HTTPS de um vídeo do YouTube (watch, youtu.be, Shorts ou player incorporado).");}
  }
  static String playlist(String input){
   try{if(input==null||input.length()>4096)throw new IllegalArgumentException();URI u=new URI(input.trim());String h=u.getHost();if(!"https".equalsIgnoreCase(u.getScheme())||h==null||u.getUserInfo()!=null||u.getPort()!=-1||!(h.equalsIgnoreCase("youtube.com")||h.equalsIgnoreCase("www.youtube.com")||h.equalsIgnoreCase("m.youtube.com")||h.equalsIgnoreCase("music.youtube.com"))||!("/playlist".equals(u.getPath())||"/watch".equals(u.getPath())))throw new IllegalArgumentException();String id=null;if(u.getRawQuery()!=null)for(String q:u.getRawQuery().split("&"))if(q.startsWith("list=")){if(id!=null)throw new IllegalArgumentException();id=q.substring(5);}if(id==null||!id.matches("[A-Za-z0-9_-]{10,100}"))throw new IllegalArgumentException();return "https://www.youtube.com/playlist?list="+id;

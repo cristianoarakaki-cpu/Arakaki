@@ -1,3 +1,13 @@
+## Onda 0.58.0 — links de clipes e análise de páginas públicas
+
+- Reconhece links oficiais de players YouTube `/embed/VIDEO` e `youtube-nocookie.com`, incluindo clipes distribuídos por canais Vevo. Páginas com um único player YouTube declarado por iframe, Open Graph ou VideoObject podem encaminhar a análise ao extrator já existente. Não escolhe automaticamente entre clipes diferentes, não interpreta scripts arbitrários e não extrai uma música pela página inicial institucional do Vevo.
+- Amplia dados estruturados públicos: tipos Schema.org em listas/URLs completas, contentUrl em listas/objetos e encoding; aceita data-src declarado em video/source. Endereços de mídia assinados de até 16 KiB são preservados. Mantém validação HTTPS, DNS público, limites da análise e confirmação dos bytes de cada arquivo. Não amplia nem reduz limites de tamanho dos downloads.
+- Detecta MP4/M4A/MP3/AAC em endereços sem extensão, conferindo o conteúdo. A análise lê somente até 64 KiB quando reconhece mídia, sem importar o arquivo inteiro antes de oferecer formatos; HTML conserva seu orçamento anterior. O download continua completo, sem teto artificial de tamanho/duração.
+- Evita opções duplicadas de fontes que redirecionam ao mesmo arquivo. Distingue mídia não declarada de fontes recusadas e preserva o código de falha sem expor URLs assinadas. Reconhece a página curta de verificação WAF do TikTok com mensagem específica, sem prometer desbloqueio automático.
+- Não adiciona API paga, permissão, runtime ou varredura em segundo plano. Mantém conversão, codecs, favoritos, PDFs/OCR, voz, temas, compartilhamento e assinatura persistente. Instale sobre o app atual.
+
+Disponibilidade de clipes Vevo hospedados no YouTube depende das mesmas verificações do YouTube. Não há garantia de baixar qualquer plataforma, conteúdo privado, DRM, login ou desafio de verificação. O suporte ampliado a metadados não equivale a um novo extrator especializado de Instagram/Facebook. Testes locais isolam a fronteira do extrator; a compilação e a suíte Android completa continuam obrigatórias antes da publicação. A fixture pública de integração passou a usar encoding JSON-LD para conferir esse caminho com mídia real.
+
 ## Onda 0.57.0 — TikTok, conversão direta e compartilhamento
 
 **YouTube:** a exigência de confirmação de robô passa a oferecer ações para abrir o conteúdo oficial e retomar a seleção no Onda. A confirmação é feita pelo serviço e a análise independente pode continuar restrita; isso não garante desbloqueio automático. Não reutiliza cookies da conta nem resolve CAPTCHA. A disponibilidade da playlist informada é registrada separadamente nos testes.

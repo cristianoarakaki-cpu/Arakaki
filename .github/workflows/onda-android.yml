@@ -206,7 +206,8 @@ jobs:
             adb shell am instrument -w -e class br.com.onda.YoutubeRecoveryTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-recovery-tests.txt
             cat /tmp/onda-youtube-recovery-tests.txt
             adb exec-out run-as br.com.onda.musica cat files/youtube-recovery-tests.json > Onda/ui-preview/youtube-recovery-tests.json || true
-            python -c 's=open("/tmp/onda-youtube-recovery-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/vevo-download-tests.json > Onda/ui-preview/vevo-download-tests.json || true
+            python -c 's=open("/tmp/onda-youtube-recovery-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.LightweightTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-lightweight-tests.txt
             cat /tmp/onda-lightweight-tests.txt

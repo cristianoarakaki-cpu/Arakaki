@@ -9,6 +9,7 @@ final class TiktokPage {
  static final class Clip {final String title,video;final List<String> candidates;Clip(String title,String video){this(title,java.util.Collections.singletonList(video));}Clip(String title,List<String> urls){this.title=title;this.candidates=java.util.Collections.unmodifiableList(new ArrayList<>(urls));this.video=urls.get(0);}}
  static Clip parse(String html,String id)throws Exception{
   if(html==null||html.length()>8*1024*1024||id==null||!id.matches("[0-9]{10,24}"))throw new Exception("Página do vídeo inválida.");
+  if(html.length()<65536&&html.contains("SlardarWAF")&&(html.contains("_wafchallengeid")||html.contains("waf-aiso")))throw new Exception("O TikTok exigiu verificação nesta consulta e não enviou os dados do vídeo. Abra o link no TikTok ou navegador; depois tente novamente. A liberação pode variar entre consultas.");
   for(String name:new String[]{"__UNIVERSAL_DATA_FOR_REHYDRATION__","SIGI_STATE","sigi-persisted-data"}){
    Matcher script=Pattern.compile("<script\\b[^>]*\\bid\\s*=\\s*['\"]"+name+"['\"][^>]*>(.*?)</script\\s*>",Pattern.CASE_INSENSITIVE|Pattern.DOTALL).matcher(html);
    while(script.find()){
