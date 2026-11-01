@@ -172,13 +172,25 @@ jobs:
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             mkdir -p Onda/ui-preview
-            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
+            adb logcat -c
+            adb logcat -v threadtime > /tmp/onda-android35-logcat.txt 2>&1 &
+            adb shell am instrument -w -e skip_fullscreen_capture true -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
             cat /tmp/onda-youtube-fullscreen-35-tests.txt
             for part in video lifecycle failure; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-35-$part.json" || true; done
             adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen-35.png || true
             adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-35-failure.png || true
             python -c 's=open("/tmp/onda-youtube-fullscreen-35-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
+      - name: Guardar diagnóstico do emulador Android 15
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Android35-Diagnostics
+          path: |
+            /tmp/android-runner/
+            /tmp/onda-android35-logcat.txt
+            /tmp/onda-youtube-fullscreen-35-tests.txt
+          if-no-files-found: warn
       - name: Liberar disco após o Android 15
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" delete avd --name onda-delete-35
