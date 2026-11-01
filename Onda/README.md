@@ -1,3 +1,13 @@
+## Onda 0.59.0 — compartilhar sem abrir menus
+
+- Tocando agora: ícone de compartilhar alinhado acima do coração. Os dois controles têm área de toque de 48 dp; o ícone não depende do tamanho da fonte. Fica desativado enquanto não houver uma faixa selecionada.
+- Biblioteca: ícone de compartilhar em cada música e vídeo. O corpo do item continua abrindo a mídia, e segurar o corpo mantém as opções anteriores. Ao reciclar as linhas durante a rolagem, o atalho acompanha o item atual.
+- YouTube interno: botão para compartilhar a página do vídeo/playlist atual. Resultados de busca com cartões reconhecidos recebem um ícone para compartilhar o link daquele vídeo, sem navegar até ele nem baixá-lo. Segurar um link ou miniatura de vídeo oferece o mesmo compartilhamento como alternativa. Vídeo em contexto de playlist compartilha o link do vídeo, sem os parâmetros de rastreamento.
+- Abre o seletor do Android, com aplicativos como WhatsApp. Não escolhe destinatário nem envia automaticamente. Arquivos seguem usando concessão somente de leitura e o provedor privado de compartilhamento anterior.
+- No YouTube, a ação exige interação real do usuário na página oficial visível. Não expõe interface Java a scripts nem acesso a arquivos. A decoração examina uma quantidade limitada de cartões ao carregar, mudar a busca ou após rolagem; não há varredura periódica em repouso. O navegador continua sendo destruído ao ficar oculto, conforme o comportamento anterior. A estrutura da página do YouTube pode mudar; a opção por toque longo e o botão da página permanecem alternativas.
+
+Sem nova permissão, dependência, API paga ou serviço permanente. Mantém todos os recursos anteriores e o certificado persistente. Testes Android verificam o seletor real interceptado sem enviar nada, o arquivo/link correto após reciclagem de linhas, ação com gesto real nos resultados, bloqueio de chamadas sintéticas e espaçamento com fonte ampliada. Instale sobre a versão atual.
+
 ## Onda 0.58.0 — links de clipes e análise de páginas públicas
 
 - Reconhece links oficiais de players YouTube `/embed/VIDEO` e `youtube-nocookie.com`, incluindo clipes distribuídos por canais Vevo. Páginas com um único player YouTube declarado por iframe, Open Graph ou VideoObject podem encaminhar a análise ao extrator já existente. Não escolhe automaticamente entre clipes diferentes, não interpreta scripts arbitrários e não extrai uma música pela página inicial institucional do Vevo.

@@ -198,6 +198,9 @@ try:
  assert heart is not None,'Current music did not reconnect after font change'
  before=heart.attrib['content-desc'];left,top,right,bottom=[int(v) for v in re.findall(r'\d+',heart.attrib['bounds'])]
  assert right-left>=round(48*player_density)-1 and bottom-top>=round(48*player_density)-1,'Favorite target smaller than 48dp'
+ share=locate('Compartilhar música atual');sl,st,sr,sb=[int(v) for v in re.findall(r'\d+',share.attrib['bounds'])]
+ assert sr-sl>=round(48*player_density)-1 and sb-st>=round(48*player_density)-1,'Share target smaller than 48dp'
+ assert abs((sl+sr)-(left+right))<=2 and sb<=top,'Share shortcut must be above the heart without overlap'
  for text in ('Onda-Audio','Onda Sessions'):
     candidates=[n for n in ns if n.attrib.get('text')==text and int(re.findall(r'\d+',n.attrib['bounds'])[3])>top-150]
     assert candidates,'Now-playing metadata disappeared: '+text
@@ -208,7 +211,7 @@ try:
  capture('40-favoritas-fonte-ampliada')
  tap(after);restored=locate(before);assert restored.attrib.get('selected')==str(before=='Remover dos favoritos').lower()
  capture('41-coracao-contorno')
- (OUTPUT/'favorite-layout-tests.json').write_text(json.dumps({'fontScale':1.5,'touchTargetDp':48,'metadataDoesNotOverlap':True,'toggleAndRestore':True},indent=2)+'\n')
+ (OUTPUT/'favorite-layout-tests.json').write_text(json.dumps({'fontScale':1.5,'touchTargetDp':48,'metadataDoesNotOverlap':True,'toggleAndRestore':True,'shareAboveFavorite':True,'shareTouchTargetDp':48},indent=2)+'\n')
 except Exception:
  try:nodes();capture('favorite-layout-failure')
  except Exception:pass

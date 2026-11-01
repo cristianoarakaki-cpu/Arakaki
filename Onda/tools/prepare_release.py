@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — clipes Vevo/YouTube e páginas públicas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — atalhos para compartilhar
+
+Botão de compartilhar acima do coração em Tocando agora e ícones em cada música e vídeo das listas. Toque no ícone para abrir o seletor do Android com o item escolhido; tocar no restante da linha continua abrindo a mídia, e os menus anteriores permanecem disponíveis. Ícones desenhados com tamanho independente da fonte e controles de pelo menos 48 dp. O atalho do tocador fica desativado quando não há faixa selecionada.
+
+YouTube interno: botão para compartilhar o vídeo/playlist atual e ícones nos cartões reconhecidos dos resultados da busca. Compartilha o link do vídeo escolhido sem abrir o vídeo nem baixar o arquivo. Segurar um link ou miniatura de vídeo é uma alternativa. A estrutura do YouTube pode mudar, e nem todo tipo de cartão é reconhecido. O link de vídeo é preferido quando a página também contém contexto de playlist.
+
+Abre as opções dos aplicativos instalados, como WhatsApp. O usuário escolhe o aplicativo e o destinatário; não há envio automático. Mantém o tratamento de arquivos do compartilhamento anterior, concessão somente de leitura e provedor privado. A ação de resultados exige gesto real e página oficial visível; não adiciona interface Java acessível por scripts. Os ícones são atualizados no carregamento, mudança de busca ou após rolagem, com trabalho limitado, sem consulta periódica em repouso. O navegador continua fechando ao ficar oculto.
+
+Testes Android conferem escolha do item após reciclagem das linhas, seletor nativo interceptado sem enviar nada, gesto real e bloqueio de acionamento sintético nos resultados, posição do ícone acima do coração e áreas de toque. A verificação com fonte ampliada e toda a suíte anterior permanecem obrigatórias. Sem nova permissão, biblioteca, API paga ou serviço permanente. Mantém downloads, conversão, codecs, PDFs/OCR, voz, temas, favoritos e assinatura. Instale sobre o app atual, sem desinstalar.
+
+Recursos anteriores preservados
+
+Onda Música {version_name} — clipes Vevo/YouTube e páginas públicas
 
 Reconhece links HTTPS de players oficiais YouTube e youtube-nocookie.com. Em uma página com apenas um clipe YouTube declarado por iframe, Open Graph ou VideoObject, encaminha esse vídeo ao fluxo já existente. Útil para páginas de clipes, inclusive os distribuídos por canais Vevo. Se a página contiver vários clipes, pede o link do vídeo específico. A página institucional inicial do Vevo não é tratada como um vídeo. Regras de disponibilidade, confirmação e formatos do YouTube permanecem; não promete eliminar a verificação do serviço.
 

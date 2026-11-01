@@ -54,6 +54,11 @@ final class Ui {
         b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));b.setPadding(0,0,0,0);b.setStateListAnimator(null);
         bind(b,w->w.setBackground(ripple(w.getContext(),shape(w.getContext(),RAISED,BORDER,16),16)));b.setOnClickListener(listener);return b;
     }
+    static Button shareButton(Context c,String description,View.OnClickListener listener){
+        ShareButton b=new ShareButton(c);b.setText("");b.setTextColor(MUTED);b.setContentDescription(description);b.setTooltipText("Compartilhar");
+        b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));b.setPadding(0,0,0,0);b.setStateListAnimator(null);
+        bind(b,w->w.setBackground(ripple(w.getContext(),shape(w.getContext(),RAISED,BORDER,16),16)));b.setOnClickListener(listener);return b;
+    }
     static Button transport(Context c,String kind,View.OnClickListener listener){TransportButton b=new TransportButton(c,kind);b.setText("play".equals(kind)?"▶":"");b.setTextColor("play".equals(kind)?BG:MUTED);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setPadding(0,0,0,0);bind(b,w->{Context context=w.getContext();w.setBackground("play".equals(kind)?ripple(context,gradient(context,CYAN,palette==AppearancePalette.ALL[0]?0xFF9BBBFF:VIOLET,28),28):ripple(context,shape(context,Color.TRANSPARENT,0,24),24));});b.setOnClickListener(listener);return b;}
     static Button voiceButton(Context c,String description,View.OnClickListener listener){
         Button b=new Button(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
@@ -117,6 +122,12 @@ final class Ui {
             paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(dp(getContext(),2));paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStyle(isSelected()?Paint.Style.FILL:Paint.Style.STROKE);canvas.drawPath(path,paint);
         }
+    }
+    /** Static geometry independent of font size; the touch target stays 48dp. */
+    private static final class ShareButton extends Button {
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        ShareButton(Context context){super(context);}
+        @Override protected void onDraw(Canvas canvas){float unit=Math.max(0,Math.min(dp(getContext(),28),Math.min(getWidth(),getHeight())-dp(getContext(),16)))/24f;if(unit<=0)return;float x=getWidth()/2f,y=getHeight()/2f;paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(2*unit);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStyle(Paint.Style.STROKE);canvas.drawLine(x-8*unit,y,x+8*unit,y-9*unit,paint);canvas.drawLine(x-8*unit,y,x+8*unit,y+9*unit,paint);paint.setStyle(Paint.Style.FILL);canvas.drawCircle(x-8*unit,y,3*unit,paint);canvas.drawCircle(x+8*unit,y-9*unit,3*unit,paint);canvas.drawCircle(x+8*unit,y+9*unit,3*unit,paint);}
     }
     private static final class TransportButton extends Button {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final String kind;
