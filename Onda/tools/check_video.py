@@ -131,7 +131,10 @@ assert any('2 músicas • 2 disponíveis' in n.attrib.get('text','') for n in n
 tap_text('1. DJ-2\nDJ Artist 2');tap_text('Mover para baixo')
 assert any(n.attrib.get('text')=='1. DJ-3\nDJ Artist 3' for n in nodes())
 tap('Opções da playlist');tap_text('Renomear')
-tap('Nome da playlist');shell('input','keyevent','123');shell('input','text','Editada');tap_text('Salvar')
+# The name field already owns focus. Tapping the existing word opens Android's
+# spelling suggestions over the dialog; append at the end using the keyboard.
+assert locate('Nome da playlist').attrib.get('focused')=='true','Rename field should own keyboard focus'
+shell('input','keyevent','123');shell('input','text','Editada');tap_text('Salvar')
 assert any(n.attrib.get('text')=='TesteOndaEditada' for n in nodes()),'Renamed playlist not displayed'
 capture('18a-playlist-renamed')
 shell('am','force-stop',PACKAGE);shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1)
