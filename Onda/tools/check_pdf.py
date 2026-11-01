@@ -5,7 +5,19 @@ PACKAGE='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):return adb('shell',shlex.join(str(v) for v in args))
 def nodes():
- shell('uiautomator','dump','/sdcard/onda-pdf.xml');return list(ET.fromstring(shell('cat','/sdcard/onda-pdf.xml')).iter('node'))
+ # Accessibility can briefly return a null root immediately after Activity launch.
+ # Require a fresh, parseable tree; never reuse a previous screen's XML.
+ last=None
+ for attempt in range(5):
+  try:
+   shell('rm','-f','/sdcard/onda-pdf.xml')
+   shell('uiautomator','dump','/sdcard/onda-pdf.xml')
+   result=list(ET.fromstring(shell('cat','/sdcard/onda-pdf.xml')).iter('node'))
+   if not result:raise ValueError('Empty accessibility tree')
+   return result
+  except (subprocess.CalledProcessError,ET.ParseError,ValueError) as error:
+   last=error;time.sleep(.3)
+ raise AssertionError('Fresh PDF test accessibility tree unavailable after 5 attempts') from last
 def rect(n):return [int(v) for v in re.findall(r'\d+',n.attrib['bounds'])]
 def tap_node(n):
  l,t,r,b=rect(n);assert r>l and b>t,n.attrib;shell('input','tap',(l+r)//2,(t+b)//2);time.sleep(.4)
