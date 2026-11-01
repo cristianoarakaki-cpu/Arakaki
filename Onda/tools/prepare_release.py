@@ -29,15 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — compartilhar o vídeo e abrir plataformas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — remover a aba Sites
 
-YouTube: o atalho de compartilhar oferece **Vídeo completo (MP4)** ou **Somente o link**. Para compartilhar o arquivo, o Onda procura um MP4 já concluído no histórico; se não encontrar, consulta formatos para baixar. Após salvar, toque em **Compartilhar vídeo pronto** para abrir o seletor do Android com o arquivo, inclusive para WhatsApp. Não envia sozinho e não compartilha um download incompleto. Há também **Compartilhar arquivo baixado** na tela Downloads.
+Retira a aba Sites e o navegador de TikTok, Instagram e Facebook, incluindo a Activity, o registro no manifesto e os auxiliares exclusivos dessa tela. Downloads volta a exibir somente Links e YouTube.
 
-Downloads → **Sites** abre o TikTok dentro do Onda; o menu permite escolher Instagram ou Facebook, abrir um link, voltar ao início ou usar o navegador externo. Ao abrir um post reconhecido, os botões **Baixar** e **Compartilhar** ficam disponíveis. Usa o analisador existente: páginas dinâmicas, conteúdo privado, login, DRM ou verificações ainda podem impedir downloads. Abrir ou reproduzir no site não garante que o arquivo esteja disponível ao analisador. Não importa cookies de conta nem resolve desafios automaticamente.
+Mantém os analisadores e downloads por link, a busca e os favoritos do YouTube, o compartilhamento de MP4 completo ou link, os ícones de compartilhar nas músicas e vídeos, a reutilização dos arquivos baixados e as melhorias de bateria. Nenhuma pasta, mídia, favorito, playlist ou configuração do usuário é apagada. Música, vídeo, conversões, PDFs/OCR, voz e demais recursos continuam disponíveis.
 
-Economia de bateria: telas de downloads passam a reagir aos eventos, sem consulta recorrente em repouso; progresso de operações é publicado a cada segundo com o app visível e a cada dez segundos oculto. Letras sincronizadas aguardam o próximo verso em vez de consultar a cada meio segundo. Música ignora a faixa de vídeo de um MP4. A continuação do áudio de vídeo publica posição com menor frequência, mantendo comandos imediatos e a estimativa do Android. O navegador das plataformas é encerrado ao ficar oculto. Mantém reprodução com tela apagada, downloads, conversões, qualidade e demais recursos; sem nova biblioteca ou permissão. A economia varia por aparelho e uso; não foi medida uma porcentagem física de bateria.
-
-Validação inclui política de cadência, links das plataformas, serviço real de download/compartilhamento de um MP4 público de teste, isolamento de operações, reutilização do arquivo local, controles do TikTok em página de teste, áudio real avançando com tela apagada, liberação do bloqueio de CPU ao pausar e regressões anteriores. Assinatura permanente preservada para atualizar sem desinstalar.
+Mantém os testes de download real e compartilhamento do MP4, isolamento entre operações, economia de bateria e a suíte anterior. O teste exclusivo da tela removida é retirado. Mesmo pacote e assinatura para instalar sobre a versão anterior.
 
 Recursos anteriores preservados
 

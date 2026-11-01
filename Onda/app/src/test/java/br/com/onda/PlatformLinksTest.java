@@ -1,9 +1,0 @@
-package br.com.onda;
-import org.junit.Test;
-import static org.junit.Assert.*;
-public class PlatformLinksTest {
- @Test public void tiktokPostKeepsItsExactVideo(){assertEquals("https://www.tiktok.com/@sandrasuelyof1/video/7701117786302598408",PlatformLinks.post("tiktok","https://www.tiktok.com/@sandrasuelyof1/video/7701117786302598408?share=1"));assertEquals("",PlatformLinks.post("tiktok","https://www.tiktok.com/foryou"));}
- @Test public void instagramAndFacebookUsePostUrlsWithoutTracking(){assertEquals("https://www.instagram.com/reel/ABCdef123/",PlatformLinks.post("instagram","https://www.instagram.com/reel/ABCdef123/?igsh=tracking"));assertEquals("https://www.facebook.com/watch/?v=1234567890",PlatformLinks.post("facebook","https://m.facebook.com/watch/?v=1234567890&tracking=x"));assertEquals("",PlatformLinks.post("facebook","https://m.facebook.com/watch/?v=1234567890&v=9876543210"));}
- @Test public void profilesLoginAndForeignDomainsNeverBecomeSelectedVideos(){for(String u:new String[]{"https://www.instagram.com/artist/","https://www.instagram.com/accounts/login/","https://instagram.com.evil.org/reel/ABCdef123/"})assertEquals("",PlatformLinks.post("instagram",u));for(String u:new String[]{"http://www.tiktok.com/","file:///private","https://www.tiktok.com@evil.org/","https://127.0.0.1/","https://www.instagram.com/"})assertFalse(PlatformLinks.allowed("tiktok",u));assertTrue(PlatformLinks.allowed("instagram","https://www.instagram.com/accounts/login/"));}
- @Test public void watchAndReelLinksAreAcceptedWithoutGuessingAVideoFromAFeed(){assertEquals("https://www.facebook.com/reel/1234567890/",PlatformLinks.post("facebook","https://www.facebook.com/reel/1234567890/"));assertEquals("",PlatformLinks.post("facebook","https://m.facebook.com/"));assertEquals("https://www.tiktok.com/",PlatformLinks.home("tiktok"));}
-}

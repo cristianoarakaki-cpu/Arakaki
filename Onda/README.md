@@ -1,4 +1,12 @@
-## Onda 0.60.0 — compartilhar o vídeo e abrir plataformas
+## Onda 0.61.0 — remover a aba Sites
+
+Retira a aba Sites e o navegador de TikTok, Instagram e Facebook, incluindo a Activity, o registro no manifesto e os auxiliares exclusivos dessa tela. Downloads volta a exibir somente Links e YouTube.
+
+Mantém os analisadores e downloads por link, a busca e os favoritos do YouTube, o compartilhamento de MP4 completo ou link, os ícones de compartilhar nas músicas e vídeos, a reutilização dos arquivos baixados e as melhorias de bateria. Nenhuma pasta, mídia, favorito, playlist ou configuração do usuário é apagada. Música, vídeo, conversões, PDFs/OCR, voz e demais recursos continuam disponíveis.
+
+Mantém os testes de download real e compartilhamento do MP4, isolamento entre operações, economia de bateria e a suíte anterior. O teste exclusivo da tela removida é retirado. Mesmo pacote e assinatura para instalar sobre a versão anterior.
+
+## Histórico — Onda 0.60.0 (aba Sites removida na 0.61.0)
 
 YouTube: o atalho de compartilhar oferece **Vídeo completo (MP4)** ou **Somente o link**. Para compartilhar o arquivo, o Onda procura um MP4 já concluído no histórico; se não encontrar, consulta formatos para baixar. Após salvar, toque em **Compartilhar vídeo pronto** para abrir o seletor do Android com o arquivo, inclusive para WhatsApp. Não envia sozinho e não compartilha um download incompleto. Há também **Compartilhar arquivo baixado** na tela Downloads.
 
