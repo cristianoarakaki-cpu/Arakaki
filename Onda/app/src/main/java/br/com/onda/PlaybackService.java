@@ -16,11 +16,11 @@ public class PlaybackService extends MediaSessionService {
     private final ExecutorService resumeWorker=Executors.newSingleThreadExecutor();
     private boolean restoring=true,destroyed;
     private String savedQueue="[]";
-    private final Runnable checkpoint=new Runnable(){public void run(){saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
+    private final Runnable checkpoint=new Runnable(){public void run(){if(player==null||RadioMedia.is(player.getCurrentMediaItem()))return;saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
     private DjSession personalDj;private long historyDuration;private boolean completed;
     private final TrackSleep trackSleep=new TrackSleep();
     private final SpeechProcessor speech=new SpeechProcessor();
-    private ExoPlayer player;private MediaSession session;private SoundEffects sound;private SoundRoutes soundRoutes;
+    private PlaybackParameters beforeRadioSpeed;private ExoPlayer player;private MediaSession session;private SoundEffects sound;private SoundRoutes soundRoutes;
     private final Handler timer=new Handler(Looper.getMainLooper());
     private final Runnable stop=()->{if(player!=null)player.pause();};
     private int fadeMs;private boolean outgoing,incoming,ramping,counted;
@@ -33,14 +33,14 @@ public class PlaybackService extends MediaSessionService {
         soundRoutes=new SoundRoutes(()->{if(player!=null&&!destroyed)applySound();},speech);
         player=new ExoPlayer.Builder(this,soundRoutes.renderers(this)).build();player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO,true).build());player.setAudioAttributes(new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true);player.setHandleAudioBecomingNoisy(true);player.setWakeMode(C.WAKE_MODE_LOCAL);applySpeech();player.setPlaybackParameters(new PlaybackParameters(AudioPlaybackOptions.SPEEDS[AudioPlaybackOptions.saved(this)],1f));
         player.addListener(new Player.Listener(){
-            @Override public void onPlayerError(PlaybackException error){MediaItem item=player.getCurrentMediaItem();if(error.errorCode==PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED&&item!=null&&item.localConfiguration!=null)HiddenMedia.hide(PlaybackService.this,"audio",item.localConfiguration.uri);}
-            @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
+            @Override public void onPlayerError(PlaybackException error){MediaItem item=player.getCurrentMediaItem();if(RadioMedia.is(item)){player.pause();return;}if(error.errorCode==PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED&&item!=null&&!RadioMedia.is(item)&&item.localConfiguration!=null)HiddenMedia.hide(PlaybackService.this,"audio",item.localConfiguration.uri);}
+            @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(ready&&RadioMedia.is(player.getCurrentMediaItem())&&player.getPlaybackState()==Player.STATE_IDLE){player.seekToDefaultPosition();player.prepare();return;}if(!ready&&reason!=Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&RadioMedia.is(player.getCurrentMediaItem())&&player.getPlaybackState()!=Player.STATE_IDLE){player.stop();return;}if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
             @Override public void onPositionDiscontinuity(Player.PositionInfo oldPosition,Player.PositionInfo newPosition,int reason){
                 MediaItem old=oldPosition.mediaItem,next=newPosition.mediaItem;
                 if(DjSession.deviceAudio(old)&&old.localConfiguration!=null&&(next==null||!old.mediaId.equals(next.mediaId)))ShelfStore.remember(PlaybackService.this,"audio",old.localConfiguration.uri.toString(),String.valueOf(old.mediaMetadata.title),reason==Player.DISCONTINUITY_REASON_AUTO_TRANSITION?0:Math.max(0,oldPosition.positionMs),LibraryStore.number(old,"durationMs"));
             }
             @Override public void onAudioSessionIdChanged(int id){applySound();}
-            @Override public void onMediaItemTransition(MediaItem item,int reason){
+            @Override public void onMediaItemTransition(MediaItem item,int reason){player.setWakeMode(RadioMedia.is(item)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);if(RadioMedia.is(item)){if(beforeRadioSpeed==null)beforeRadioSpeed=player.getPlaybackParameters();player.setPlaybackParameters(PlaybackParameters.DEFAULT);}else if(beforeRadioSpeed!=null){PlaybackParameters restore=beforeRadioSpeed;beforeRadioSpeed=null;player.setPlaybackParameters(restore);}
                 boolean smooth=outgoing&&(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT);cancelFade(false);incoming=smooth&&item!=null&&!item.mediaId.startsWith("catalog:");player.setVolume(incoming?0:baseVolume);
                 if(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)finishListening();resetHistory(item);String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;player.setWakeMode("https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
             }
@@ -50,7 +50,7 @@ public class PlaybackService extends MediaSessionService {
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
-                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){if(p.isPlaying())VideoBackgroundService.stopForMusic(PlaybackService.this);timer.removeCallbacks(checkpoint);if(p.isPlaying())timer.postDelayed(checkpoint,15000);}
+                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){if(p.isPlaying())VideoBackgroundService.stopForMusic(PlaybackService.this);timer.removeCallbacks(checkpoint);if(p.isPlaying()&&!RadioMedia.is(p.getCurrentMediaItem()))timer.postDelayed(checkpoint,15000);}
                 if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){soundRoutes.refresh();sound.playing(p.isPlaying());float value=sound.headroom();if(value!=baseVolume){baseVolume=value;cancelFade(true);}}
                 if(e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_IS_PLAYING_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)){updateListening();}
                 if(e.contains(Player.EVENT_POSITION_DISCONTINUITY)&&!e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)){cancelFade(true);}

@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — menus mais fáceis e melhoria de áudio baixo
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — rádios online dentro do Onda
+
+Menu → Rádios online, ou Explorar → Rádios online. Busca por nome de emissora, Brasil ou todos os países, catálogo comunitário Radio Browser, favoritas e opção de adicionar um link HTTPS direto da transmissão. A rádio toca no próprio Onda, com os controles e notificação do tocador existente, em segundo plano e com tela apagada. O realce de áudio baixo também pode ser usado nas rádios com áudio PCM16 compatível. Inclui o módulo HLS Media3, alinhado à versão já usada pelo aplicativo.
+
+Abrir a tela não interrompe a música nem inicia uma rádio automaticamente. Pausar encerra a conexão da emissora; Reproduzir reconecta ao vivo. Não busca logos, não faz varredura periódica de estações e só consulta o catálogo ao abrir sem cache ou ao buscar. O coração do tocador principal salva a emissora em Rádios online → Favoritas, sem misturar seus IDs com os favoritos da biblioteca local. Compartilhar uma rádio envia seu link pelo Android. A transmissão usa internet e depende da emissora, região e formato; esta edição lista endereços HTTPS compatíveis e não força a troca de HTTP por HTTPS.
+
+Mantém todas as melhorias de menus, atalhos, filtros de aparências, realce de áudio baixo, presets e limpeza conservadora de links. O resolvedor anterior continua sendo a primeira tentativa; a recuperação de texto só entra após rejeição e não altera URLs assinadas já aceitas. Mesmo pacote e assinatura para atualizar sem desinstalar.
+
+Histórico de recursos preservados
+
+Onda Música {version_name} — menus mais fáceis e melhoria de áudio baixo
 
 Biblioteca e vídeos: menus com busca, categorias e atalhos editáveis. Toque em Editar para escolher até 3 atalhos ou restaurar os padrões. Todas as ações anteriores permanecem em Todas as categorias e o botão Fechar fica fora da rolagem.
 

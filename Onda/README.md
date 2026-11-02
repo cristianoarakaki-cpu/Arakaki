@@ -1,3 +1,9 @@
+## Onda 0.66.0 — rádios online dentro do aplicativo
+
+Menu → Rádios online, ou Explorar → Rádios online. Busca por emissora no Brasil ou em todos os países pelo catálogo comunitário Radio Browser; favoritas, adição manual por link direto HTTPS e reprodução pelo mesmo tocador do Onda, inclusive em segundo plano e com tela apagada. Favoritas de rádios ficam na tela Rádios, e o coração do tocador principal também as controla. Pausar para a transmissão e Reproduzir reconecta ao vivo; não há reprodução automática ao abrir o catálogo, sondagem de emissoras, logos remotos ou atualização periódica. O realce opcional de áudio baixo também acompanha as rádios PCM16 compatíveis. Inclui o módulo HLS Media3 da mesma versão do tocador. Usa internet e depende da disponibilidade da emissora.
+
+Mantém menus/atalhos, filtros de aparências, áudio baixo e limpeza conservadora de links da 0.65.0. Não altera o tratamento de links já aceitos.
+
 ## Onda 0.65.0 — menus, atalhos e áudio baixo
 
 Limpeza conservadora de links: o caminho existente é tentado primeiro. Só quando ele rejeita o texto, há recuperação de espaços de cópia, aspas, pontuação e caracteres invisíveis em endereços reconhecidos. Links já aceitos e parâmetros de arquivos assinados permanecem no tratamento anterior; não remove indiscriminadamente parâmetros de outras plataformas. Isso corrige texto colado malformado, sem garantir downloads quando o servidor exige verificação ou restringe o conteúdo.
