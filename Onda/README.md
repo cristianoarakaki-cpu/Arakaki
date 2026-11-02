@@ -1,5 +1,9 @@
 ## Onda 0.68.0 — busca de imagens na internet por tema
 
+### 0.68.1 — tela de imagens mais compacta
+
+Pesquisa e voz na mesma linha, instruções curtas e ajuda no botão ?. O botão Ampliar resultados esconde os controles sem recriar a WebView; Voltar ou o mesmo botão restaura a busca. Viewport responsivo e layout normal da página, preservando zoom por gesto, fontes nativas e compartilhamento do arquivo. Sem novas bibliotecas ou serviços; mantém a assinatura de atualização.
+
 A tela Imagens e mensagens agora abre na busca de imagens da internet, com Google Imagens dentro do Onda. Digite ou fale qualquer tema, como mensagens de motivação, boa noite, bom dia, fé ou amizade. Os resultados vêm da pesquisa na web, com rolagem do próprio buscador; não são limitados aos cartões prontos do aplicativo. Toque para ampliar uma imagem e segure-a para abrir Compartilhar imagem. O compartilhamento prepara o arquivo selecionado e usa o seletor do Android, sem enviar automaticamente para nenhum destinatário e sem substituir a imagem por um link.
 
 As opções Livres (Wikimedia Commons) e Cartões (criação/edição offline) continuam disponíveis em abas separadas. A busca por voz preserva expressões como “mensagens de motivação”. Mantém rádios, músicas, vídeos, downloads, conversões, PDFs/OCR, favoritos, aparências e som; o IPTV continua removido.

@@ -29,7 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — imagens da internet por tema
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — mais espaço para as imagens
+
+Cabeçalho compacto na busca de imagens, com pesquisa e voz na mesma linha, campo de tema mais simples e ajuda no botão ?. Retira a linha grande de Buscar e encurta as instruções para dar mais espaço aos resultados. Ampliar resultados oculta os controles da busca mantendo a mesma página; Voltar ou o mesmo botão restaura os controles sem apagar a pesquisa.
+
+A página usa viewport responsivo e modo de layout normal, evitando ampliação automática inadequada do texto. Mantém o zoom por gesto, as fontes nativas do Android, a pesquisa por voz e o compartilhamento do arquivo da imagem. Preserva os recursos anteriores e a assinatura para atualizar sem desinstalar.
+
+Histórico das melhorias anteriores
+
+Onda Música {version_name} — imagens da internet por tema
 
 A tela Imagens e mensagens agora abre na busca de imagens da internet, com Google Imagens dentro do Onda. Digite ou fale qualquer tema, como mensagens de motivação, boa noite, bom dia, fé ou amizade. Os resultados vêm da pesquisa na web, com rolagem do próprio buscador; não são limitados aos cartões prontos do aplicativo. Toque para ampliar uma imagem e segure-a para abrir Compartilhar imagem. O compartilhamento prepara o arquivo selecionado e usa o seletor do Android, sem enviar automaticamente para nenhum destinatário e sem substituir a imagem por um link.
 

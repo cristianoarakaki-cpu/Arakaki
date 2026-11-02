@@ -222,6 +222,7 @@ jobs:
             for part in message photo internet; do adb exec-out run-as br.com.onda.musica cat "files/image-$part-tests.json" > "Onda/ui-preview/image-$part-tests.json" || true; done
             adb exec-out run-as br.com.onda.musica cat files/image-message-preview.png > Onda/ui-preview/image-message-preview.png || true
             adb exec-out run-as br.com.onda.musica cat files/image-internet-fixture.png > Onda/ui-preview/image-internet-fixture.png || true
+            for view in compact expanded; do adb exec-out run-as br.com.onda.musica cat "files/image-$view.png" > "Onda/ui-preview/image-$view.png" || true; done
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.YouTubeFavoritesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-favorites-tests.txt
             cat /tmp/onda-youtube-favorites-tests.txt
