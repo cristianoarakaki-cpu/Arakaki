@@ -53,3 +53,5 @@ textarea{font:inherit;width:100%;min-width:0;max-width:100%;resize:vertical;padd
 .hero-import{padding:16px;margin:0 0 12px;box-shadow:none}.hero-plus{width:38px;height:38px;font-size:24px}.quick-scan{margin:0 8px 16px 0}.interface-shortcut{margin-bottom:16px}#home .section-heading{margin-top:6px}#work .back{display:block;margin-bottom:12px}#workDescription{font-size:12px;line-height:1.5;margin-bottom:12px}.panel{padding:16px;margin:16px 0}.panel p,.footnote{line-height:1.5}label{margin:10px 0}.action-row{margin-top:12px}#run{min-width:140px;min-height:48px;font-size:14px}button,input,select{touch-action:manipulation}#signaturePad,#scanCanvas{touch-action:none}#workTitle{margin-bottom:12px}#chooseInterface{margin-top:0}nav button{font-size:10px}
 
 .home-shortcuts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 20px}.home-shortcuts .quick-scan,.home-shortcuts .interface-shortcut{display:inline-flex;margin:0}#home .tool small{display:none}#home .tool-card .tool{padding:16px}#home .tool-card .tool-icon{margin-bottom:12px}
+
+nav button{font-size:9px}
