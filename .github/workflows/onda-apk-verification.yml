@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41510847871'
-  SOURCE_SHA: '7937c634ae1da4208d9bc261f577d777e58be47f'
+  SOURCE_RUN: '41532628898'
+  SOURCE_SHA: 'b406debd86ba9f792ae8ff42da64ce847ae794f8'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -48,7 +48,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='79' versionName='0.68.0'" in info
+          assert "package: name='br.com.onda.musica' versionCode='80' versionName='0.68.1'" in info
           with zipfile.ZipFile(apk) as z:
               assert z.testzip() is None
               abis=sorted({p.split('/')[1] for p in z.namelist() if p.startswith('lib/') and p.endswith('.so')})
@@ -58,7 +58,7 @@ jobs:
                   assert cls in dex
               for removed in [b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.68.0',versionCode=79,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True)
+          report=dict(version='0.68.1',versionCode=80,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True)
           Path('verify/apk-verified.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
           PY
