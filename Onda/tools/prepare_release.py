@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — imagens e mensagens para compartilhar
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — imagens da internet por tema
+
+A tela Imagens e mensagens agora abre na busca de imagens da internet, com Google Imagens dentro do Onda. Digite ou fale qualquer tema, como mensagens de motivação, boa noite, bom dia, fé ou amizade. Os resultados vêm da pesquisa na web, com rolagem do próprio buscador; não são limitados aos cartões prontos do aplicativo. Toque para ampliar uma imagem e segure-a para abrir Compartilhar imagem. O compartilhamento prepara o arquivo selecionado e usa o seletor do Android, sem enviar automaticamente para nenhum destinatário e sem substituir a imagem por um link.
+
+As opções Livres (Wikimedia Commons) e Cartões (criação/edição offline) continuam disponíveis em abas separadas. A busca por voz preserva expressões como “mensagens de motivação”. Mantém rádios, músicas, vídeos, downloads, conversões, PDFs/OCR, favoritos, aparências e som; o IPTV continua removido.
+
+Usa a página pública do buscador no Android System WebView, sem chave ou cobrança de API. A disponibilidade, os resultados e eventuais avisos de consentimento/verificação dependem do buscador e da origem da imagem. URLs HTTPS públicas e imagens raster incorporadas são compartilhadas como arquivos; fontes inacessíveis ou formatos não reconhecidos exibem uma falha, sem contornar login ou verificações. A página é pausada ao sair e destruída em segundo plano; transferências selecionadas são canceladas ao deixar a tela. Não há serviço de busca, microfone permanente nem novas bibliotecas no APK.
+
+Histórico das melhorias anteriores
+
+Onda Música {version_name} — imagens e mensagens para compartilhar
 
 Menu → Imagens e mensagens, ou Explorar → Imagens e mensagens. A aba Mensagens reúne 16 cartões de bom dia, boa noite, aniversário, amizade, carinho, fé e outras ocasiões. Busca digitada ou por voz; título e texto editáveis, seis fundos estáticos e prévia. Compartilhar imagem cria um PNG de 1080 × 1350 e abre o compartilhamento do Android. A pessoa escolhe o aplicativo e o destinatário; o Onda não envia automaticamente. Os cartões funcionam sem internet, sem anúncios de terceiros, sem API paga e sem processamento permanente. O reconhecimento de voz é acionado pelo botão e depende do serviço do celular.
 

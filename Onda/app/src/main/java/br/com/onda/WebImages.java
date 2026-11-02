@@ -1,0 +1,10 @@
+package br.com.onda;
+import java.net.*;import java.util.*;
+/** Ordinary public image search, rendered by Android WebView; no paid search API. */
+final class WebImages {
+ static String search(String term){String text=term==null?"":term.trim();if(text.isEmpty()||text.length()>120)throw new IllegalArgumentException("Digite um tema para buscar imagens.");try{return "https://www.google.com/search?tbm=isch&hl=pt-BR&safe=active&q="+URLEncoder.encode(text,"UTF-8");}catch(Exception e){throw new IllegalArgumentException(e);}}
+ static String voice(String phrase){return phrase==null?"":phrase.trim().replaceFirst("(?iu)^(?:onda[, ]+)?(?:pesquise|pesquisar|busque|buscar|procure|procurar|mostre|mostrar|encontre)(?:\\s+por)?\\s+(?:imagens?(?:\\s+de)?\\s+)?","").trim();}
+ static boolean navigation(String raw){try{URI u=new URI(raw);String h=u.getHost();return "https".equalsIgnoreCase(u.getScheme())&&u.getUserInfo()==null&&(u.getPort()==-1||u.getPort()==443)&&h!=null&&Arrays.asList("www.google.com","images.google.com","www.google.com.br","images.google.com.br","consent.google.com","consent.google.com.br").contains(h.toLowerCase(Locale.ROOT));}catch(Exception e){return false;}}
+ static String image(String raw){try{if(raw==null||raw.length()>16384)throw new Exception();URI u=new URI(raw.trim());String h=u.getHost();if(!"https".equalsIgnoreCase(u.getScheme())||h==null||u.getUserInfo()!=null||u.getFragment()!=null||u.getPort()==0||u.getPort()>65535)throw new Exception();h=h.toLowerCase(Locale.ROOT);if(!h.contains(".")||h.contains(":")||h.matches("[0-9.]+")||h.endsWith(".")||h.endsWith(".local")||h.endsWith(".localhost")||h.endsWith(".internal")||h.endsWith(".lan")||h.endsWith(".test")||h.endsWith(".invalid"))throw new Exception();return u.toASCIIString();}catch(Exception e){throw new IllegalArgumentException("Selecione uma imagem com endereço HTTPS público.");}}
+ static boolean inline(String raw){return raw!=null&&raw.length()<=12*1024*1024&&raw.matches("(?is)data:image/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=\\r\\n]+");}
+}
