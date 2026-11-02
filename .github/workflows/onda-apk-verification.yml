@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41485254128'
-  SOURCE_SHA: '63ec822f53dd7e77fd5d6787f40f5195110114e6'
+  SOURCE_RUN: '41510847871'
+  SOURCE_SHA: '7937c634ae1da4208d9bc261f577d777e58be47f'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -31,6 +31,36 @@ jobs:
           path: verify
           github-token: ${{ github.token }}
           run-id: ${{ env.SOURCE_RUN }}
+      - name: Verificar assinatura, pacote e conteúdo do APK real
+        run: |
+          ONDA_APK=$(find verify -name '*.apk' -type f | head -1)
+          ONDA_SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          ONDA_AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          test -n "$ONDA_APK" && test -x "$ONDA_SIGNER" && test -x "$ONDA_AAPT"
+          "$ONDA_SIGNER" verify --verbose --print-certs "$ONDA_APK" > verify/apk-signature.txt
+          "$ONDA_AAPT" dump badging "$ONDA_APK" > verify/apk-info.txt
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,re,json,hashlib
+          apk=next(Path('verify').rglob('*.apk'))
+          cert=Path('verify/apk-signature.txt').read_text()
+          fingerprint=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64})',cert).group(1).lower()
+          assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
+          info=Path('verify/apk-info.txt').read_text()
+          assert "package: name='br.com.onda.musica' versionCode='79' versionName='0.68.0'" in info
+          with zipfile.ZipFile(apk) as z:
+              assert z.testzip() is None
+              abis=sorted({p.split('/')[1] for p in z.namelist() if p.startswith('lib/') and p.endswith('.so')})
+              assert abis==['arm64-v8a','armeabi-v7a']
+              dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
+              for cls in [b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+                  assert cls in dex
+              for removed in [b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
+                  assert removed not in dex
+          report=dict(version='0.68.0',versionCode=79,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True)
+          Path('verify/apk-verified.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
       - name: Dividir cópia exata sem alterar o APK
         run: |
           python - <<'PY'
@@ -53,6 +83,7 @@ jobs:
           path: |
             verify/part-1.bin
             verify/parts.json
+            verify/apk-verified.json
           compression-level: 0
       - uses: actions/upload-artifact@v4
         with:
