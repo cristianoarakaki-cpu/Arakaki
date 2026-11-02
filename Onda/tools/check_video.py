@@ -517,17 +517,11 @@ try:
  shell('input','tap',*fresh_pause);time.sleep(.5)
  assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
  assert locate('Reproduzir vídeo') is not None
- # Learn menu coordinates while paused: active playback prevents idle UI dumps.
- anchor=point(locate('Menu de vídeos'));shell('input','tap',*anchor);time.sleep(.4)
- floating_search=point(locate('Buscar no menu'))
- shell('input','tap',*floating_search);time.sleep(.3);shell('input','text','Janela');shell('input','keyevent','4');time.sleep(.4)
- floating=next(n for n in nodes() if n.attrib.get('text')=='Janela flutuante');floating_point=point(floating)
- shell('input','keyevent','4');time.sleep(.3)
+ # Native accessibility runs in the test APK's own process, preserving live playback.
  adb('logcat','-c');shell('input','tap',*fresh_pause);time.sleep(1)
- shell('input','tap',*anchor);time.sleep(.4)
- # Filter to the one action using the measured field; no idle UI dumps during playback.
- shell('input','tap',*floating_search);time.sleep(.3);shell('input','text','Janela');shell('input','keyevent','4');time.sleep(.4)
- shell('input','tap',*floating_point);time.sleep(1.5)
+ action=shell('am','instrument','-w','br.com.onda.musica.test/br.com.onda.MenuActionInstrumentation').decode(errors='replace')
+ assert 'INSTRUMENTATION_CODE: -1' in action and 'Native picture-in-picture menu action clicked' in action,action
+ time.sleep(1.5)
  pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
  assert 'pip true' in pip_log,'Picture in picture did not start: '+pip_log
  assert 'paused at' not in pip_log.split('pip true',1)[-1],'PiP paused unexpectedly'
