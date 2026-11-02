@@ -1,12 +1,12 @@
 {
   "packageName": "com.arakaki.prismapdf",
-  "versionCode": 16,
-  "versionName": "1.13.0",
-  "notes": "Novo fluxo Continuar com este PDF: envie resultados diretamente para OCR, ocultação de dados e outras ferramentas compatíveis, sem salvar e selecionar novamente. Atalhos para tornar pesquisável e ocultar dados. Botão Ler na entrada permite conferir a cópia recebida. Transferência em memória até 25 MB, sem salvamento automático nem processamento antes de revisar as opções.",
-  "size": 14736631,
-  "sha256": "a3d2d6449ce10b5ccda4a9c53e1f726f6b9b76293797e2cbdbd0f4fb1879d6a3",
+  "versionCode": 17,
+  "versionName": "1.14.0",
+  "notes": "Interface mais direta: textos explicativos reduzidos, avisos essenciais mantidos, controles compactos e botões com ações claras. Abrir PDF leva direto ao leitor após escolher o arquivo. Novo atalho Scanner abre a câmera pela tela inicial. Recursos offline, revisão e exportação preservados.",
+  "size": 14732535,
+  "sha256": "8901bdb1ea9e0d83fcf71e6b77061ba9b8b9f6f56d36afe217be1d659c9b9154",
   "certificateSha256": "d18f4521fca495304f05a12303eebeb23454cc112b4f8d82ba6c8ce32e62fa0e",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.13.0/Prisma-PDF.apk",
-  "sourceBuildCommit": "03c5b135e9309bca39f22114dfc4b9c7ec900a5f",
-  "sourceValidationRun": 41206459355
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prisma-v1.14.0/Prisma-PDF.apk",
+  "sourceBuildCommit": "b2e77eff19d9431610d676f6eaa9d5815aa526a8",
+  "sourceValidationRun": 41463384852
 }
