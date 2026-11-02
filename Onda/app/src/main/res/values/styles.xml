@@ -18,4 +18,14 @@
     <style name="AccentCircuit"><item name="android:colorAccent">#7DF5C0</item><item name="android:colorControlActivated">#7DF5C0</item></style>
     <style name="AccentSolar"><item name="android:colorAccent">#FFCC80</item><item name="android:colorControlActivated">#FFCC80</item></style>
     <style name="AccentGraphite"><item name="android:colorAccent">#E5E7EB</item><item name="android:colorControlActivated">#E5E7EB</item></style>
+    <style name="AccentAurora"><item name="android:colorAccent">#8CF8DC</item><item name="android:colorControlActivated">#8CF8DC</item></style>
+    <style name="AccentTitanium"><item name="android:colorAccent">#BCDFFF</item><item name="android:colorControlActivated">#BCDFFF</item></style>
+    <style name="AccentHologram"><item name="android:colorAccent">#91F1FF</item><item name="android:colorControlActivated">#91F1FF</item></style>
+    <style name="AccentPlasma"><item name="android:colorAccent">#FFBAE6</item><item name="android:colorControlActivated">#FFBAE6</item></style>
+    <style name="AccentAbyss"><item name="android:colorAccent">#99DCFF</item><item name="android:colorControlActivated">#99DCFF</item></style>
+    <style name="AccentEmerald"><item name="android:colorAccent">#ADF2B7</item><item name="android:colorControlActivated">#ADF2B7</item></style>
+    <style name="AccentNova"><item name="android:colorAccent">#FFD59B</item><item name="android:colorControlActivated">#FFD59B</item></style>
+    <style name="AccentLunar"><item name="android:colorAccent">#D9E3FF</item><item name="android:colorControlActivated">#D9E3FF</item></style>
+    <style name="AccentObsidian"><item name="android:colorAccent">#E0C3FF</item><item name="android:colorControlActivated">#E0C3FF</item></style>
+    <style name="AccentSpectrum"><item name="android:colorAccent">#9CF3F5</item><item name="android:colorControlActivated">#9CF3F5</item></style>
 </resources>

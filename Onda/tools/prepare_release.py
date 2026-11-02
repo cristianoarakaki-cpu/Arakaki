@@ -29,7 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Voltar da tela cheia no Android recente
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — 10 novas interfaces futuristas
+
+Menu → Aparências. Preserva as 5 opções anteriores e acrescenta Aurora 3D, Titânio 3D, Holograma 3D, Plasma 3D, Abissal 3D, Esmeralda 3D, Nova 3D, Lunar 3D, Obsidiana 3D e Espectro 3D. Emblemas próprios desenhados nativamente, botões com relevo e recortes, prévias estáticas e escolha salva no aparelho. Sem animações contínuas, renderização 3D permanente, downloads de imagens ou novas bibliotecas. A mudança de tema repinta a interface sem recriar a tela ou interromper a música. Mantém fontes e áreas de toque do Android e os recursos de IPTV, PDF, música, vídeo, downloads e compartilhamento. Mesmo pacote e assinatura para atualizar sem desinstalar.
+
+Histórico de recursos preservados
+
+Onda Música {version_name} — Voltar da tela cheia no Android recente
 
 Registra o retorno da tela cheia do YouTube também no dispatcher de Voltar do Android 13 ou mais recente, com prioridade durante a visualização. Remove o callback ao sair, pausar ou destruir a tela. Preserva o tratamento tradicional para Android anteriores, a mesma WebView na rotação, a orientação anterior e os controles do Onda. Os testes validam vídeo HTML realmente avançando, saída por Voltar e liberação do estado de tela cheia no Android 10 e 15; a captura opcional de imagem é desativada somente no emulador Android 15 devido à falha do ambiente durante a captura.
 

@@ -1,3 +1,7 @@
+## Onda 0.64.0 — 10 novas interfaces 3D
+
+Menu → Aparências: mantém as 5 interfaces anteriores e acrescenta Aurora, Titânio, Holograma, Plasma, Abissal, Esmeralda, Nova, Lunar, Obsidiana e Espectro. Cada opção tem cores e emblema próprios, botões em relevo e prévia. Desenhos nativos estáticos, sem imagens remotas, animação contínua, serviço ou biblioteca adicional. Troca sem recriar a reprodução; escolha salva neste celular.
+
 ## Onda 0.63.1 — Voltar da tela cheia no Android recente
 
 Registra o retorno da tela cheia do YouTube também no dispatcher de Voltar do Android 13 ou mais recente, com prioridade durante a visualização. Remove o callback ao sair, pausar ou destruir a tela. Preserva o tratamento tradicional para Android anteriores, a mesma WebView na rotação, a orientação anterior e os controles do Onda. Os testes validam vídeo HTML realmente avançando, saída por Voltar e liberação do estado de tela cheia no Android 10 e 15; a captura opcional de imagem é desativada somente no emulador Android 15 devido à falha do ambiente durante a captura.
