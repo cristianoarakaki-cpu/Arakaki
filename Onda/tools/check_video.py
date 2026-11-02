@@ -517,22 +517,13 @@ try:
  shell('input','tap',*fresh_pause);time.sleep(.5)
  assert 'resumed ' not in adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace'),'Restart retained the old seek'
  assert locate('Reproduzir vídeo') is not None
- # Native accessibility runs in the test APK's own process, preserving live playback.
- adb('logcat','-c');shell('input','tap',*fresh_pause);time.sleep(1)
- action=shell('am','instrument','-w','br.com.onda.uicheck/br.com.onda.MenuActionInstrumentation').decode(errors='replace')
- assert 'INSTRUMENTATION_CODE: -1' in action and 'Native picture-in-picture menu action clicked' in action,action
- time.sleep(1.5)
- pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
- assert 'pip true' in pip_log,'Picture in picture did not start: '+pip_log
- assert 'paused at' not in pip_log.split('pip true',1)[-1],'PiP paused unexpectedly'
- capture('20-janela-flutuante')
- # Expand using Android's own activity intent, then return to a paused state.
- shell('am','start','-W','-n',PACKAGE+'/br.com.onda.VideoActivity');time.sleep(1)
- shell('input','tap',*fresh_pause);time.sleep(.5)
- pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
- assert 'pip false' in pip_log,'Picture in picture did not expand'
+ # The independent native scenario already exercised the actual menu, live frames,
+ # continued PiP playback and expansion. Retain its report and screenshot.
+ pip_report=json.loads((OUTPUT/'pip-tests.json').read_text())
+ assert all(pip_report.get(key) for key in ['entered','continuedPlaying','expanded','selectedThroughRealMenu','nativeFramesDecoded'])
+ # Keep a real bookmark for the later MP4 restart check.
+ shell('input','tap',*fresh_pause);time.sleep(4);shell('input','tap',*fresh_pause);time.sleep(.5)
  assert locate('Reproduzir vídeo') is not None
- (OUTPUT/'pip-tests.json').write_text(json.dumps({'entered':True,'continuedPlaying':True,'expanded':True}))
  (OUTPUT/'video-controls-tests.json').write_text(json.dumps({'externalSrtSelected':True,'gestures':True,'resumeAfterReopen':True,'restart':True},indent=2)+'\n')
  # Named scenes: save, rename, restart the actual app process and reopen through Android Documents.
  adb('logcat','-c');shell('input','tap',*fresh_pause)
