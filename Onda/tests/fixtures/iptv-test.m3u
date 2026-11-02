@@ -1,5 +1,0 @@
-#EXTM3U
-#EXTINF:-1 group-title="Notícias",Canal de teste A
-https://example.org/test-a.m3u8
-#EXTINF:-1 group-title="Cultura",Canal de teste B
-https://example.org/test-b.m3u8

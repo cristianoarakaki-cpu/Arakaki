@@ -1,3 +1,13 @@
+## Onda 0.67.0 — imagens, mensagens e compartilhamento
+
+Menu → Imagens e mensagens, ou Explorar → Imagens e mensagens. A aba Mensagens reúne 16 cartões de bom dia, boa noite, aniversário, amizade, carinho, fé e outras ocasiões. Busca digitada ou por voz; título e texto editáveis, seis fundos estáticos e prévia. Compartilhar imagem cria um PNG de 1080 × 1350 e abre o compartilhamento do Android. A pessoa escolhe o aplicativo e o destinatário; o Onda não envia automaticamente. Os cartões funcionam sem internet, sem anúncios de terceiros, sem API paga e sem processamento permanente. O reconhecimento de voz é acionado pelo botão e depende do serviço do celular.
+
+Fotos online pesquisa bitmaps no Wikimedia Commons, mostrando fonte, autor e licença. Resultados em lotes, carregamento somente das prévias visíveis, cache limitado e opção de compartilhar o arquivo da prévia fornecida pela fonte (até 1024 px) com os créditos no texto. Não é um buscador de toda a web; cartões com mensagens ficam na aba Mensagens. Uma indisponibilidade da fonte não impede a criação de cartões offline.
+
+IPTV removido a pedido do usuário: telas, parser, armazenamento, entradas de menus e testes exclusivos. Preserva o player de vídeos, LibVLC, YouTube, rádios, downloads, PDFs/OCR, temas, favoritos, voz, realce de áudio baixo e a limpeza conservadora de links. Não acrescenta serviços, permissões ou bibliotecas. Mesmo pacote e assinatura para atualizar sem desinstalar.
+
+## Histórico de versões (recursos podem ter sido alterados nas versões seguintes)
+
 ## Onda 0.66.0 — rádios online dentro do aplicativo
 
 Menu → Rádios online, ou Explorar → Rádios online. Busca por emissora no Brasil ou em todos os países pelo catálogo comunitário Radio Browser; favoritas, adição manual por link direto HTTPS e reprodução pelo mesmo tocador do Onda, inclusive em segundo plano e com tela apagada. Favoritas de rádios ficam na tela Rádios, e o coração do tocador principal também as controla. Pausar para a transmissão e Reproduzir reconecta ao vivo; não há reprodução automática ao abrir o catálogo, sondagem de emissoras, logos remotos ou atualização periódica. O realce opcional de áudio baixo também acompanha as rádios PCM16 compatíveis. Inclui o módulo HLS Media3 da mesma versão do tocador. Usa internet e depende da disponibilidade da emissora.
@@ -18,17 +28,8 @@ Menu → Aparências: mantém as 5 interfaces anteriores e acrescenta Aurora, Ti
 
 Registra o retorno da tela cheia do YouTube também no dispatcher de Voltar do Android 13 ou mais recente, com prioridade durante a visualização. Remove o callback ao sair, pausar ou destruir a tela. Preserva o tratamento tradicional para Android anteriores, a mesma WebView na rotação, a orientação anterior e os controles do Onda. Os testes validam vídeo HTML realmente avançando, saída por Voltar e liberação do estado de tela cheia no Android 10 e 15; a captura opcional de imagem é desativada somente no emulador Android 15 devido à falha do ambiente durante a captura.
 
-Mantém o suporte IPTV M3U/M3U8, a aba Sites removida e os demais recursos da 0.63.0. O app não fornece canais ou assinatura; importe sua lista quando tiver uma. Mesmo pacote e assinatura para atualizar sem desinstalar.
+Histórico: mantém a aba Sites removida e os recursos de mídia; o IPTV foi retirado na 0.67.0. Mesmo pacote e assinatura para atualizar sem desinstalar.
 
-## Onda 0.63.0 — listas IPTV e tela cheia do YouTube
-
-Menu da biblioteca ou dos vídeos → IPTV. Importa uma lista M3U/M3U8 por arquivo ou link HTTPS, mantém uma cópia privada para reabrir, permite buscar canais e filtrar grupos. Atualização somente manual. Não fornece lista, assinatura ou canais. Aceita endereços de transmissão HTTP/HTTPS; links de listas sem HTTPS precisam ser importados por arquivo. Listas HLS por HTTPS são tratadas como uma transmissão, sem mostrar os segmentos como canais. Sem Xtream Codes nesta edição.
-
-Player IPTV nativo com LibVLC já incluído no aplicativo, em paisagem e tela cheia, com controles que somem durante a reprodução e reaparecem ao tocar. Não abre páginas de sites. Usa decodificação de hardware e tenta software uma vez se necessário. Ao sair ou pausar, interrompe o fluxo e libera o áudio e a tela acesa; não há serviço IPTV permanente, busca de logos ou atualização em segundo plano. A reprodução depende da conexão, do servidor, dos codecs e da autorização da lista; DRM/login adicional não são resolvidos pelo aplicativo. Uma importação inválida mantém a lista anterior. URLs e tokens não aparecem na lista de canais nem nos relatórios.
-
-Inclui a correção de tela cheia HTML do YouTube: oculta a interface do Onda e as barras do sistema, apresenta o player em paisagem e restaura a orientação/interface com Voltar sem recriar a WebView. A aba Sites continua removida. Mantém downloads, compartilhamento de MP4, favoritos, voz, PDFs/OCR e melhorias de bateria, sem nova dependência ou permissão.
-
-Testes incluem parser M3U UTF-8, grupos e títulos com vírgulas, links relativos, rejeição de esquemas de arquivo/script, HLS sem confundir segmentos, importação real HTTPS/arquivo, busca e preservação da lista anterior em falha. O teste do player decodifica vídeo HLS HTTP servido localmente no emulador e confere a parada ao sair. Testes do YouTube usam um pedido de tela cheia real por toque em vídeo HTML, rotação e retorno pelo botão Voltar. Mesmo pacote e certificado para atualizar sem desinstalar.
 
 ## Onda 0.62.0 — tela cheia no YouTube
 

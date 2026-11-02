@@ -30,8 +30,6 @@
         </activity>
         <activity android:name=".ConnectActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".IptvActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
-        <activity android:name=".IptvPlayerActivity" android:exported="false" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".YouTubeActivity" android:enableOnBackInvokedCallback="true" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".YouTubeFavoritesActivity" android:exported="false" />
         <activity android:name=".AppearanceActivity" android:exported="false" />
@@ -64,6 +62,7 @@
                 <data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="video/*" /><data android:mimeType="application/x-matroska" /><data android:mimeType="application/mp4" />
             </intent-filter>
         </activity>
+        <activity android:name=".ImageSearchActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".RadioActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OnlineActivity" android:exported="false" />
         <activity android:name=".LyricsActivity" android:exported="false" />
