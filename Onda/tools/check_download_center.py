@@ -1,6 +1,6 @@
 """Real UI, SAF output and retry navigation; restore preferences after fixture cleanup."""
 from pathlib import Path
-import subprocess,shlex,time,json,re,xml.etree.ElementTree as ET,uuid
+import subprocess,shlex,time,json,re,xml.etree.ElementTree as ET,uuid,unicodedata
 P='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
 URL='https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/245b693e64cf5b5b33bc2a5f491a607f6a435655/Onda/tests/fixtures/download.mp4'
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
@@ -11,14 +11,22 @@ def nodes():
   except (subprocess.CalledProcessError,ET.ParseError):time.sleep(.3)
  raise AssertionError('No accessibility tree')
 def tap(label,desc=False):
- for attempt in range(12):
-  ns=nodes()
+ for attempt in range(16):
+  ns=nodes();scroll=next((n for n in ns if n.attrib.get('content-desc')=='Opções do menu'),None)
   n=next((n for n in ns if n.attrib.get('content-desc' if desc else 'text','').casefold()==label.casefold()),None)
   if n is not None:
-   l,t,r,b=map(int,re.findall(r'\d+',n.attrib['bounds']));assert r>l and b>t;shell('input','tap',(l+r)//2,(t+b)//2);time.sleep(.4);return
-  scroll=next((n for n in ns if n.attrib.get('content-desc')=='Opções do menu'),None)
+   l,t,r,b=map(int,re.findall(r'\d+',n.attrib['bounds']))
+   inside=True
+   if scroll is not None and not desc and n.attrib.get('resource-id')!='android:id/button2':
+    sl,st,sr,sb=map(int,re.findall(r'\d+',scroll.attrib['bounds']));inside=t>=st and b<=sb
+   if r>l and b>t and inside:shell('input','tap',(l+r)//2,(t+b)//2);time.sleep(.4);return
   if scroll is not None:
-   l,t,r,b=map(int,re.findall(r'\d+',scroll.attrib['bounds']));shell('input','swipe',(l+r)//2,t+(b-t)*8//10,(l+r)//2,t+(b-t)//10,250)
+   search=next((n for n in ns if n.attrib.get('content-desc')=='Buscar no menu'),None)
+   if search is not None and attempt==0:
+    l,t,r,b=map(int,re.findall(r'\d+',search.attrib['bounds']));shell('input','tap',(l+r)//2,(t+b)//2)
+    query=''.join(c for c in unicodedata.normalize('NFD',label) if unicodedata.category(c)!='Mn').replace(' ','%s')
+    shell('input','text',query);shell('input','keyevent','4');time.sleep(.3);continue
+   l,t,r,b=map(int,re.findall(r'\d+',scroll.attrib['bounds']));shell('input','swipe',(l+r)//2,t+(b-t)*7//10,(l+r)//2,t+(b-t)*4//10,600)
   time.sleep(.3)
  raise AssertionError('Missing '+label)
 def capture(name):(OUT/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
