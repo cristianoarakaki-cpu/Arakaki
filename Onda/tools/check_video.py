@@ -694,10 +694,10 @@ try:
     shell('input','tap',*pause_point);time.sleep(.5)
     assert locate('Reproduzir vídeo') is not None,'Video did not pause'
     if extension=='mp4':
-        adb('logcat','-c');tap('Menu de vídeos');tap_text('Voltar 10 segundos');time.sleep(.5)
+        adb('logcat','-c');menu_action('Menu de vídeos','Voltar 10 segundos');time.sleep(.5)
         assert 'jump ' in adb('logcat','-d','-s','OndaVideo:D').decode(),'Quick backward seek not dispatched'
         assert locate('Reproduzir vídeo') is not None,'Quick backward seek started paused video'
-        tap('Menu de vídeos');tap_text('Avançar 30 segundos');time.sleep(.5)
+        menu_action('Menu de vídeos','Avançar 30 segundos');time.sleep(.5)
         assert locate('Reproduzir vídeo') is not None,'Quick forward seek started paused video'
         (OUTPUT/'video-quick-seek-tests.json').write_text(json.dumps({'back10':True,'forward30':True,'pausedStatePreserved':True},indent=2))
     results.append({'format':extension,'videoCodec':vcodec,'audioCodec':acodec,'decodedFrames':True,'audioTrackSelected':True})
