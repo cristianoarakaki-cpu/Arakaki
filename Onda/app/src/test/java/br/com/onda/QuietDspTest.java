@@ -1,0 +1,10 @@
+package br.com.onda;
+import org.junit.Test;import static org.junit.Assert.*;
+public class QuietDspTest {
+ private double rms(int level,double amplitude){QuietDsp p=new QuietDsp(48000);short[] frame=new short[1];double sum=0;for(int n=0;n<96000;n++){frame[0]=(short)Math.round(amplitude*32767*Math.sin(2*Math.PI*440*n/48000));p.process(frame,level);if(n>=48000)sum+=(double)frame[0]*frame[0];}return Math.sqrt(sum/48000);}
+ @Test public void quietPassagesGainMoreWithEachLevel(){double original=rms(0,.03),soft=rms(1,.03),balanced=rms(2,.03),strong=rms(3,.03);assertTrue(soft>original*1.2);assertTrue(balanced>soft*1.2);assertTrue(strong>balanced*1.2);assertTrue(strong<original*2.82);assertTrue(rms(3,.7)/rms(0,.7)<1.05);}
+ @Test public void disabledIsBitExact(){QuietDsp p=new QuietDsp(44100);short[] f=new short[2];for(int n=Short.MIN_VALUE;n<=Short.MAX_VALUE;n++){f[0]=(short)n;f[1]=(short)-n;short a=f[0],b=f[1];p.process(f,0);assertEquals(a,f[0]);assertEquals(b,f[1]);}}
+ @Test public void linkedGainPreservesStereoAndTransientPeaks(){QuietDsp p=new QuietDsp(48000);short[] f=new short[2];for(int n=0;n<48000;n++){f[0]=(short)(3000*Math.sin(2*Math.PI*440*n/48000));f[1]=(short)(f[0]/2);p.process(f,3);if(n>2000)assertTrue(Math.abs(f[0]-2*f[1])<=6);}for(int n=0;n<10000;n++){f[0]=(short)(n%2==0?32767:-32768);f[1]=(short)(f[0]/2);p.process(f,3);assertTrue(Math.abs((int)f[0])<=30147);assertTrue(Math.abs(f[0]-2*f[1])<=3);}}
+ @Test public void silenceAndVeryLowNoiseAreNotBoosted(){QuietDsp p=new QuietDsp(16000);short[] f={0};for(int n=0;n<32000;n++){p.process(f,3);assertEquals(0,f[0]);}for(int n=0;n<32000;n++){f[0]=(short)(n%2==0?8:-8);p.process(f,3);assertEquals(8,Math.abs(f[0]));}}
+ @Test public void turningOffReturnsToExactOriginal(){QuietDsp p=new QuietDsp(48000);short[] f={0};for(int n=0;n<5000;n++){f[0]=1000;p.process(f,3);}for(int n=0;n<5000;n++){f[0]=1234;p.process(f,0);}assertTrue(p.bypassed());for(short value:new short[]{Short.MIN_VALUE,-1,0,1,Short.MAX_VALUE}){f[0]=value;p.process(f,0);assertEquals(value,f[0]);}}
+}

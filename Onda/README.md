@@ -1,3 +1,7 @@
+## Onda 0.65.0 — menus, atalhos e áudio baixo
+
+Menus da biblioteca e vídeos com busca, categorias e até 3 atalhos editáveis; todas as opções anteriores continuam acessíveis em Todas as categorias. Aparências: busca por nome/descrição, filtro Clássicas/3D e opção Prévias salva no aparelho. Estúdio de som: Melhorar áudio baixo, com níveis Suave, Equilibrado e Forte (até +3/+6/+9 dB), limite de picos e ganho compartilhado entre os canais. Começa desligado. Recursos locais para músicas e áudio online PCM16 compatíveis; não modifica o volume geral do Android nem o áudio dos vídeos/YouTube. Presets Baixo volume claro e Graves definidos. Sem serviços novos, microfone ou bibliotecas adicionais.
+
 ## Onda 0.64.0 — 10 novas interfaces 3D
 
 Menu → Aparências: mantém as 5 interfaces anteriores e acrescenta Aurora, Titânio, Holograma, Plasma, Abissal, Esmeralda, Nova, Lunar, Obsidiana e Espectro. Cada opção tem cores e emblema próprios, botões em relevo e prévia. Desenhos nativos estáticos, sem imagens remotas, animação contínua, serviço ou biblioteca adicional. Troca sem recriar a reprodução; escolha salva neste celular.

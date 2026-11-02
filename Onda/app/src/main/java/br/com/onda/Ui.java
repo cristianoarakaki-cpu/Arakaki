@@ -68,6 +68,7 @@ final class Ui {
     }
     static void menu(Activity activity,View anchor,String[] labels,String[] descriptions,Runnable[] actions){
         if(activity.isFinishing()||activity.isDestroyed())return;
+        if(labels.length>=12){MenuPanel.show(activity,anchor,labels,descriptions,actions);return;}
         // Small finite menus use a plain ScrollView so every action stays exposed
         // to accessibility, including on very short landscape windows.
         Rect frame=new Rect();activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(frame);

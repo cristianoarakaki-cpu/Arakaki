@@ -33,7 +33,7 @@ try:
   for n in [listing,close]:
    left,top,right,bottom=bounds(n);assert 0<=left<right<=width and 0<top<bottom<height,(name,n.attrib)
   assert bounds(close)[1]>=bounds(listing)[3], 'Close button must remain outside the scrolling list'
-  for _ in range(18):
+  for _ in range(32):
    ns=nodes();listing=next(n for n in ns if n.attrib.get('content-desc')=='Opções do menu')
    last=next((n for n in ns if n.attrib.get('text')=='Compartilhar música atual'),None)
    if last is not None and bounds(last)[3]-bounds(last)[1]>=int(48*density)-2:break

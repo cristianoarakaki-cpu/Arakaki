@@ -29,7 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — 10 novas interfaces futuristas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — menus mais fáceis e melhoria de áudio baixo
+
+Biblioteca e vídeos: menus com busca, categorias e atalhos editáveis. Toque em Editar para escolher até 3 atalhos ou restaurar os padrões. Todas as ações anteriores permanecem em Todas as categorias e o botão Fechar fica fora da rolagem.
+
+Menu → Aparências: busca por nome/descrição, filtro Todas/Clássicas/3D e opção Prévias salva no aparelho. Mantém as 15 aparências, os controles e a reprodução ao trocar o visual.
+
+Menu → Estúdio de som → Melhorar áudio baixo: Desligado, Suave (até +3 dB), Equilibrado (até +6 dB) e Forte (até +9 dB). O ganho atua nos trechos baixos, mantém o equilíbrio dos canais e limita picos, com transição suave ao ligar/desligar. Começa desligado, preservando os samples originais; não altera o volume geral do celular. Pode evidenciar ruído da gravação. Vale para músicas e áudio online PCM16 compatíveis; vídeos e páginas do YouTube usam outros tocadores. Também adiciona os presets Baixo volume claro e Graves definidos. Restaurar som original desliga o realce na configuração atual.
+
+Sem serviços novos, análise do arquivo inteiro, microfone, API paga ou bibliotecas adicionais. O processamento acompanha o áudio decodificado; desligado usa cópia direta e não analisa os frames. Mesmo pacote e assinatura para atualizar sem desinstalar; preserva os demais recursos.
+
+Histórico de recursos preservados
+
+Onda Música {version_name} — 10 novas interfaces futuristas
 
 Menu → Aparências. Preserva as 5 opções anteriores e acrescenta Aurora 3D, Titânio 3D, Holograma 3D, Plasma 3D, Abissal 3D, Esmeralda 3D, Nova 3D, Lunar 3D, Obsidiana 3D e Espectro 3D. Emblemas próprios desenhados nativamente, botões com relevo e recortes, prévias estáticas e escolha salva no aparelho. Sem animações contínuas, renderização 3D permanente, downloads de imagens ou novas bibliotecas. A mudança de tema repinta a interface sem recriar a tela ou interromper a música. Mantém fontes e áreas de toque do Android e os recursos de IPTV, PDF, música, vídeo, downloads e compartilhamento. Mesmo pacote e assinatura para atualizar sem desinstalar.
 
