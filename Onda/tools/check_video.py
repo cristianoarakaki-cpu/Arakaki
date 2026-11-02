@@ -519,10 +519,24 @@ try:
  assert locate('Reproduzir vídeo') is not None
  # Learn menu coordinates while paused: active playback prevents idle UI dumps.
  anchor=point(locate('Menu de vídeos'));shell('input','tap',*anchor);time.sleep(.4)
- floating=next(n for n in nodes() if n.attrib.get('text')=='Janela flutuante');floating_point=point(floating)
+ floating_swipes=[]
+ for _ in range(12):
+    current=nodes();floating=next((n for n in current if n.attrib.get('text')=='Janela flutuante'),None)
+    listing=next(n for n in current if n.attrib.get('content-desc')=='Opções do menu')
+    bounds=[int(x) for x in re.findall(r'\d+',listing.attrib['bounds'])]
+    if floating is not None:
+        rect=[int(x) for x in re.findall(r'\d+',floating.attrib['bounds'])]
+        if rect[1]>=bounds[1] and rect[3]<=bounds[3] and rect[3]>rect[1]:
+            floating_point=point(floating);break
+    x=(bounds[0]+bounds[2])//2;y1=bounds[1]+int((bounds[3]-bounds[1])*.85);y2=bounds[1]+int((bounds[3]-bounds[1])*.2)
+    gesture=(x,y1,x,y2,300);floating_swipes.append(gesture);shell('input','swipe',*gesture);time.sleep(.3)
+ else:raise AssertionError('Picture-in-picture menu action could not be reached')
  shell('input','keyevent','4');time.sleep(.3)
  adb('logcat','-c');shell('input','tap',*fresh_pause);time.sleep(1)
- shell('input','tap',*anchor);time.sleep(.4);shell('input','tap',*floating_point);time.sleep(1.5)
+ shell('input','tap',*anchor);time.sleep(.4)
+ # Replay the measured scroll without idle UI dumps during live playback.
+ for gesture in floating_swipes:shell('input','swipe',*gesture);time.sleep(.3)
+ shell('input','tap',*floating_point);time.sleep(1.5)
  pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')
  assert 'pip true' in pip_log,'Picture in picture did not start: '+pip_log
  assert 'paused at' not in pip_log.split('pip true',1)[-1],'PiP paused unexpectedly'
