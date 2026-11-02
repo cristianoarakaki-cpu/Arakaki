@@ -137,3 +137,11 @@ Cada resultado PDF inclui a seção Continuar com este PDF, com atalhos para OCR
 Mantém o limite de 25 MB por entrada. Uma cópia maior é recusada antes de mudar a ferramenta e continua disponível para salvar/compartilhar. Verifica o cabeçalho antes da troca, evita cliques simultâneos e confere se o resultado/tela continuam atuais antes de transferir. TXT e PNG não oferecem ações incompatíveis de PDF. Não há histórico persistente de etapas.
 
 Teste de navegador offline: imagem em PDF → OCR real → análise de ocultação, igualdade de bytes e nome da entrada, ausência de salvamento/biblioteca/processamento automático, leitura da entrada e retorno, seletor para giro, recusa de cópia acima de 25 MB sem perder resultado, saída TXT e layout de 320 px.
+
+## Versão 1.14.0 — Interface essencial
+
+Removidos slogans e parágrafos explicativos repetidos. Orientações necessárias ficam em frases curtas junto aos controles: revisão da ocultação/OCR, ausência de certificado na assinatura visual, limites de páginas/tamanho e perda da biblioteca ao desinstalar. Controles e ações são mantidos, com nomes específicos por ferramenta e espaçamento compacto. A revisão de todas as páginas e a conferência de ocultação continuam obrigatórias.
+
+Tela inicial com Abrir PDF (selecionar → leitor direto, sem segundo comando) e atalho Scanner para a câmera existente. Cancelar o seletor de PDF não altera a ferramenta atual. Fechar a leitura iniciada pela tela inicial retorna às ferramentas. Aparência e interfaces permanecem acessíveis, e a transferência entre ferramentas continua em memória.
+
+Verificação: mesmos testes de PDFs, OCR, ocultação, scanner, assinaturas e layout com fonte 100–200%; nova cobertura dos atalhos de leitura/câmera e cancelamento, sem salvamento automático.

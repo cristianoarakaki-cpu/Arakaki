@@ -1,5 +1,5 @@
 {
-  "versionCode": 16,
-  "versionName": "1.13.0",
-  "notes": "Novo fluxo Continuar com este PDF: envie resultados diretamente para OCR, ocultação de dados e outras ferramentas compatíveis, sem salvar e selecionar novamente. Atalhos para tornar pesquisável e ocultar dados. Botão Ler na entrada permite conferir a cópia recebida. Transferência em memória até 25 MB, sem salvamento automático nem processamento antes de revisar as opções."
+  "versionCode": 17,
+  "versionName": "1.14.0",
+  "notes": "Interface mais direta: textos explicativos reduzidos, avisos essenciais mantidos, controles compactos e botões com ações claras. Abrir PDF leva direto ao leitor após escolher o arquivo. Novo atalho Scanner abre a câmera pela tela inicial. Recursos offline, revisão e exportação preservados."
 }
