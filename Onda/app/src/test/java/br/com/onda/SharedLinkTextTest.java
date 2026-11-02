@@ -1,0 +1,10 @@
+package br.com.onda;
+import org.junit.Test;import static org.junit.Assert.*;
+public class SharedLinkTextTest {
+ @Test public void repairsTikTokClipboardBoundariesAndCaptions(){String target="https://vt.tiktok.com/ZSgT5mTQv/";for(String pasted:new String[]{"\uFEFF\u2068"+target+"\u200B\u2069","Veja\u00A0“"+target+"\u200B”","Veja ("+target+").",target+"。"})assertEquals(target,MediaLinks.resolve(pasted));}
+ @Test public void repairsOnlyKnownPlatformPathCharactersAfterFailure(){assertEquals("https://vt.tiktok.com/ZSgT5mTQv/",MediaLinks.resolve("https://vt.tiktok.com/ZSg\u200BT5mTQv/"));assertEquals("https://www.youtube.com/playlist?list=RDi7j0bw5TonI",MediaLinks.resolve("Veja (https://www.youtube.com/playlist?list=RDi7j0bw5TonI)."));}
+ @Test public void signedFileQueriesRemainByteForByteIdentical(){for(String url:new String[]{"https://cdn.example.com/a.mp4?signature=abc%2B%2F%3D&expires=9&utm_source=needed&token=x%252Fy","https://cdn.example.com/a.mp4?signature=a!&X-Amz-Signature=abc.","https://www.instagram.com/reel/ABC123/?igsh=abc%2B%3D&token=def","https://cdn.example.com/a.mp4?token=x&next=https%3A%2F%2Fexample.com%2Fa"})assertEquals(url,MediaLinks.resolve(url));}
+ @Test public void legacyTikTokAndPlaylistIdentityRemainUnchanged(){assertEquals("https://vt.tiktok.com/ZSgTa8TC2/",MediaLinks.resolve("https://vt.tiktok.com/ZSgTa8TC2/?_t=abc&_r=1"));assertEquals("https://www.youtube.com/playlist?list=RDi7j0bw5TonI",MediaLinks.resolve("https://www.youtube.com/playlist?list=RDi7j0bw5TonI&playnext=1&si=abc"));}
+ @Test public void multipleLinksAndUnsafeOriginsAreStillRejected(){for(String url:new String[]{"Veja https://vt.tiktok.com/ZSgT5mTQv/ e https://youtu.be/aqz-KE-bpKQ","https://tiktok.com@evil.invalid/a.mp4)","https://localhost/a.mp4)","https://tiktok.com.evil.invalid/a.mp4)","http://vt.tiktok.com/ZSgT5mTQv/"})try{MediaLinks.resolve(url);fail(url);}catch(IllegalArgumentException expected){}}
+ @Test public void upperCaseSchemeInsideShareCaptionCanBeRead(){assertEquals("https://www.youtube.com/watch?v=aqz-KE-bpKQ",MediaLinks.resolve("Veja: HTTPS://youtu.be/aqz-KE-bpKQ"));}
+}

@@ -39,6 +39,8 @@ Menu → Estúdio de som → Melhorar áudio baixo: Desligado, Suave (até +3 dB
 
 Sem serviços novos, análise do arquivo inteiro, microfone, API paga ou bibliotecas adicionais. O processamento acompanha o áudio decodificado; desligado usa cópia direta e não analisa os frames. Mesmo pacote e assinatura para atualizar sem desinstalar; preserva os demais recursos.
 
+Limpeza conservadora de links: o caminho existente é tentado primeiro. Só quando ele rejeita o texto, há recuperação de espaços de cópia, aspas, pontuação e caracteres invisíveis em endereços reconhecidos. Links já aceitos e parâmetros de arquivos assinados permanecem no tratamento anterior; não remove indiscriminadamente parâmetros de outras plataformas. Isso corrige texto colado malformado, sem garantir downloads quando o servidor exige verificação ou restringe o conteúdo.
+
 Histórico de recursos preservados
 
 Onda Música {version_name} — 10 novas interfaces futuristas

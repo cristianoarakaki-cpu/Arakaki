@@ -1,5 +1,7 @@
 ## Onda 0.65.0 — menus, atalhos e áudio baixo
 
+Limpeza conservadora de links: o caminho existente é tentado primeiro. Só quando ele rejeita o texto, há recuperação de espaços de cópia, aspas, pontuação e caracteres invisíveis em endereços reconhecidos. Links já aceitos e parâmetros de arquivos assinados permanecem no tratamento anterior; não remove indiscriminadamente parâmetros de outras plataformas. Isso corrige texto colado malformado, sem garantir downloads quando o servidor exige verificação ou restringe o conteúdo.
+
 Menus da biblioteca e vídeos com busca, categorias e até 3 atalhos editáveis; todas as opções anteriores continuam acessíveis em Todas as categorias. Aparências: busca por nome/descrição, filtro Clássicas/3D e opção Prévias salva no aparelho. Estúdio de som: Melhorar áudio baixo, com níveis Suave, Equilibrado e Forte (até +3/+6/+9 dB), limite de picos e ganho compartilhado entre os canais. Começa desligado. Recursos locais para músicas e áudio online PCM16 compatíveis; não modifica o volume geral do Android nem o áudio dos vídeos/YouTube. Presets Baixo volume claro e Graves definidos. Sem serviços novos, microfone ou bibliotecas adicionais.
 
 ## Onda 0.64.0 — 10 novas interfaces 3D
