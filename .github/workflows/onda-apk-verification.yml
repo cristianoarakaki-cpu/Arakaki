@@ -38,13 +38,14 @@ jobs:
           ONDA_AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
           test -n "$ONDA_APK" && test -x "$ONDA_SIGNER" && test -x "$ONDA_AAPT"
           "$ONDA_SIGNER" verify --verbose --print-certs "$ONDA_APK" > verify/apk-signature.txt
+          cat verify/apk-signature.txt
           "$ONDA_AAPT" dump badging "$ONDA_APK" > verify/apk-info.txt
           python - <<'PY'
           from pathlib import Path
           import zipfile,re,json,hashlib
           apk=next(Path('verify').rglob('*.apk'))
           cert=Path('verify/apk-signature.txt').read_text()
-          fingerprint=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]{64})',cert).group(1).lower()
+          fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
           assert "package: name='br.com.onda.musica' versionCode='79' versionName='0.68.0'" in info
