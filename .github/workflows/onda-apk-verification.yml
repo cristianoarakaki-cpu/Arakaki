@@ -1,0 +1,66 @@
+name: Onda - Separar APK para verificação
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-apk-verification.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+env:
+  SOURCE_RUN: '41472687627'
+  SOURCE_SHA: '9546f32866145f25a929f6faef3102c800ce22e3'
+jobs:
+  split:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Conferir origem do artefato
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > /tmp/onda-build.json
+          python - <<'PY'
+          import json,os
+          run=json.load(open('/tmp/onda-build.json'))
+          assert run['head_sha']==os.environ['SOURCE_SHA'] and run['head_branch']=='main' and run['event']=='push'
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Android-APK
+          path: verify
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN }}
+      - name: Dividir cópia exata sem alterar o APK
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json,os
+          apks=list(Path('verify').rglob('*.apk'));assert len(apks)==1
+          data=apks[0].read_bytes();assert len(data)<=64*1024*1024
+          parts=[]
+          for index,start in enumerate(range(0,len(data),24*1024*1024),1):
+              chunk=data[start:start+24*1024*1024]
+              p=Path('verify')/f'part-{index}.bin';p.write_bytes(chunk)
+              parts.append(dict(file=p.name,bytes=len(chunk),sha256=hashlib.sha256(chunk).hexdigest()))
+          manifest=dict(sourceRun=os.environ['SOURCE_RUN'],sourceSha=os.environ['SOURCE_SHA'],bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),parts=parts)
+          Path('verify/parts.json').write_text(json.dumps(manifest,indent=2))
+          print(json.dumps(manifest,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Verify-Part-1
+          path: |
+            verify/part-1.bin
+            verify/parts.json
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Verify-Part-2
+          path: verify/part-2.bin
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Verify-Part-3
+          path: verify/part-3.bin
+          compression-level: 0
