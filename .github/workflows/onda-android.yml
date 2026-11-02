@@ -208,6 +208,11 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
           script: |
             python Onda/tools/check_upgrade.py
+            adb install -r Onda/uihelper/build/outputs/apk/debug/uihelper-debug.apk
+            adb shell am start -W -n br.com.onda.musica/br.com.onda.MainActivity
+            adb shell am instrument -w -e probe true br.com.onda.uicheck/br.com.onda.MenuActionInstrumentation > /tmp/onda-ui-helper.txt
+            python -c 's=open("/tmp/onda-ui-helper.txt").read(); assert "Independent automation connected to Onda" in s and "INSTRUMENTATION_CODE: -1" in s'
+            adb shell am force-stop br.com.onda.musica
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
             adb shell am instrument -w -e class br.com.onda.YouTubeFavoritesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-favorites-tests.txt

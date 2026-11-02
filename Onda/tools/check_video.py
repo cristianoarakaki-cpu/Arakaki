@@ -519,7 +519,7 @@ try:
  assert locate('Reproduzir vídeo') is not None
  # Native accessibility runs in the test APK's own process, preserving live playback.
  adb('logcat','-c');shell('input','tap',*fresh_pause);time.sleep(1)
- action=shell('am','instrument','-w','br.com.onda.musica.test/br.com.onda.MenuActionInstrumentation').decode(errors='replace')
+ action=shell('am','instrument','-w','br.com.onda.uicheck/br.com.onda.MenuActionInstrumentation').decode(errors='replace')
  assert 'INSTRUMENTATION_CODE: -1' in action and 'Native picture-in-picture menu action clicked' in action,action
  time.sleep(1.5)
  pip_log=adb('logcat','-d','-s','OndaVideo:D').decode(errors='replace')

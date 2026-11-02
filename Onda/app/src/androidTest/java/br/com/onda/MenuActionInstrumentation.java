@@ -1,9 +1,0 @@
-package br.com.onda;
-import android.app.*;import android.os.*;import android.view.accessibility.AccessibilityNodeInfo;
-/** Test-APK-only native accessibility actions, without idle waits or stale screen coordinates. */
-public final class MenuActionInstrumentation extends Instrumentation {
- @Override public void onCreate(Bundle args){super.onCreate(args);start();}
- private AccessibilityNodeInfo find(AccessibilityNodeInfo node,String description){if(node==null)return null;if(description.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))return node;for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo found=find(node.getChild(i),description);if(found!=null)return found;}return null;}
- private AccessibilityNodeInfo waitNode(String description)throws Exception{for(int i=0;i<80;i++){AccessibilityNodeInfo node=find(getUiAutomation().getRootInActiveWindow(),description);if(node!=null)return node;Thread.sleep(100);}throw new IllegalStateException("Native menu action not found: "+description);}
- @Override public void onStart(){Bundle result=new Bundle();try{if(!waitNode("Menu de vídeos").performAction(AccessibilityNodeInfo.ACTION_CLICK))throw new IllegalStateException("Could not open video menu");Bundle text=new Bundle();text.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,"Janela");if(!waitNode("Buscar no menu").performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,text))throw new IllegalStateException("Could not filter video menu");Thread.sleep(150);if(!waitNode("Janela flutuante do vídeo").performAction(AccessibilityNodeInfo.ACTION_CLICK))throw new IllegalStateException("Could not click picture-in-picture action");result.putString("stream","Native picture-in-picture menu action clicked\n");finish(Activity.RESULT_OK,result);}catch(Exception e){result.putString("stream",e.toString()+"\n");finish(Activity.RESULT_CANCELED,result);}}
-}
