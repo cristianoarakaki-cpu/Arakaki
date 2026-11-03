@@ -2,6 +2,9 @@
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
 PACKAGE='br.com.onda.musica'
+config=Path('Onda/app/build.gradle').read_text()
+expected_code=int(re.search(r'versionCode\s+(\d+)',config).group(1))
+expected_name=re.search(r"versionName\s+'([^']+)'",config).group(1)
 def adb(*args,data=None):
  return subprocess.run(['adb',*args],input=data,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=90).stdout
 def shell(*args,data=None):return adb('shell',shlex.join(str(v) for v in args),data=data)
@@ -43,12 +46,13 @@ for name,values in seeds.items():shell('run-as',PACKAGE,'sh','-c','cat > shared_
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1);shell('am','force-stop',PACKAGE)
 for name,values in seeds.items():assert read(name)==values,('Old Onda did not retain its seed',name)
 adb('install','-r',str(current));new_info=shell('dumpsys','package',PACKAGE).decode()
-assert re.search(r'versionCode=82\b',new_info),'The main Onda was not upgraded'
+assert re.search(rf'\bversionCode={expected_code}\b',new_info),'The main Onda was not upgraded to the expected version code'
+assert re.search(rf'\bversionName={re.escape(expected_name)}(?:\s|$)',new_info),'The installed version name differs from the project'
 assert re.search(r'userId=(\d+)',old_info).group(1)==re.search(r'userId=(\d+)',new_info).group(1),'App UID changed'
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1);shell('am','force-stop',PACKAGE)
 for name,values in seeds.items():assert read(name)==values,('Upgrade lost data',name)
 output=Path('Onda/ui-preview');output.mkdir(exist_ok=True,parents=True)
-(output/'upgrade-tests.json').write_text(json.dumps({'from':'0.21.1','to':'0.69.0','installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
+(output/'upgrade-tests.json').write_text(json.dumps({'from':'0.21.1','to':expected_name,'versionCode':expected_code,'installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
 print('Real Onda upgrade passed: favorites, playlists, voice phrases and sound settings retained.')
 # Reset only the emulator test fixture, so the existing regression suite starts in its normal state.
 shell('pm','clear',PACKAGE)
