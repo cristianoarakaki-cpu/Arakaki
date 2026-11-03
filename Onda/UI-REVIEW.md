@@ -1,12 +1,12 @@
-# Revisão de interface — Onda 0.70.0
+# Revisão de interface — Onda 0.71.0
 
 Escopo: revisão do código das 30 Activities e verificação dos controles nativos em 28 telas principais com fonte 130% no emulador. Não implica que toda página remota ou todo aparelho foi visualmente testado.
 
-- YouTube PiP: ações próprias e sessão de mídia exclusiva do vídeo, pausa explícita da música anterior; regressão usa música real e comandos de PiP/sessão, preservando fila e posição.
+- YouTube: botão de áudio nativo com estados de preparação, pausa e retomada; mesma sessão do tocador, fila local preservada. Entrada automática em PiP retirada a pedido do usuário. Testes determinísticos verificam áudio real com tela desligada, identidade dos controles e falha sem retomar música anterior. Não afirmam disponibilidade do provedor.
 - Faixas da coletânea: tela nova com lista de posições, ajuda compacta, análise explícita/cancelável, nomes editáveis e remoção de divisões. Arquivo original somente leitura; cache privado, sem análise contínua.
 - Google Imagens: texto web em 100%, ajuste manual preservando pesquisa/WebView, painel arredondado e busca/compartilhamento preservados. A página pertence ao provedor e pode mudar.
 - WebViews: pausa por página e destruição ao sair; evita pauseTimers global para não suspender outro vídeo PiP visível.
-- YouTube: campos e textos compactos, viewport responsivo, PiP de vídeo em tela cheia, retorno preservando WebView; pausar/liberar ao sair sem PiP.
+- YouTube: campos e textos compactos, viewport responsivo, tela cheia preservada, pausa e destruição da página ao sair; áudio nativo explícito independente da WebView.
 - Rádio: cidade brasileira local por nome/UF, seletor rolável e fechado dentro da área útil; consulta de emissoras com coordenadas até 50 km. Favoritas continuam independentes do filtro.
 - Menus: ícone desenhado independentemente da fonte, com toque mínimo de 48 dp; corrige recorte do glifo em seis telas detectado na auditoria 130%.
 - Formulários: ações com altura natural e mínimo 48 dp, seletores multilinha; atualizações em ScrollView.
@@ -16,4 +16,4 @@ Escopo: revisão do código das 30 Activities e verificação dos controles nati
 
 A tela de exclusão tem seus próprios testes de consentimento em Android 10/15. O scanner QR foi revisado no código quanto a superfície, cancelamento e liberação da câmera, e continua dependente de teste físico para avaliar câmera/foco. Não abre câmera nem inicia transmissões no teste de layout.
 
-Os testes geram `screen-layout-review.json`, `radio-city-ui.json`, `image-internet-tests.json`, `youtube-fullscreen-pip.json` e `youtube-back-35.json`. A publicação aguarda a suíte completar com sucesso. Não são adicionados listeners de auditoria ou polling ao aplicativo.
+Os testes geram `screen-layout-review.json`, `radio-city-ui.json`, `image-internet-tests.json`, `youtube-native-audio.json` e `youtube-back-35.json`. A publicação aguarda a suíte completar com sucesso. Não são adicionados listeners de auditoria ou polling ao aplicativo.

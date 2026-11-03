@@ -29,13 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube flutuante e faixas da coletânea
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube com áudio no tocador
 
-YouTube: a janela flutuante ganha ações explícitas de reproduzir/pausar o vídeo e uma sessão de mídia própria. A música anterior recebe pausa explícita, preservando fila e posição, para não retomar quando o foco de áudio mudar. Botões do PiP e comandos de mídia passam a controlar o vídeo. Android 12 ou superior usa transição automática para PiP ao sair da tela cheia; aparelhos anteriores mantêm a entrada manual. A continuidade também depende do player oficial do YouTube e da permissão PiP; não acrescenta reprodução oculta ou com tela bloqueada.
+Na aba YouTube, abra um vídeo e toque em Ouvir com tela desligada. O Onda consulta um áudio separado acessível e o reproduz no mesmo serviço nativo das músicas, com controles e notificação do vídeo escolhido. Aguarde a preparação antes de bloquear a tela. Não mantém WebView oculto em execução. A disponibilidade depende do YouTube; alguns vídeos e transmissões não oferecem áudio compatível ou exigem verificação. A falha aparece e é salva no relatório, sem iniciar a música anterior.
 
-Músicas → botão Faixas, ou Menu → Faixas da coletânea: análise local por pausas para criar uma lista de posições dentro do arquivo original. Toque numa faixa para buscar a posição no mesmo áudio; segure para renomear ou remover uma divisão incorreta. São divisões aproximadas, sem reconhecimento dos nomes: mixes contínuos e trechos curtos podem não ser separados. Não exporta arquivos individuais nem converte o áudio.
+Removida a entrada automática do YouTube em janela flutuante. Tela cheia da página continua disponível; a janela flutuante dos vídeos locais permanece. A fila local é guardada enquanto o áudio do YouTube está ativo: Menu do YouTube → Voltar à fila de músicas restaura a fila pausada. Links temporários de áudio não são persistidos; ao reabrir após expiração, toque em Reproduzir para consultar novamente.
 
-A análise só roda quando solicitada, pausa a reprodução, mostra progresso e é cancelada ao sair. Usa blocos pequenos de áudio, sem cópia integral ou serviço em segundo plano; os marcadores concluídos são salvos e reutilizados. Cancelamento mantém marcações anteriores e o arquivo original. Mantém relatórios de erro, downloads, PDF/OCR, favoritos, rádios, voz, aparências e demais funções.
+Mantém faixas da coletânea, rádios por cidade, downloads, conversões, PDF/OCR, favoritos, compartilhamento, voz, som, aparências e demais funções. Testes usam áudio real determinístico para verificar serviço, tela desligada, controles e falhas; não garantem disponibilidade de todos os vídeos do provedor.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 

@@ -18,6 +18,16 @@ final class YoutubeDownloads {
  private static boolean ready;
  private static synchronized void init(){if(!ready){NewPipe.init(new ExtractorHttp());ready=true;}}
  private static boolean usable(Stream s){return s.isUrl()&&s.getContent().startsWith("https://")&&s.getDeliveryMethod()==DeliveryMethod.PROGRESSIVE_HTTP;}
+ static androidx.media3.common.MediaItem audioInfo(String link)throws Exception {
+  String url=DownloadLinks.canonical(link);init();ExtractorHttp.begin();try{
+   StreamInfo info=StreamInfo.getInfo(ServiceList.YouTube,url);AudioStream best=null;
+   for(AudioStream candidate:info.getAudioStreams())if(usable(candidate)&&candidate.getFormat()!=null){
+    if(best==null||(candidate.getFormat()==MediaFormat.M4A&&best.getFormat()!=MediaFormat.M4A)||(candidate.getFormat()==best.getFormat()&&candidate.getAverageBitrate()>best.getAverageBitrate()))best=candidate;
+   }
+   if(best==null)throw new Exception("O YouTube não disponibilizou áudio separado acessível para este vídeo. A reprodução na página continua disponível.");
+   ExtractorHttp.remaining();return YouTubeAudio.item(url,info.getName(),best.getContent(),best.getFormat().getMimeType());
+  }finally{ExtractorHttp.end();}
+ }
  static Result inspect(String link)throws Exception {
   init();ExtractorHttp.begin();try{String url=DownloadLinks.canonical(link);StreamInfo info=StreamInfo.getInfo(ServiceList.YouTube,url);
   if(info.getStreamType()!=StreamType.VIDEO_STREAM||info.getDuration()<=0)throw new Exception("Esta versão aceita vídeos gravados, sem transmissão ao vivo.");
