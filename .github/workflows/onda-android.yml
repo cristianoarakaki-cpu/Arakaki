@@ -328,8 +328,13 @@ jobs:
             adb shell am instrument -w -e class br.com.onda.FavoriteCopiesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-favorite-copies-tests.txt
             cat /tmp/onda-favorite-copies-tests.txt
             python -c 's=open("/tmp/onda-favorite-copies-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
+            adb logcat -c
             adb shell am instrument -w -e class br.com.onda.EvolutionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-evolution-tests.txt
             cat /tmp/onda-evolution-tests.txt
+            adb logcat -d -b crash -v threadtime > Onda/ui-preview/evolution-crash.txt
+            cat Onda/ui-preview/evolution-crash.txt
+            adb logcat -d -v threadtime > Onda/ui-preview/evolution-logcat.txt
             python -c 's=open("/tmp/onda-evolution-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             python Onda/tools/check_download_center.py
