@@ -29,13 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — relatório de falhas na análise de links
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube flutuante e faixas da coletânea
 
-Falhas ao analisar vídeos, transmissões e playlists passam a aparecer no histórico e no Relatório de downloads, mesmo antes de escolher formato ou iniciar transferência. O motivo específico é mostrado na tela, com data e opção de copiar o relatório. Mantém as últimas 20 falhas de análise no relatório, dentro do histórico local existente, sem alterar arquivos baixados ou o relatório da última operação.
+YouTube: a janela flutuante ganha ações explícitas de reproduzir/pausar o vídeo e uma sessão de mídia própria. A música anterior recebe pausa explícita, preservando fila e posição, para não retomar quando o foco de áudio mudar. Botões do PiP e comandos de mídia passam a controlar o vídeo. Android 12 ou superior usa transição automática para PiP ao sair da tela cheia; aparelhos anteriores mantêm a entrada manual. A continuidade também depende do player oficial do YouTube e da permissão PiP; não acrescenta reprodução oculta ou com tela bloqueada.
 
-Endereços temporários e caminhos privados são ocultados do diagnóstico. A seleção da playlist é preservada se uma próxima página falhar. Isso melhora o registro da falha; não acrescenta suporte a capturar transmissões ao vivo ou garante baixar o vídeo mencionado.
+Músicas → botão Faixas, ou Menu → Faixas da coletânea: análise local por pausas para criar uma lista de posições dentro do arquivo original. Toque numa faixa para buscar a posição no mesmo áudio; segure para renomear ou remover uma divisão incorreta. São divisões aproximadas, sem reconhecimento dos nomes: mixes contínuos e trechos curtos podem não ser separados. Não exporta arquivos individuais nem converte o áudio.
 
-Mantém os recursos de 0.69.0: revisão de telas, rádios por cidade brasileira, ajuste do Google Imagens e YouTube em janela flutuante. Mesmo pacote e certificado; instalar sem desinstalar. Histórico completo: https://github.com/{repository}/tree/main/release-notes/onda
+A análise só roda quando solicitada, pausa a reprodução, mostra progresso e é cancelada ao sair. Usa blocos pequenos de áudio, sem cópia integral ou serviço em segundo plano; os marcadores concluídos são salvos e reutilizados. Cancelamento mantém marcações anteriores e o arquivo original. Mantém relatórios de erro, downloads, PDF/OCR, favoritos, rádios, voz, aparências e demais funções.
+
+Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
 Licenças e fontes: esta edição do aplicativo é software livre sob GNU GPL v3 ou posterior, sem garantia, com licença na tela Downloads → Licença e código-fonte e no pacote de fontes Onda-Fontes.zip. Inclui NewPipe Extractor (GPL v3 ou posterior), LAME (GNU Library GPL v2 ou posterior) e LibVLC 3.7.7 © VideoLAN e colaboradores (LGPL 2.1 ou posterior); as dependências conservam suas respectivas licenças. Fontes do aplicativo, NewPipe e LAME estão anexadas a esta release. Fonte do LibVLC: https://code.videolan.org/videolan/libvlcjni .
 

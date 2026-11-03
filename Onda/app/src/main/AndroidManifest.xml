@@ -43,6 +43,7 @@
         <activity android:name=".QueueActivity" android:exported="false" />
         <activity android:name=".PlaylistsActivity" android:exported="false" />
         <activity android:name=".DjActivity" android:exported="false" />
+        <activity android:name=".AudioChaptersActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".AudioOutputActivity" android:exported="false" />
         <activity android:name=".SpeechActivity" android:exported="false" />
         <activity android:name=".SoundActivity" android:exported="false" />
