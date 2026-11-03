@@ -25,6 +25,9 @@ public class YouTubeBackTest {
   // the initial remote navigation and Chromium's stopLoading placeholder on cold emulators.
   ins.runOnMainSync(()->{web[0]=(WebView)field("web");orientation[0]=activity.getRequestedOrientation();web[0].stopLoading();web[0].setWebViewClient(new WebViewClient());web[0].loadUrl("about:blank");});
   phase="empty-document-ready";waitFor(()->"about:blank".equals(web[0].getUrl())&&web[0].getProgress()==100&&activity.hasWindowFocus());
+  java.util.concurrent.CountDownLatch emptyPainted=new java.util.concurrent.CountDownLatch(1);
+  ins.runOnMainSync(()->web[0].postVisualStateCallback(41,new WebView.VisualStateCallback(){@Override public void onComplete(long id){emptyPainted.countDown();}}));
+  assertTrue("Empty document did not commit before fixture navigation",emptyPainted.await(10,java.util.concurrent.TimeUnit.SECONDS));
   ins.runOnMainSync(()->{web[0].setWebViewClient(new WebViewClient(){@Override public WebResourceResponse shouldInterceptRequest(WebView w,WebResourceRequest r){return new WebResourceResponse("text/html","UTF-8",new ByteArrayInputStream("<html><head><title>Onda Back fixture</title></head><body>Onda</body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8)));}});web[0].loadUrl(first);});
   phase="local-fixture-ready";waitFor(()->first.equals(web[0].getUrl())&&"Onda Back fixture".equals(web[0].getTitle())&&web[0].getProgress()==100&&activity.hasWindowFocus());AtomicInteger exits=new AtomicInteger();ins.runOnMainSync(()->web[0].getWebChromeClient().onShowCustomView(new FrameLayout(activity),exits::incrementAndGet));
   phase="fullscreen-landscape";waitFor(()->field("fullscreenView")!=null&&activity.hasWindowFocus()&&activity.getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE);
