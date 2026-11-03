@@ -97,7 +97,7 @@ final class Ui {
             window.setLayout(width,Math.max(1,Math.min(desired,Math.min(dp(activity,600),frame.height()-dp(activity,16)))));
         }
     }
-    static Button menuButton(Context context,String description,View.OnClickListener listener){Button b=button(context,"☰",listener);ghost(b);b.setTextSize(25);b.setContentDescription(description);return b;}
+    static Button menuButton(Context context,String description,View.OnClickListener listener){Button b=new MenuButton(context);b.setText("");b.setTextColor(MUTED);b.setMinWidth(dp(context,48));b.setMinimumWidth(dp(context,48));b.setMinHeight(dp(context,48));b.setMinimumHeight(dp(context,48));b.setPadding(0,0,0,0);b.setStateListAnimator(null);ghost(b);b.setContentDescription(description);b.setTooltipText(description);b.setOnClickListener(listener);return b;}
     @androidx.media3.common.util.UnstableApi
     static LinearLayout navigation(Activity activity,int current){
         LinearLayout bar=new LinearLayout(activity);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(activity,4),dp(activity,4),dp(activity,4),dp(activity,4));bind(bar,w->w.setBackground(shape(w.getContext(),SURFACE,BORDER,18)));
@@ -126,6 +126,12 @@ final class Ui {
             paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(dp(getContext(),2));paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStyle(isSelected()?Paint.Style.FILL:Paint.Style.STROKE);canvas.drawPath(path,paint);
         }
+    }
+    /** A menu icon must not inherit a large emoji/font ascent and be cropped at 48dp. */
+    private static final class MenuButton extends Button {
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        MenuButton(Context context){super(context);}
+        @Override protected void onDraw(Canvas canvas){float size=Math.max(0,Math.min(dp(getContext(),24),Math.min(getWidth(),getHeight())-dp(getContext(),16)));if(size<=0)return;float x=getWidth()/2f,y=getHeight()/2f;paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(dp(getContext(),2));paint.setStrokeCap(Paint.Cap.ROUND);for(int i=-1;i<=1;i++)canvas.drawLine(x-size*.42f,y+i*size*.30f,x+size*.42f,y+i*size*.30f,paint);}
     }
     /** Static geometry independent of font size; the touch target stays 48dp. */
     private static final class ShareButton extends Button {

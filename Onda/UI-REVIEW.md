@@ -3,8 +3,10 @@
 Escopo: revisão do código das 29 Activities e verificação dos controles nativos em 27 telas principais com fonte 130% no emulador. Não implica que toda página remota ou todo aparelho foi visualmente testado.
 
 - Google Imagens: texto web em 100%, ajuste manual preservando pesquisa/WebView, painel arredondado e busca/compartilhamento preservados. A página pertence ao provedor e pode mudar.
+- WebViews: pausa por página e destruição ao sair; evita pauseTimers global para não suspender outro vídeo PiP visível.
 - YouTube: campos e textos compactos, viewport responsivo, PiP de vídeo em tela cheia, retorno preservando WebView; pausar/liberar ao sair sem PiP.
 - Rádio: cidade brasileira local por nome/UF, seletor rolável e fechado dentro da área útil; consulta de emissoras com coordenadas até 50 km. Favoritas continuam independentes do filtro.
+- Menus: ícone desenhado independentemente da fonte, com toque mínimo de 48 dp; corrige recorte do glifo em seis telas detectado na auditoria 130%.
 - Formulários: ações com altura natural e mínimo 48 dp, seletores multilinha; atualizações em ScrollView.
 - Música/vídeo/PDF/OCR/menus/conexão/coleções/voz: controles existentes preservados e suíte de regressão mantida.
 
