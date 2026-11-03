@@ -32,7 +32,7 @@ final class YouTubePipControls {
     private String token="";
     private boolean registered;
     private final BroadcastReceiver receiver=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(!owner.isInPictureInPictureMode()||!token.equals(i.getStringExtra("owner"))||token.isEmpty())return;if(PLAY.equals(i.getAction()))control(true);else if(PAUSE.equals(i.getAction()))control(false);}};
-    YouTubePipControls(Activity owner,Supplier<WebView> browser,BooleanSupplier visibleVideo){this.owner=owner;this.browser=browser;this.visibleVideo=visibleVideo;IntentFilter filter=new IntentFilter(PLAY);filter.addAction(PAUSE);ContextCompat.registerReceiver(owner,receiver,filter,ContextCompat.RECEIVER_NOT_EXPORTED);registered=true;}
+    YouTubePipControls(Activity owner,Supplier<WebView> browser,BooleanSupplier visibleVideo){this.owner=owner;this.browser=browser;this.visibleVideo=visibleVideo;IntentFilter filter=new IntentFilter(PLAY);filter.addAction(PAUSE);filter.addDataScheme("onda-youtube-pip");ContextCompat.registerReceiver(owner,receiver,filter,ContextCompat.RECEIVER_NOT_EXPORTED);registered=true;}
     private boolean active(){return session!=null&&visibleVideo.getAsBoolean()&&browser.get()!=null&&!owner.isDestroyed();}
     void enable(){
         if(session!=null){refresh();return;}
