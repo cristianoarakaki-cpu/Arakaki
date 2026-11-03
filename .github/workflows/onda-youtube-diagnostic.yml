@@ -31,7 +31,19 @@ jobs:
           injection='''try{android.graphics.Bitmap shot=ins.getUiAutomation().takeScreenshot();if(shot!=null)try(OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),"yt-diagnostic.png"))){shot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);shot.recycle();}for(String command:new String[]{"dumpsys window windows","dumpsys activity activities"})try(InputStream in=new android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.getUiAutomation().executeShellCommand(command));OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),command.contains("window")?"yt-window.txt":"yt-activities.txt"))){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}}catch(Exception ignored){}'''
           s=s.replace('fail("API35 browser Back timed out:',injection+'fail("API35 browser Back timed out:')
           p.write_text(s)
+          p=Path('Onda/app/src/androidTest/java/br/com/onda/YouTubeAudioTest.java')
+          s=p.read_text().replace('private YouTubeActivity activity;','private YouTubeActivity activity;private Activity anchor;')
+          s=s.replace('original=YouTubeAudioPlayback.resolver;','anchor=ins.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));waitFor(()->anchor.hasWindowFocus());original=YouTubeAudioPlayback.resolver;')
+          s=s.replace('if(activity!=null)activity.finish();','if(activity!=null)activity.finish();if(anchor!=null)anchor.finish();')
+          p.write_text(s)
           PY
+      - name: Amostras para reproduzir a sequência de exclusão
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          mkdir -p Onda/app/src/androidTest/assets
+          ffmpeg -v error -y -f lavfi -i color=c=black:s=160x90:r=15:d=3 -f lavfi -i sine=frequency=440:sample_rate=44100:duration=3 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest Onda/app/src/androidTest/assets/combined.mp4
+          ffmpeg -v error -y -f lavfi -i sine=frequency=440:sample_rate=44100:duration=3 -c:a aac Onda/app/src/androidTest/assets/audio.m4a
       - name: Assinatura descartável somente para diagnóstico
         run: |
           mkdir -p Onda/.signing
@@ -61,6 +73,9 @@ jobs:
             adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_VIDEO
             adb shell settings put secure immersive_mode_confirmations confirmed
             adb logcat -c
+            adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > diagnostics/delete.txt
+            cat diagnostics/delete.txt
+            adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.YouTubeBackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > diagnostics/back.txt
             cat diagnostics/back.txt
             for file in yt-diagnostic.png yt-window.txt yt-activities.txt; do adb exec-out run-as br.com.onda.musica cat "files/$file" > "diagnostics/$file" || true; done
