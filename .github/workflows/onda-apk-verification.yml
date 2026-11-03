@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41532628898'
-  SOURCE_SHA: 'b406debd86ba9f792ae8ff42da64ce847ae794f8'
+  SOURCE_RUN: '41617757080'
+  SOURCE_SHA: '66f0752d62a6fac9fb27bede97984b5a6a333857'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -40,25 +40,37 @@ jobs:
           "$ONDA_SIGNER" verify --verbose --print-certs "$ONDA_APK" > verify/apk-signature.txt
           cat verify/apk-signature.txt
           "$ONDA_AAPT" dump badging "$ONDA_APK" > verify/apk-info.txt
+          "$ONDA_AAPT" dump xmltree "$ONDA_APK" AndroidManifest.xml > verify/apk-manifest.txt
           python - <<'PY'
           from pathlib import Path
-          import zipfile,re,json,hashlib
+          import zipfile,re,json,hashlib,os
           apk=next(Path('verify').rglob('*.apk'))
           cert=Path('verify/apk-signature.txt').read_text()
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='80' versionName='0.68.1'" in info
+          assert "package: name='br.com.onda.musica' versionCode='82' versionName='0.69.0'" in info
+          manifest=Path('verify/apk-manifest.txt').read_text()
+          youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
+          assert any('supportsPictureInPicture' in line and '0xffffffff' in line for line in youtube.splitlines())
+          assert any('resizeableActivity' in line and '0xffffffff' in line for line in youtube.splitlines())
           with zipfile.ZipFile(apk) as z:
               assert z.testzip() is None
               abis=sorted({p.split('/')[1] for p in z.namelist() if p.startswith('lib/') and p.endswith('.so')})
               assert abis==['arm64-v8a','armeabi-v7a']
+              city_count=len(json.loads(z.read('assets/radio-cities-br.json')))
+              assert 5500<=city_count<6000
+              assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
-              for cls in [b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              for cls in [b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               for removed in [b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.68.1',versionCode=80,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True)
+          report=dict(version='0.69.0',versionCode=82,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubePictureInPicture=True,offlineBrazilCityCount=city_count)
+          update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
+          encoded=(json.dumps(update,indent=2)+'\n').encode()
+          report['updateManifestBytes']=len(encoded)
+          report['updateManifestSha256']=hashlib.sha256(encoded).hexdigest()
           Path('verify/apk-verified.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
           PY
