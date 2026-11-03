@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41683001431'
-  SOURCE_SHA: '37a513430db3e9cd3dabada8d6ff249b4d147742'
+  SOURCE_RUN: '41707918985'
+  SOURCE_SHA: '771fb94e94493533654756cc772c671323740225'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -49,11 +49,13 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='84' versionName='0.70.0'" in info
+          assert "package: name='br.com.onda.musica' versionCode='85' versionName='0.71.0'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
-          assert any('supportsPictureInPicture' in line and '0xffffffff' in line for line in youtube.splitlines())
+          assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
           assert any('resizeableActivity' in line and '0xffffffff' in line for line in youtube.splitlines())
+          local_video=next(part for part in manifest.split('E: activity') if 'br.com.onda.VideoActivity' in part)
+          assert any('supportsPictureInPicture' in line and '0xffffffff' in line for line in local_video.splitlines())
           with zipfile.ZipFile(apk) as z:
               assert z.testzip() is None
               abis=sorted({p.split('/')[1] for p in z.namelist() if p.startswith('lib/') and p.endswith('.so')})
@@ -65,11 +67,11 @@ jobs:
               for cls in [b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
-              for added in [b'YouTubePipControls;',b'AudioChaptersActivity;',b'AudioChapterScanner;',b'AudioChapterStore;',b'SilenceChapters;']:
+              for added in [b'YouTubeAudio;',b'YouTubeAudioPlayback;',b'AudioChaptersActivity;',b'AudioChapterScanner;',b'AudioChapterStore;',b'SilenceChapters;']:
                   assert added in dex
-              for removed in [b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
+              for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.70.0',versionCode=84,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubePictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.71.0',versionCode=85,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
@@ -111,3 +113,4 @@ jobs:
           name: Onda-Verify-Part-3
           path: verify/part-3.bin
           compression-level: 0
+
