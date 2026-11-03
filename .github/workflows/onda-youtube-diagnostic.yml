@@ -32,6 +32,10 @@ jobs:
           s=s.replace('fail("API35 browser Back timed out:',injection+'fail("API35 browser Back timed out:')
           p.write_text(s)
           PY
+      - name: Assinatura descartável somente para diagnóstico
+        run: |
+          mkdir -p Onda/.signing
+          keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Diagnostic" -keyalg RSA -keysize 2048 -validity 100
       - name: Compilar somente variante do emulador
         run: gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug assembleDebugAndroidTest
       - name: Preparar emulador
