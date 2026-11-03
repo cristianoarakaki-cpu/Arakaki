@@ -1,0 +1,38 @@
+name: Onda - Conferir localização do catálogo de rádios
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-radio-city-probe.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - run: |
+          python - <<'PY'
+          import urllib.request,json,math
+          stations=[]
+          for offset in (0,500):
+              url=f'https://de1.api.radio-browser.info/json/stations/search?hidebroken=true&countrycode=BR&is_https=true&has_geo_info=true&order=clickcount&reverse=true&limit=500&offset={offset}'
+              r=urllib.request.Request(url,headers={'User-Agent':'Onda/0.69.0 catalogue location check','Accept':'application/json'})
+              try:
+                  with urllib.request.urlopen(r,timeout=25) as response: batch=json.load(response)
+                  stations.extend(batch)
+                  if len(batch)<500:break
+              except Exception as e:
+                  print('catalogue_error',type(e).__name__);break
+          def distance(a,b,c,d):
+              a,b,c,d=map(math.radians,(a,b,c,d))
+              x=math.sin((c-a)/2)**2+math.cos(a)*math.cos(c)*math.sin((d-b)/2)**2
+              return 6371*2*math.asin(math.sqrt(min(1,x)))
+          for city,lat,lon in [('Campo Grande',-20.4697,-54.6201),('São Paulo',-23.5505,-46.6333),('Curitiba',-25.4284,-49.2733)]:
+              near=[]
+              for s in stations:
+                  try:
+                      km=distance(lat,lon,float(s['geo_lat']),float(s['geo_long']))
+                      if km<=50:near.append({'name':s['name'],'state':s['state'],'km':round(km,1)})
+                  except (TypeError,KeyError,ValueError):pass
+              print(json.dumps({'city':city,'geoCatalogCount':len(stations),'nearbyCount':len(near),'examples':near[:6]},ensure_ascii=False))
+          PY
