@@ -1,5 +1,11 @@
 ## Onda 0.68.0 — busca de imagens na internet por tema
 
+## 0.69.0 — revisão de interface e rádios por cidade
+
+Imagens: escala web padrão de 100% e ajuda (?) → Ajustar texto do Google, sem alterar as letras do Android; resultados em painel arredondado. Rádios: escolha cidade brasileira por nome/UF, com busca local em mais de 5.500 municípios e estações com coordenadas até 50 km, conforme disponibilidade do Radio Browser. Base MIT de Kelvin S. do Prado, licença e revisão incluídas. Sem GPS, geocodificação externa ou consultas periódicas.
+
+Revisão de código das 29 telas; formulários com alturas adaptáveis, seletores multilinha, atualização rolável e teste nativo das 27 telas principais em fonte 130%. O scanner requer hardware e não é alegação de teste físico. YouTube: tela cheia → Início para PiP, mesma página ao voltar e liberação ao fechar. Depende do player oficial e do suporte do Android; não promete tela bloqueada. Veja UI-REVIEW.md.
+
 ### 0.68.2 — YouTube em janela flutuante
 
 No YouTube do Onda, abra um vídeo em tela cheia e pressione Início. Usa picture-in-picture do Android para manter a mesma WebView visível e o vídeo tocando, sem reiniciar a página ao retornar. Fechar a janela libera o navegador. Menu do YouTube → Janela flutuante explica o uso. Requer suporte/permissão PiP e reprodução disponibilizada pelo player oficial; não promete reprodução com tela bloqueada. Sem serviço ou biblioteca nova. Pausa e destruição normais permanecem quando a página sai sem PiP.

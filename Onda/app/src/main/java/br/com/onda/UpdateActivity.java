@@ -24,14 +24,14 @@ public class UpdateActivity extends Activity {
     private boolean awaitingPermission=false;
     @Override public void onCreate(Bundle state){
         super.onCreate(state);LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);
-        root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(Ui.dp(this,20),Ui.dp(this,12)+i.getSystemWindowInsetTop(),Ui.dp(this,20),Ui.dp(this,12)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
+        ScrollView viewport=new ScrollView(this);viewport.setFillViewport(true);viewport.setOnApplyWindowInsetsListener((v,i)->{viewport.setPadding(0,i.getSystemWindowInsetTop(),0,i.getSystemWindowInsetBottom());return i;});viewport.addView(root,new ScrollView.LayoutParams(-1,-2));setContentView(viewport);
         Button back=Ui.button(this,"‹ Biblioteca",v->finish());Ui.ghost(back);back.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);root.addView(back);root.addView(Ui.art(this,64,0));
         TextView heading=label("Atualizações do Onda",26);root.addView(heading);
         try{android.content.pm.PackageInfo info=getPackageManager().getPackageInfo(getPackageName(),0);currentVersion=info.versionCode;root.addView(label("Versão instalada: "+info.versionName,16));}catch(Exception ignored){}
         root.addView(label("Atualize mantendo suas músicas e favoritos. O Android vai pedir sua confirmação para instalar.",16));
         status=label("Toque abaixo para consultar as versões disponíveis.",16);status.setPadding(Ui.dp(this,16),Ui.dp(this,16),Ui.dp(this,16),Ui.dp(this,16));Ui.card(status,false);root.addView(status);
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);progress.setVisibility(View.GONE);root.addView(progress);
-        action=Ui.button(this,"Verificar atualizações",null);Ui.primary(action);action.setOnClickListener(v->{if(ready!=null)install();else if(available!=null)download();else check();});LinearLayout.LayoutParams actionParams=new LinearLayout.LayoutParams(-1,Ui.dp(this,52));actionParams.topMargin=Ui.dp(this,16);root.addView(action,actionParams);
+        action=Ui.button(this,"Verificar atualizações",null);Ui.primary(action);action.setOnClickListener(v->{if(ready!=null)install();else if(available!=null)download();else check();});LinearLayout.LayoutParams actionParams=new LinearLayout.LayoutParams(-1,-2);actionParams.topMargin=Ui.dp(this,16);root.addView(action,actionParams);
         root.addView(label("Downloads exigem internet. A instalação é confirmada pelo Android e preserva os dados deste Onda Música.",13));
     }
     private TextView label(String s,int size){TextView t=Ui.text(this,s,size,size>=24?Ui.TEXT:Ui.MUTED);t.setPadding(0,Ui.dp(this,10),0,Ui.dp(this,10));if(size>=24)Ui.bold(t);return t;}

@@ -13,10 +13,10 @@ import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentat
 /** API35 dispatcher integration. Actual HTML media playback is covered by YouTubeFullscreenTest on API29. */
 @androidx.media3.common.util.UnstableApi
 public class YouTubeBackTest {
- private final Instrumentation ins=getInstrumentation();private YouTubeActivity activity;
+ private final Instrumentation ins=getInstrumentation();private YouTubeActivity activity;private String phase="launch";
  private Object field(String name){try{Field f=YouTubeActivity.class.getDeclaredField(name);f.setAccessible(true);return f.get(activity);}catch(Exception e){throw new RuntimeException(e);}}
  private interface Check{boolean ready();}
- private void waitFor(Check c)throws Exception{for(int i=0;i<300;i++){boolean[] ready={false};ins.runOnMainSync(()->ready[0]=c.ready());if(ready[0])return;Thread.sleep(50);}fail("API35 browser Back timed out");}
+ private void waitFor(Check c)throws Exception{for(int i=0;i<300;i++){boolean[] ready={false};ins.runOnMainSync(()->ready[0]=c.ready());if(ready[0])return;Thread.sleep(50);}fail("API35 browser Back timed out: "+phase);}
  @After public void after(){if(activity!=null){ins.runOnMainSync(activity::finish);ins.waitForIdleSync();}}
  @Test public void overlayBackThenNormalHistoryAndLifecycle()throws Exception{
   android.content.Context c=ins.getTargetContext();activity=(YouTubeActivity)ins.startActivitySync(new Intent(c,YouTubeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));waitFor(()->field("web")!=null);
@@ -25,7 +25,7 @@ public class YouTubeBackTest {
   waitFor(()->first.equals(web[0].getUrl())&&web[0].getProgress()==100&&activity.hasWindowFocus());AtomicInteger exits=new AtomicInteger();ins.runOnMainSync(()->web[0].getWebChromeClient().onShowCustomView(new FrameLayout(activity),exits::incrementAndGet));
   waitFor(()->field("fullscreenView")!=null&&activity.hasWindowFocus()&&activity.getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE);
   ins.runOnMainSync(()->{assertNotNull(field("fullscreenBackCallback"));assertNotNull(field("pageBackCallback"));assertEquals(View.GONE,((View)field("page")).getVisibility());});
-  assertTrue(ins.getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME));waitFor(()->activity.isInPictureInPictureMode()&&field("web")==web[0]&&field("fullscreenView")!=null);Thread.sleep(1200);ins.runOnMainSync(()->activity.startActivity(new Intent(activity,YouTubeActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)));waitFor(()->!activity.isInPictureInPictureMode()&&activity.hasWindowFocus()&&field("web")==web[0]&&field("fullscreenView")!=null);
+  phase="enter-pip";assertTrue(ins.getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME));waitFor(()->activity.isInPictureInPictureMode()&&field("web")==web[0]&&field("fullscreenView")!=null);Thread.sleep(2000);phase="return-pip";ins.runOnMainSync(()->c.startActivity(new Intent(c,YouTubeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)));waitFor(()->!activity.isInPictureInPictureMode()&&activity.hasWindowFocus()&&field("web")==web[0]&&field("fullscreenView")!=null);
   assertTrue(ins.getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));waitFor(()->field("fullscreenView")==null&&activity.hasWindowFocus()&&activity.getRequestedOrientation()==orientation[0]);
   ins.runOnMainSync(()->{assertEquals(1,exits.get());assertNull(field("fullscreenBackCallback"));assertEquals(View.VISIBLE,((View)field("page")).getVisibility());assertSame(web[0],field("web"));assertFalse(activity.isFinishing());web[0].loadUrl(second);});
   waitFor(()->second.equals(web[0].getUrl())&&web[0].getProgress()==100&&web[0].canGoBack());assertTrue(ins.getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));waitFor(()->first.equals(web[0].getUrl()));assertFalse(activity.isFinishing());

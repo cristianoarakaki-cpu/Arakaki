@@ -29,7 +29,23 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube em janela flutuante
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — revisão de interface, rádios por cidade e YouTube flutuante
+
+Busca de imagens: escala de texto da página explicitamente em 100%, sem mudar as fontes nativas do Android. Ajuda (?) → Ajustar texto do Google oferece 75%, 85%, 100%, 115% e 130%, salvos no aparelho e aplicados sem recarregar a pesquisa. Área de resultados com borda e recorte arredondados; mantém busca por tema/voz, ampliação e compartilhamento do arquivo.
+
+Rádios online → Cidade do Brasil: base compacta de mais de 5.500 municípios, pesquisada localmente por nome e UF, sem GPS ou geocodificação externa. Selecionar a cidade consulta o Radio Browser e filtra emissoras HTTPS com coordenadas informadas até 50 km do centro. Mantém Brasil/Todos os países e favoritas; remover o filtro volta à pesquisa anterior. Cache compatível é reutilizado. O catálogo é colaborativo e não contém a localização de todas as emissoras; sem localização, a estação não entra no filtro por cidade. A consulta tem orçamento de até 2.500 registros do país, com cancelamento e sem busca periódica.
+
+Base municipal: Municípios Brasileiros, Kelvin S. do Prado, licença MIT incluída no APK e acessível em Fontes da busca de cidades. Fonte e revisão registradas em radio-cities-license.txt. Não acrescenta serviço, GPS ou biblioteca.
+
+Revisão das 29 telas do aplicativo: botões de formulários deixam de ter altura fixa, campos e seletores preservam alvos de 48 dp e o tamanho de fonte do Android; tela de atualizações passa a rolar. Busca e instruções do YouTube ficam mais compactas. A verificação Android inclui as 27 telas principais em fonte 130%, além das verificações próprias de exclusão, câmera/conexão e menus já existentes. O scanner depende do aparelho e foi revisado também no código; não é alegação de teste físico de câmera.
+
+YouTube: coloque o vídeo em tela cheia e pressione Início para a janela flutuante nativa do Android. Preserva a mesma WebView enquanto visível em PiP; retornar mantém a página e fechar libera o navegador. Não mantém páginas ocultas nem promete reprodução com tela bloqueada. A continuidade também depende do player oficial e do suporte/permissão PiP. Sem novo motor, extração de fluxo ou serviço.
+
+Mesmo pacote e certificado; atualiza sem desinstalar. Preserva músicas, vídeos, downloads, conversões, PDFs/OCR, favoritos, voz, aparências e som.
+
+Histórico das melhorias anteriores
+
+Onda Música {version_name} — YouTube em janela flutuante
 
 Abra o vídeo do YouTube dentro do Onda, coloque-o em tela cheia pelo próprio player e pressione Início no Android. Em aparelhos com picture-in-picture permitido, mantém a mesma WebView e a visualização de vídeo na janela flutuante. Retornar ao Onda restaura a mesma página; fechar a janela libera o navegador e interrompe o conteúdo.
 
