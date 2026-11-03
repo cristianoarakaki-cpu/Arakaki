@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41617757080'
-  SOURCE_SHA: '66f0752d62a6fac9fb27bede97984b5a6a333857'
+  SOURCE_RUN: '41620782634'
+  SOURCE_SHA: 'e827ec3d7585721a62336a84f17129fdbadc9343'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -62,11 +62,11 @@ jobs:
               assert 5500<=city_count<6000
               assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
-              for cls in [b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              for cls in [b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               for removed in [b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.69.0',versionCode=82,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubePictureInPicture=True,offlineBrazilCityCount=city_count)
+          report=dict(version='0.69.0',versionCode=82,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubePictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
