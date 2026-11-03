@@ -18,6 +18,7 @@ final class YoutubeDownloads {
  private static boolean ready;
  private static synchronized void init(){if(!ready){NewPipe.init(new ExtractorHttp());ready=true;}}
  private static boolean usable(Stream s){return s.isUrl()&&s.getContent().startsWith("https://")&&s.getDeliveryMethod()==DeliveryMethod.PROGRESSIVE_HTTP;}
+ @androidx.media3.common.util.UnstableApi
  static androidx.media3.common.MediaItem audioInfo(String link)throws Exception {
   String url=DownloadLinks.canonical(link);init();ExtractorHttp.begin();try{
    StreamInfo info=StreamInfo.getInfo(ServiceList.YouTube,url);AudioStream best=null;
