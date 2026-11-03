@@ -1,5 +1,9 @@
 ## Onda 0.68.0 — busca de imagens na internet por tema
 
+### 0.68.2 — YouTube em janela flutuante
+
+No YouTube do Onda, abra um vídeo em tela cheia e pressione Início. Usa picture-in-picture do Android para manter a mesma WebView visível e o vídeo tocando, sem reiniciar a página ao retornar. Fechar a janela libera o navegador. Menu do YouTube → Janela flutuante explica o uso. Requer suporte/permissão PiP e reprodução disponibilizada pelo player oficial; não promete reprodução com tela bloqueada. Sem serviço ou biblioteca nova. Pausa e destruição normais permanecem quando a página sai sem PiP.
+
 ### 0.68.1 — tela de imagens mais compacta
 
 Pesquisa e voz na mesma linha, instruções curtas e ajuda no botão ?. O botão Ampliar resultados esconde os controles sem recriar a WebView; Voltar ou o mesmo botão restaura a busca. Viewport responsivo e layout normal da página, preservando zoom por gesto, fontes nativas e compartilhamento do arquivo. Sem novas bibliotecas ou serviços; mantém a assinatura de atualização.

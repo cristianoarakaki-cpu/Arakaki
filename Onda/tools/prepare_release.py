@@ -29,7 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — mais espaço para as imagens
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube em janela flutuante
+
+Abra o vídeo do YouTube dentro do Onda, coloque-o em tela cheia pelo próprio player e pressione Início no Android. Em aparelhos com picture-in-picture permitido, mantém a mesma WebView e a visualização de vídeo na janela flutuante. Retornar ao Onda restaura a mesma página; fechar a janela libera o navegador e interrompe o conteúdo.
+
+Adiciona instruções em Menu do YouTube → Janela flutuante. Se sair da tela sem entrar em PiP, mantém a pausa e liberação anteriores. Não mantém páginas ocultas, não adiciona serviços, não extrai o fluxo do YouTube para outro tocador e não promete áudio com a tela bloqueada. A continuidade também depende do comportamento do player oficial do YouTube e do Android.
+
+Preserva tela cheia, Voltar, favoritos, compartilhamento, downloads, busca por voz, correções da tela de imagens e demais recursos. Mantém pacote e certificado para atualizar sem desinstalar.
+
+Histórico das melhorias anteriores
+
+Onda Música {version_name} — mais espaço para as imagens
 
 Cabeçalho compacto na busca de imagens, com pesquisa e voz na mesma linha, campo de tema mais simples e ajuda no botão ?. Retira a linha grande de Buscar e encurta as instruções para dar mais espaço aos resultados. Ampliar resultados oculta os controles da busca mantendo a mesma página; Voltar ou o mesmo botão restaura os controles sem apagar a pesquisa.
 

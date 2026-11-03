@@ -216,6 +216,14 @@ jobs:
             adb exec-out run-as br.com.onda.musica cat files/pip-tests.json > Onda/ui-preview/pip-tests.json
             adb exec-out run-as br.com.onda.musica cat files/video-pip.png > Onda/ui-preview/20-janela-flutuante.png
             adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-tests.txt
+            cat /tmp/onda-youtube-fullscreen-tests.txt
+            for part in video lifecycle pip; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-$part.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen.png || true
+            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-failure.png || true
+            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.json > Onda/ui-preview/youtube-fullscreen-failure.json || true
+            python -c 's=open("/tmp/onda-youtube-fullscreen-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.ImageMessagesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-image-tests.txt
             cat /tmp/onda-image-tests.txt
             python -c 's=open("/tmp/onda-image-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
@@ -264,13 +272,6 @@ jobs:
             for part in complete isolation; do adb exec-out run-as br.com.onda.musica cat "files/video-share-$part.json" > "Onda/ui-preview/video-share-$part.json" || true; done
             python -c 's=open("/tmp/onda-video-share-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-tests.txt
-            cat /tmp/onda-youtube-fullscreen-tests.txt
-            for part in video lifecycle; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-$part.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-failure.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.json > Onda/ui-preview/youtube-fullscreen-failure.json || true
-            python -c 's=open("/tmp/onda-youtube-fullscreen-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.YoutubeRecoveryTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-recovery-tests.txt
