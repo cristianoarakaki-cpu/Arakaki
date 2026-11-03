@@ -1,8 +1,5 @@
 name: Onda - Diagnosticar áudio YouTube
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/onda-youtube-diagnostic.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,11 +27,6 @@ jobs:
           s=p.read_text()
           injection='''try{android.graphics.Bitmap shot=ins.getUiAutomation().takeScreenshot();if(shot!=null)try(OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),"yt-diagnostic.png"))){shot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);shot.recycle();}for(String command:new String[]{"dumpsys window windows","dumpsys activity activities"})try(InputStream in=new android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.getUiAutomation().executeShellCommand(command));OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),command.contains("window")?"yt-window.txt":"yt-activities.txt"))){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}}catch(Exception ignored){}'''
           s=s.replace('fail("API35 browser Back timed out:',injection+'fail("API35 browser Back timed out:')
-          p.write_text(s)
-          p=Path('Onda/app/src/androidTest/java/br/com/onda/YouTubeAudioTest.java')
-          s=p.read_text().replace('private YouTubeActivity activity;','private YouTubeActivity activity;private Activity anchor;')
-          s=s.replace('original=YouTubeAudioPlayback.resolver;','anchor=ins.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));waitFor(()->anchor.hasWindowFocus());original=YouTubeAudioPlayback.resolver;')
-          s=s.replace('if(activity!=null)activity.finish();','if(activity!=null)activity.finish();if(anchor!=null)anchor.finish();')
           p.write_text(s)
           PY
       - name: Amostras para reproduzir a sequência de exclusão
