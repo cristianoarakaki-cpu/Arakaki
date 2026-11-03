@@ -1,0 +1,72 @@
+name: Onda - Diagnosticar áudio YouTube
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-youtube-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Acrescentar captura apenas ao teste diagnóstico
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('Onda/app/src/androidTest/java/br/com/onda/YouTubeBackTest.java')
+          s=p.read_text()
+          injection='''try{android.graphics.Bitmap shot=ins.getUiAutomation().takeScreenshot();if(shot!=null)try(OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),"yt-diagnostic.png"))){shot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);shot.recycle();}for(String command:new String[]{"dumpsys window windows","dumpsys activity activities"})try(InputStream in=new android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.getUiAutomation().executeShellCommand(command));OutputStream out=new FileOutputStream(new File(ins.getTargetContext().getFilesDir(),command.contains("window")?"yt-window.txt":"yt-activities.txt"))){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}}catch(Exception ignored){}'''
+          s=s.replace('fail("API35 browser Back timed out:',injection+'fail("API35 browser Back timed out:')
+          p.write_text(s)
+          PY
+      - name: Compilar somente variante do emulador
+        run: gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug assembleDebugAndroidTest
+      - name: Preparar emulador
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          rm -rf "$ANDROID_SDK_ROOT/ndk" "$ANDROID_SDK_ROOT/cmake"
+          sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          disk-size: 2048M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            mkdir -p diagnostics
+            adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_AUDIO
+            adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_VIDEO
+            adb shell settings put secure immersive_mode_confirmations confirmed
+            adb logcat -c
+            adb shell am instrument -w -e class br.com.onda.YouTubeBackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > diagnostics/back.txt
+            cat diagnostics/back.txt
+            for file in yt-diagnostic.png yt-window.txt yt-activities.txt; do adb exec-out run-as br.com.onda.musica cat "files/$file" > "diagnostics/$file" || true; done
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.YouTubeAudioTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > diagnostics/audio.txt
+            cat diagnostics/audio.txt
+            adb logcat -d > diagnostics/logcat.txt
+            adb exec-out run-as br.com.onda.musica cat files/youtube-native-audio.json > diagnostics/youtube-native-audio.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Onda-YouTube-Diagnostic
+          path: diagnostics/
