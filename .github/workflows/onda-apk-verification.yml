@@ -10,6 +10,7 @@ permissions:
 env:
   SOURCE_RUN: '41812303498'
   SOURCE_SHA: '0208734acbdb9c5bc47897df58efdf30b9c09078'
+  SOURCE_ATTEMPT: '2'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -24,6 +25,7 @@ jobs:
           import json,os
           run=json.load(open('/tmp/onda-build.json'))
           assert run['head_sha']==os.environ['SOURCE_SHA'] and run['head_branch']=='main' and run['event']=='push'
+          assert run['run_attempt']==int(os.environ['SOURCE_ATTEMPT'])
           PY
       - uses: actions/download-artifact@v4
         with:
@@ -73,7 +75,7 @@ jobs:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.72.2',versionCode=88,bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.72.2',versionCode=88,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
