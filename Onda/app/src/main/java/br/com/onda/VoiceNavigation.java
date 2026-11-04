@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 
 /** Explicit screen requests only. Does not start playback, install updates or keep a microphone open. */
+@androidx.annotation.OptIn(markerClass=androidx.media3.common.util.UnstableApi.class)
 final class VoiceNavigation {
     static boolean phrase(Activity activity,String phrase){
         VoiceCommand custom=VoicePhrases.read(activity).find(phrase);
