@@ -1,0 +1,9 @@
+package br.com.onda;
+import org.junit.Test;
+import static org.junit.Assert.*;
+public class LevelDspTest {
+ private double tone(LevelDsp dsp,int rate,double amplitude,int seconds){double energy=0;int count=0;short[] frame=new short[2];for(int n=0;n<rate*seconds;n++){frame[0]=(short)Math.round(amplitude*32767*Math.sin(2*Math.PI*440*n/rate));frame[1]=(short)(frame[0]/2);dsp.process(frame,true);if(n>=rate*(seconds-1)){energy+=(double)frame[0]*frame[0];count++;assertTrue(Math.abs(frame[0]-2*(int)frame[1])<=4);}}return Math.sqrt(energy/count)/32768;}
+ @Test public void reducesQuietLoudContrastWithoutChangingStereoBalance(){LevelDsp dsp=new LevelDsp(48000);double quiet=tone(dsp,48000,.08,10),loud=tone(dsp,48000,.8,5);assertTrue(quiet>.08);assertTrue(loud/quiet<3);assertTrue(loud<.3);}
+ @Test public void linkedPeakGuardHandlesPositiveAndNegativeFullScale(){for(int rate:new int[]{8000,44100,192000}){LevelDsp dsp=new LevelDsp(rate);tone(dsp,rate,.02,2);short[] frame=new short[2];for(int n=0;n<rate/2;n++){frame[0]=(short)(n%2==0?32767:-32768);frame[1]=(short)(frame[0]/2);dsp.process(frame,true);assertTrue(Math.abs((int)frame[0])<=30148);assertTrue(Math.abs(frame[0]-2*(int)frame[1])<=3);}}}
+ @Test public void offIsBitExactAndSilenceDoesNotInventSamples(){LevelDsp dsp=new LevelDsp(48000);short[] frame={Short.MIN_VALUE,1,Short.MAX_VALUE,-1234};short[] original=frame.clone();dsp.process(frame,false);assertArrayEquals(original,frame);tone(dsp,48000,.04,2);for(int n=0;n<96000;n++){short[] silent={0,0};dsp.process(silent,true);assertArrayEquals(new short[]{0,0},silent);}for(int n=0;n<2000;n++){frame[0]=1000;frame[1]=-1000;dsp.process(frame,false);}assertTrue(dsp.bypassed());frame=new short[]{1234,-5678};original=frame.clone();dsp.process(frame,false);assertArrayEquals(original,frame);}
+}

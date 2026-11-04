@@ -29,13 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — YouTube com áudio no tocador
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — continuidade, som e eficiência
 
-Na aba YouTube, abra um vídeo e toque em Ouvir com tela desligada. O Onda consulta um áudio separado acessível e o reproduz no mesmo serviço nativo das músicas, com controles e notificação do vídeo escolhido. Aguarde a preparação antes de bloquear a tela. Não mantém WebView oculto em execução. A disponibilidade depende do YouTube; alguns vídeos e transmissões não oferecem áudio compatível ou exigem verificação. A falha aparece e é salva no relatório, sem iniciar a música anterior.
+Estúdio de som → Equilibrar volume entre faixas: ajuste opcional e gradual durante a reprodução de áudio compatível, com ganho limitado, canais ligados e proteção de picos. Não analisa arquivos inteiros nem usa serviços pagos. Começa desligado para preservar o som original. Pode suavizar a dinâmica e tornar ruídos da gravação mais perceptíveis. Aplica-se ao tocador de músicas e ao modo de áudio do YouTube; vídeos e o player da página usam tocadores separados.
 
-Removida a entrada automática do YouTube em janela flutuante. Tela cheia da página continua disponível; a janela flutuante dos vídeos locais permanece. A fila local é guardada enquanto o áudio do YouTube está ativo: Menu do YouTube → Voltar à fila de músicas restaura a fila pausada. Links temporários de áudio não são persistidos; ao reabrir após expiração, toque em Reproduzir para consultar novamente.
+O modo de áudio do YouTube prioriza português do Brasil antes da qualidade ou formato. Depois busca português sem região e outras variantes; se não houver português, prefere a faixa original quando identificada. A tela informa o idioma declarado ou a ausência dessa informação. Solicita localização pt-BR ao extrator, sem traduzir nem criar faixas inexistentes. A preferência só atua nas faixas acessíveis disponibilizadas pelo YouTube.
 
-Mantém faixas da coletânea, rádios por cidade, downloads, conversões, PDF/OCR, favoritos, compartilhamento, voz, som, aparências e demais funções. Testes usam áudio real determinístico para verificar serviço, tela desligada, controles e falhas; não garantem disponibilidade de todos os vídeos do provedor.
+No modo de áudio do YouTube, o fim da reprodução volta ao início com um toque; marcadores antigos próximos ao fim são corrigidos durante a retomada. O estado diferencia carregamento, pausa, conclusão e áudio efetivamente tocando. Falhas de leitura aparecem na tela e continuam no relatório, sem iniciar a música anterior. A disponibilidade dos streams depende do YouTube.
+
+Com os ajustes de áudio desligados, o processamento de PCM também usa cópia em bloco para buffers fragmentados, mantendo os bytes originais. Eventos repetidos do tocador deixam de regravar o mesmo progresso na prateleira em menos de um segundo. Mantém a frequência existente de salvamento e a reprodução com tela desligada; não adiciona análise contínua em segundo plano nem aplicativos pagos. Não é uma medição de autonomia do aparelho.
+
+Mantém downloads, conversões, favoritos, retomada de músicas/vídeos/PDF, rádios, voz, OCR, aparências, faixas da coletânea e demais recursos existentes.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 

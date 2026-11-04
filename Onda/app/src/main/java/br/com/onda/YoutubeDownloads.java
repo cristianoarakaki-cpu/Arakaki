@@ -21,12 +21,9 @@ final class YoutubeDownloads {
  @androidx.media3.common.util.UnstableApi
  static androidx.media3.common.MediaItem audioInfo(String link)throws Exception {
   String url=DownloadLinks.canonical(link);init();ExtractorHttp.begin();try{
-   StreamInfo info=StreamInfo.getInfo(ServiceList.YouTube,url);AudioStream best=null;
-   for(AudioStream candidate:info.getAudioStreams())if(usable(candidate)&&candidate.getFormat()!=null){
-    if(best==null||(candidate.getFormat()==MediaFormat.M4A&&best.getFormat()!=MediaFormat.M4A)||(candidate.getFormat()==best.getFormat()&&candidate.getAverageBitrate()>best.getAverageBitrate()))best=candidate;
-   }
+   StreamExtractor extractor=ServiceList.YouTube.getStreamExtractor(url);extractor.forceLocalization(new org.schabi.newpipe.extractor.localization.Localization("pt","BR"));extractor.forceContentCountry(new org.schabi.newpipe.extractor.localization.ContentCountry("BR"));StreamInfo info=StreamInfo.getInfo(extractor);AudioStream best=YoutubeAudioChoice.select(info.getAudioStreams());
    if(best==null)throw new Exception("O YouTube não disponibilizou áudio separado acessível para este vídeo. A reprodução na página continua disponível.");
-   ExtractorHttp.remaining();return YouTubeAudio.item(url,info.getName(),best.getContent(),best.getFormat().getMimeType());
+   ExtractorHttp.remaining();androidx.media3.common.MediaItem item=YouTubeAudio.item(url,info.getName(),best.getContent(),best.getFormat().getMimeType());android.os.Bundle extras=new android.os.Bundle();long seconds=info.getDuration();extras.putLong("durationMs",seconds>0&&seconds<=Long.MAX_VALUE/1000?seconds*1000:0);String language=YoutubeAudioChoice.notice(best);extras.putString("audio_language",language);return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setArtist("YouTube • "+language).setExtras(extras).build()).build();
   }finally{ExtractorHttp.end();}
  }
  static Result inspect(String link)throws Exception {

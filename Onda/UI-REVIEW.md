@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.71.0
+# Revisão de interface — Onda 0.72.0
+
+Equilíbrio de volume: novo controle opcional em Estúdio de som, em formulário rolável e com altura natural. YouTube: botão de repetição ao concluir e estado de carregamento separado de reprodução iniciada; erros de leitura visíveis. Preferência automática por áudio pt-BR no modo com tela desligada, com aviso de idioma e fallback informado. Nenhuma Activity nova.
 
 Escopo: revisão do código das 30 Activities e verificação dos controles nativos em 28 telas principais com fonte 130% no emulador. Não implica que toda página remota ou todo aparelho foi visualmente testado.
 

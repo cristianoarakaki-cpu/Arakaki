@@ -2,6 +2,8 @@ package br.com.onda;
 import android.content.*;
 final class SpeechSettings {
  static final String COMMAND="speech",STATUS="speech_status";
+ static boolean leveling(Context c){return c.getSharedPreferences("speech_audio",0).getBoolean("leveling",false);}
+ static void leveling(Context c,boolean value){c.getSharedPreferences("speech_audio",0).edit().putBoolean("leveling",value).apply();}
  static boolean voice(Context c){return c.getSharedPreferences("speech_audio",0).getBoolean("voice",false);}
  static boolean silence(Context c){return c.getSharedPreferences("speech_audio",0).getBoolean("silence",false);}
  static final String[] QUIET_LEVELS={"Desligado • som original","Suave • até +3 dB","Equilibrado • até +6 dB","Forte • até +9 dB"};
