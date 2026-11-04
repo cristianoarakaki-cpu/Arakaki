@@ -223,8 +223,9 @@ jobs:
             adb shell settings put system font_scale 1.3
             adb shell am instrument -w -e class br.com.onda.PlayerClarityTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-player-clarity-tests.txt
             cat /tmp/onda-player-clarity-tests.txt
+            adb exec-out run-as br.com.onda.musica cat files/player-clarity-last.png > Onda/ui-preview/player-clarity-last.png || true
+            adb exec-out run-as br.com.onda.musica cat files/player-clarity.png > Onda/ui-preview/player-clarity.png || true
             python -c 's=open("/tmp/onda-player-clarity-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/player-clarity.png > Onda/ui-preview/player-clarity.png
             adb shell settings put system font_scale 1.0
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.VoiceScreensTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-voice-screens-tests.txt
