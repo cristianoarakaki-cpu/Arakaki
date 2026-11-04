@@ -59,7 +59,7 @@ jobs:
           gradle --no-daemon -p "$ONDA_OLD_SOURCE/Onda" -PondaEmulator=true assembleDebug
           mkdir -p Onda/upgrade-fixtures
           cp "$ONDA_OLD_SOURCE/Onda/app/build/outputs/apk/debug/app-debug.apk" Onda/upgrade-fixtures/Onda-0.21.1-x86_64.apk
-      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest
+      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac
       - name: Salvar relatórios de falhas
         if: failure()
         uses: actions/upload-artifact@v4
