@@ -1,0 +1,112 @@
+name: Onda - Verificar download publico 0723
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-public-proof-0723.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Conferir aprovacao de todos os testes da origem
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/41884759849 > /tmp/source-run.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/source-run.json'))
+          assert r['head_sha']=='68dc57609fe5b8140c11c27577d0e4ad515ac5b4' and r['run_attempt']==2 and r['conclusion']=='success'
+          PY
+      - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, hashlib, urllib.request, zipfile, os
+          from pathlib import Path
+          from datetime import datetime, timezone
+          
+          root = Path('/tmp/onda-public-proof')
+          root.mkdir(exist_ok=True)
+          (root/'v723-apk-verified.json').write_text('{"version": "0.72.3", "versionCode": 89, "sourceAttempt": 2, "bytes": 64543279, "sha256": "947ee5800bfd73252dd32d0eb91ad61f87289f2d96bd1cd4ed9fb88a14b57612", "certificate": "e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e", "abis": ["arm64-v8a", "armeabi-v7a"], "zipIntegrity": true, "youtubeAutomaticPictureInPicture": false, "nativeYouTubeAudio": true, "localVideoPictureInPicture": true, "offlineBrazilCityCount": 5571, "menuIconIndependentFromFont": true, "updateManifestBytes": 280, "updateManifestSha256": "45e176624c7e1d06f74ac278923652139819c75917c0b982a605f13f18adeb58"}')
+          proof = json.loads((root/'v723-apk-verified.json').read_text())
+          prefix = 'https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/onda-v0.72.3/'
+          def open_url(url):
+              return urllib.request.urlopen(urllib.request.Request(url, headers=dict({'User-Agent':'Onda-Music-Android'}, **({'Authorization':'Bearer '+os.environ['GH_TOKEN']} if url.startswith('https://api.github.com/') else {}))), timeout=45)
+          def read_url(url):
+              with open_url(url) as response:
+                  assert response.status == 200
+                  return response.read(1048576)
+          release = json.loads(read_url('https://api.github.com/repos/cristianoarakaki-cpu/Arakaki/releases/tags/onda-v0.72.3'))
+          assert not release['draft'] and not release['prerelease']
+          assets = {a['name']:a for a in release['assets']}
+          assert set(assets) == {'LAME-Fontes.zip','NewPipeExtractor-Fontes.zip','Onda-Fontes.zip','Onda-Musica.apk','onda-update.json','SHA256SUMS.txt'}
+          assert assets['Onda-Musica.apk']['size'] == proof['bytes']
+          if assets['Onda-Musica.apk'].get('digest'):
+              assert assets['Onda-Musica.apk']['digest'] == 'sha256:'+proof['sha256']
+          manifest_bytes = read_url(prefix+'onda-update.json')
+          assert len(manifest_bytes) == proof['updateManifestBytes']
+          assert hashlib.sha256(manifest_bytes).hexdigest() == proof['updateManifestSha256']
+          manifest = json.loads(manifest_bytes)
+          assert manifest['versionCode']==89 and manifest['versionName']=='0.72.3'
+          assert manifest['packageName']=='br.com.onda.musica'
+          assert manifest['apkUrl']==prefix+'Onda-Musica.apk'
+          assert manifest['sha256']==proof['sha256']
+          apk = root/'Onda-0.72.3.apk'
+          temporary = apk.with_suffix('.part')
+          digest = hashlib.sha256()
+          with open_url(manifest['apkUrl']) as response, temporary.open('wb') as output:
+              assert response.status==200
+              while True:
+                  chunk=response.read(1048576)
+                  if not chunk: break
+                  output.write(chunk)
+                  digest.update(chunk)
+          assert temporary.stat().st_size==proof['bytes']
+          assert digest.hexdigest()==proof['sha256']
+          with zipfile.ZipFile(temporary) as archive:
+              assert archive.testzip() is None
+              assert 'AndroidManifest.xml' in archive.namelist()
+          temporary.replace(apk)
+          sums=read_url(prefix+'SHA256SUMS.txt').decode()
+          assert proof['sha256'] in sums and 'Onda-Musica.apk' in sums
+          proof.update(release='onda-v0.72.3',draft=False,prerelease=False,assets=sorted(assets),publishedApkMatches=True,publishedManifestMatches=True,publicDownloadVerified=True,localApk=str(apk),verifiedAt=datetime.now(timezone.utc).isoformat())
+          (root/'v723-published-proof.json').write_text(json.dumps(proof,indent=2))
+          print(json.dumps({k:proof[k] for k in ['release','bytes','sha256','publishedApkMatches','publishedManifestMatches','publicDownloadVerified','localApk']},indent=2))
+          
+          print("PUBLIC_PROOF_JSON="+json.dumps(proof))
+          PY
+      - name: Conferir consulta do atualizador instalado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import urllib.request,json,os
+          PREFIX='https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/'
+          def text(url):
+              request=urllib.request.Request(url,headers=dict({'User-Agent':'Onda-Music-Android','Accept':'application/json, application/octet-stream'}, **({'Authorization':'Bearer '+os.environ['GH_TOKEN']} if url.startswith('https://api.github.com/') else {})))
+              with urllib.request.urlopen(request,timeout=25) as r:
+                  data=r.read(1048577)
+                  assert r.status==200
+                  assert len(data)<=1048576,('Resposta inválida no atualizador antigo',len(data))
+                  return data
+          data=text('https://api.github.com/repos/cristianoarakaki-cpu/Arakaki/releases?per_page=20')
+          releases=json.loads(data);best=None;count=0
+          for release in releases:
+              if release['draft'] or release['prerelease'] or not release['tag_name'].startswith('onda-v'):continue
+              for asset in release.get('assets',[]):
+                  if asset['name']!='onda-update.json':continue
+                  url=asset['browser_download_url'];assert url.startswith(PREFIX)
+                  update=json.loads(text(url));count+=1
+                  assert update['packageName']=='br.com.onda.musica'
+                  assert update['apkUrl'].startswith(PREFIX)
+                  assert len(update['sha256'])==64
+                  if best is None or update['versionCode']>best['versionCode']:best=update
+          assert best['versionCode']==89 and best['versionName']=='0.72.3',best
+          assert best['sha256']=='947ee5800bfd73252dd32d0eb91ad61f87289f2d96bd1cd4ed9fb88a14b57612'
+          print(json.dumps({'responseBytes':len(data),'legacyLimit':1048576,'manifestsChecked':count,'update':best},indent=2))
+          PY
