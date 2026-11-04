@@ -56,7 +56,7 @@ public class PlayerClarityTest {
         ins.runOnMainSync(()->dialog=QuickAccess.choose(main));ins.waitForIdleSync();
         tapNode("Atualizações",true);waitFor(()->dialog.getListView().isItemChecked(4));assertEquals("Draft changes must not be saved",before,QuickAccess.read(c));ins.runOnMainSync(()->dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick());assertEquals(before,QuickAccess.read(c));
         ins.runOnMainSync(()->dialog=QuickAccess.choose(main));ins.waitForIdleSync();
-        tapNode("Atualizações",true);waitFor(()->dialog.getListView().isItemChecked(4));ins.runOnMainSync(()->dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick());assertTrue("Saved shortcut missing: "+QuickAccess.read(c),QuickAccess.read(c).contains("OPEN_UPDATES"));assertTrue("Other choices changed",QuickAccess.read(c).containsAll(before));
+        tapNode("Atualizações",true);waitFor(()->dialog.getListView().isItemChecked(4));ins.runOnMainSync(()->dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick());ins.waitForIdleSync();waitFor(()->QuickAccess.read(c).contains("OPEN_UPDATES"));assertTrue("Saved shortcut missing: "+QuickAccess.read(c),QuickAccess.read(c).contains("OPEN_UPDATES"));assertTrue("Other choices changed",QuickAccess.read(c).containsAll(before));
         Instrumentation.ActivityMonitor monitor=ins.addMonitor(UpdateActivity.class.getName(),null,false);
         try{
             ins.runOnMainSync(()->QuickAccess.menu(main,main.getWindow().getDecorView()));
