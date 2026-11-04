@@ -62,9 +62,17 @@ public class PlaybackService extends MediaSessionService {
         });
         personalDj=new DjSession(this,player);
         session=new MediaSession.Builder(this,player).setSessionActivity(PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT)).setCallback(new MediaSession.Callback(){
-            @Override public MediaSession.ConnectionResult onConnect(MediaSession s,MediaSession.ControllerInfo c){return new MediaSession.ConnectionResult.AcceptedResultBuilder(s).setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(new SessionCommand(YouTubeAudio.RESTORE,Bundle.EMPTY)).add(new SessionCommand("sleep",Bundle.EMPTY)).add(new SessionCommand("fade",Bundle.EMPTY)).add(new SessionCommand("sound",Bundle.EMPTY)).add(new SessionCommand("sound_status",Bundle.EMPTY)).add(new SessionCommand(SpeechSettings.COMMAND,Bundle.EMPTY)).add(new SessionCommand(SpeechSettings.STATUS,Bundle.EMPTY)).add(new SessionCommand(DjSession.COMMAND,Bundle.EMPTY)).add(new SessionCommand(QueueEdit.COMMAND,Bundle.EMPTY)).build()).build();}
+            @Override public MediaSession.ConnectionResult onConnect(MediaSession s,MediaSession.ControllerInfo c){return new MediaSession.ConnectionResult.AcceptedResultBuilder(s).setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(new SessionCommand(YouTubeAudio.RESTORE,Bundle.EMPTY)).add(new SessionCommand(AudioChapterPlayback.SELECT,Bundle.EMPTY)).add(new SessionCommand("sleep",Bundle.EMPTY)).add(new SessionCommand("fade",Bundle.EMPTY)).add(new SessionCommand("sound",Bundle.EMPTY)).add(new SessionCommand("sound_status",Bundle.EMPTY)).add(new SessionCommand(SpeechSettings.COMMAND,Bundle.EMPTY)).add(new SessionCommand(SpeechSettings.STATUS,Bundle.EMPTY)).add(new SessionCommand(DjSession.COMMAND,Bundle.EMPTY)).add(new SessionCommand(QueueEdit.COMMAND,Bundle.EMPTY)).build()).build();}
             @Override public ListenableFuture<SessionResult> onCustomCommand(MediaSession s,MediaSession.ControllerInfo c,SessionCommand command,Bundle args){
                 if(command.customAction.equals(YouTubeAudio.RESTORE)){restoring=true;youtubeSession=false;YouTubeAudio.clear(PlaybackService.this);player.pause();player.stop();player.clearMediaItems();restoreResume();return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));}
+                if(command.customAction.equals(AudioChapterPlayback.SELECT)){
+                    try{Bundle data=args.getBundle("item");MediaItem chosen=data==null?null:MediaItem.fromBundle(data),current=player.getCurrentMediaItem();
+                        if(!AudioChapterPlayback.selected(chosen)||current==null||current.localConfiguration==null||!current.mediaId.equals(chosen.mediaId)||!current.localConfiguration.uri.equals(chosen.localConfiguration.uri))return Futures.immediateFuture(new SessionResult(SessionError.ERROR_BAD_VALUE));
+                        MediaItem next=AudioChapterPlayback.configure(chosen,player.getRepeatMode()==Player.REPEAT_MODE_ONE);
+                        replaceChapter(next,AudioChapterPlayback.start(next));player.prepare();player.play();
+                        return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
+                    }catch(RuntimeException error){return Futures.immediateFuture(new SessionResult(SessionError.ERROR_BAD_VALUE));}
+                }
                 if(command.customAction.equals(DjSession.COMMAND))return personalDj.request(args);
                 if(command.customAction.equals(QueueEdit.COMMAND))return Futures.immediateFuture(QueueEdit.handle(player,args));
                 if(command.customAction.equals(SpeechSettings.COMMAND)||command.customAction.equals(SpeechSettings.STATUS)){if(command.customAction.equals(SpeechSettings.COMMAND))applySpeech();return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS,speechStatus()));}
@@ -88,15 +96,29 @@ public class PlaybackService extends MediaSessionService {
         if(rebuild){List<MediaItem> queue=new ArrayList<>();if(!savedQueue.equals("[]"))for(int i=0;i<player.getMediaItemCount();i++)queue.add(player.getMediaItemAt(i));edit.putString("queue",savedQueue).putString("dj_context",DjSession.remember(queue));}
         edit.putInt("index",Math.max(0,player.getCurrentMediaItemIndex())).putLong("position",AudioChapterPlayback.bookmark(current,player.getCurrentPosition(),player.getPlaybackState()==Player.STATE_ENDED)).putString("chapter",AudioChapterPlayback.encode(current)).putBoolean("shuffle",player.getShuffleModeEnabled()).putInt("repeat",player.getRepeatMode()).apply();
     }
+    /** Recreate native sources: metadata-only replacement may retain an unclipped source. */
+    private void replaceChapter(MediaItem next,long absolute){
+        int index=player.getCurrentMediaItemIndex();List<MediaItem> queue=QueueEdit.snapshot(player);queue.set(index,next);
+        Timeline timeline=player.getCurrentTimeline();int[] order=new int[queue.size()];boolean[] used=new boolean[queue.size()];
+        boolean valid=timeline.getWindowCount()==queue.size();int at=valid?timeline.getFirstWindowIndex(true):C.INDEX_UNSET;
+        for(int i=0;valid&&i<order.length;i++){
+            if(at<0||at>=order.length||used[at]){valid=false;break;}
+            order[i]=at;used[at]=true;at=timeline.getNextWindowIndex(at,Player.REPEAT_MODE_OFF,true);
+        }
+        boolean prepared=player.getPlaybackState()!=Player.STATE_IDLE,ready=player.getPlayWhenReady();
+        chapterUpdating=true;
+        try{
+            player.setMediaItems(queue,index,AudioChapterPlayback.position(next,absolute));
+            if(valid)player.setShuffleOrder(new androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order,System.nanoTime()));
+            if(prepared)player.prepare();player.setPlayWhenReady(ready);
+        }finally{chapterUpdating=false;}
+    }
     private boolean syncChapter(){
         if(chapterUpdating||player==null)return false;
         MediaItem current=player.getCurrentMediaItem();boolean repeat=player.getRepeatMode()==Player.REPEAT_MODE_ONE;
         if(AudioChapterPlayback.configured(current,repeat))return false;
         long absolute=AudioChapterPlayback.absolute(current,player.getCurrentPosition());
-        MediaItem next=AudioChapterPlayback.configure(current,repeat);int index=player.getCurrentMediaItemIndex();
-        chapterUpdating=true;
-        try{player.replaceMediaItem(index,next);player.seekTo(index,AudioChapterPlayback.position(next,absolute));}
-        finally{chapterUpdating=false;}
+        replaceChapter(AudioChapterPlayback.configure(current,repeat),absolute);
         return true;
     }
     private void restoreResume(){

@@ -36,7 +36,9 @@ public class ChapterRepeatTest {
             if(ready[0])return;
             Thread.sleep(50);
         }
-        fail("Chapter repeat scenario timed out");
+        String[] state={"disconnected"};
+        ins.runOnMainSync(()->{if(player!=null&&player.isConnected()){MediaItem item=player.getCurrentMediaItem();state[0]="state="+player.getPlaybackState()+" playing="+player.isPlaying()+" ready="+player.getPlayWhenReady()+" repeat="+player.getRepeatMode()+" position="+player.getCurrentPosition()+" duration="+player.getDuration()+" selected="+AudioChapterPlayback.selected(item)+" clipped="+AudioChapterPlayback.clipped(item)+" start="+AudioChapterPlayback.start(item)+" end="+AudioChapterPlayback.end(item)+" error="+player.getPlayerError();}});
+        fail("Chapter repeat scenario timed out: "+state[0]);
     }
     private Object field(Object target,String name)throws Exception{
         java.lang.reflect.Field f=target.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(target);

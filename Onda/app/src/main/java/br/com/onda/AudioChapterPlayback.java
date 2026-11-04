@@ -9,6 +9,7 @@ import org.json.JSONObject;
 /** Native, non-destructive chapter bounds. Positions saved outside the player stay absolute. */
 @androidx.media3.common.util.UnstableApi
 final class AudioChapterPlayback {
+    static final String SELECT="audio_chapter_select";
     private static final String START="onda.chapter.start",END="onda.chapter.end",
             DURATION="onda.chapter.duration",TITLE="onda.chapter.title",STAMP="onda.chapter.stamp";
 
