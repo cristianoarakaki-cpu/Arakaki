@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.72.2
+# Revisão de interface — Onda 0.72.3
+
+Clareza: estado da repetição em texto e linha separada para limites do trecho; nome selecionado preservado no título. Atalhos em botão textual no cabeçalho, painel rolável existente com destinos personalizados, ajuda rápida e seleção com Salvar/Cancelar. Nenhuma Activity ou item adicional no menu principal. Preferências independentes dos favoritos de mídia, sem animações ou temporizadores novos. Teste dedicado com fonte de 130%, navegação real pelo atalho e captura do tocador.
 
 Faixas da coletânea: o mesmo ↻ 1 limita a reprodução ao intervalo selecionado; desligar restaura o arquivo inteiro na posição absoluta. Título do trecho visível durante o recorte; controles de tempo relativos ao trecho. Atalhos por voz abrem telas existentes, com prioridade para frases personalizadas; microfones de YouTube e Imagens preservam a busca comum. Nenhum menu principal ou Activity adicional.
 

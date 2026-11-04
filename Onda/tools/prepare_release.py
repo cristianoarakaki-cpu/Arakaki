@@ -29,19 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — repetição de faixas e atalhos por voz
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — controles claros, atalhos e ajuda
 
-O botão de repetição do tocador também controla o áudio extraído pelo modo “Ouvir com tela desligada”. Toque para ativar “↻ 1” e repetir o mesmo áudio do YouTube; toque novamente para desligar. A escolha é separada da fila local e preservada ao consultar novamente o mesmo vídeo. Outra origem começa sem repetição. Streams continuam sujeitos à disponibilidade e expiração do provedor.
+O tocador mostra por escrito se a repetição está desligada, repetindo uma música, um áudio do YouTube ou a fila. Ao tocar no mesmo botão de repetição, um aviso confirma a escolha. Avisos anteriores são cancelados ao alternar novamente.
 
-Em Faixas da coletânea, escolha uma faixa e volte ao tocador. Ative “↻ 1” para repetir apenas o intervalo selecionado. O player usa os limites nativos de reprodução, sem cortar ou converter o arquivo. Ao desligar, a reprodução continua no arquivo inteiro, na posição correspondente. As divisões por pausas continuam aproximadas; confira as marcações antes de usá-las. Os nomes editáveis não são reconhecimento automático de músicas.
+Ao repetir uma faixa da coletânea, o nome aparece no tocador e os horários de início e fim ficam visíveis em uma linha separada. São os limites da divisão selecionada, aproximados conforme a análise por pausas. A reprodução, os três modos das músicas comuns e o recorte nativo das faixas mantêm o comportamento anterior; o áudio original não é alterado.
 
-A retomada guarda a posição absoluta e valida o arquivo e as divisões antes de restaurar a seleção. Se as divisões ou o arquivo mudarem, o recorte não é reutilizado. A fila e o arquivo original são preservados. Músicas comuns mantêm os três modos de repetição; rádios ao vivo continuam sem repetição.
+Novo botão Atalhos na biblioteca: abre diretamente as telas escolhidas, sem acrescentar itens ao menu principal. Escolher atalhos permite marcar as telas e salvar; Cancelar mantém a seleção anterior. Essa preferência é independente dos favoritos de músicas, vídeos e rádios. As opções iniciais são YouTube, Imagens e mensagens e Rádios online.
 
-Atalhos por voz: “abra YouTube”, “abra imagens”, “abra atualizações”, “abra rádios”, “abra vídeos”, “abra downloads”, “abra PDF”, “abra estúdio de som”, “abra conversor”, “abra playlists”, “abra fila”, “abra aparências”, “abra arquivos”, “abra músicas”, “abra faixas da coletânea” e “abra minhas frases”. Também aceita pedidos explícitos como “ir para a aba imagens”. Busca e reprodução por nome mantêm seu significado. Minhas frases permite associar expressões próprias a essas telas; atalhos antigos são preservados. “Repita esta faixa” usa a seleção da coletânea quando houver.
+Atalhos → Ajuda rápida explica onde ficam os controles e dá exemplos dos comandos de voz. Segurar o botão de repetição também abre essa ajuda. Nenhuma tela adicional nem serviço pago. Os textos acompanham os eventos existentes do player, sem novos temporizadores, varreduras ou microfone aberto em segundo plano.
 
-Usa o player, os eventos e o reconhecimento de voz já existentes. Não mantém microfone aberto, não adiciona serviços pagos, varredura periódica ou nova extração de áudio a cada repetição. A disponibilidade do reconhecimento depende do serviço do aparelho.
-
-Mantém preferência por pt-BR quando disponível, nivelamento opcional de volume, melhorias de processamento, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
+Mantém a preferência por pt-BR quando disponível, nivelamento opcional de volume, economia de processamento com efeitos desligados, retomada, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
