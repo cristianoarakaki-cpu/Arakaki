@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, OPEN_YOUTUBE, OPEN_IMAGES, OPEN_UPDATES, OPEN_DOWNLOADS, OPEN_RADIOS, OPEN_VIDEOS, OPEN_MUSIC, OPEN_PDF, OPEN_SOUND, OPEN_CONVERTER, OPEN_PLAYLISTS, OPEN_QUEUE, OPEN_APPEARANCE, OPEN_FILES, OPEN_CHAPTERS, OPEN_VOICE_PHRASES, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -27,6 +27,7 @@ final class VoiceCommand {
         String q=SearchText.normalize(clean);
         // Explicit searches must not execute commands, even for titles such as Favoritas.
         if(q.matches("(?:busque|buscar|pesquise|pesquisar|procure|procurar) .+"))return new VoiceCommand(Action.SEARCH,SearchText.spokenQuery(clean),0);
+        Action screen=screen(q);if(screen!=null)return of(screen);
         if(q.matches("(?:inicie|iniciar|ative|ativar|abra|abrir) (?:o )?(?:onda )?dj(?: pessoal)?|(?:monte|montar|crie|criar) (?:uma |minha )?sessao(?: personalizada)?"))return of(Action.DJ_PERSONAL);
         if(q.matches("(?:monte|montar|crie|criar|prepare|preparar) (?:a )?minha viagem|modo viagem"))return of(Action.DJ_TRAVEL);
         if(q.matches("(?:misture|misturar) (?:os )?meus downloads com (?:as )?musicas antigas|downloads e redescobertas"))return of(Action.DJ_DOWNLOADS);
@@ -48,7 +49,7 @@ final class VoiceCommand {
         if(q.matches("(?:remova|remover|tire|tirar) (?:esta |essa |a )?(?:musica )?(?:dos favoritos|das favoritas)"))return of(Action.FAVORITE_REMOVE);
         if(q.matches("(?:ative|ativar|ligue|ligar) (?:o )?(?:modo )?aleatorio|embaralhe|embaralhar"))return of(Action.SHUFFLE_ON);
         if(q.matches("(?:desative|desativar|desligue|desligar) (?:o )?(?:modo )?aleatorio"))return of(Action.SHUFFLE_OFF);
-        if(q.matches("(?:repita|repetir) (?:esta |essa |a )?musica"))return of(Action.REPEAT_ONE);
+        if(q.matches("(?:repita|repetir) (?:so |somente |apenas )?(?:esta |essa |a mesma |a |mesma )?(?:musica|faixa)(?: atual| selecionada)?"))return of(Action.REPEAT_ONE);
         if(q.matches("(?:repita|repetir) (?:todas|tudo|a fila)"))return of(Action.REPEAT_ALL);
         if(q.matches("(?:desative|desativar|desligue|desligar) (?:a )?repeticao|nao repetir"))return of(Action.REPEAT_OFF);
         if(q.matches("(?:cancelar|cancele|desativar|desative) (?:o )?temporizador"))return new VoiceCommand(Action.SLEEP,"",0);
@@ -65,6 +66,30 @@ final class VoiceCommand {
         Matcher play=Pattern.compile("(?iu)^(?:toque|tocar|reproduza|reproduzir|ouvir|coloque|colocar)\\s+(?:a\\s+m[úu]sica\\s+|m[úu]sica\\s+)?(.+)$").matcher(clean);
         if(play.matches())return new VoiceCommand(Action.PLAY_QUERY,play.group(1).trim(),0);
         return new VoiceCommand(Action.SEARCH,SearchText.spokenQuery(clean),0);
+    }
+    private static Action screen(String phrase){
+        Matcher open=Pattern.compile("^(?:quero )?(?:abra|abrir|acesse|acessar|mostre|mostrar|(?:entre|entrar)(?: (?:em|no|na|nos|nas))?|(?:va|ir) para) (?:(?:o|a|os|as) )?(?:(?:aba|tela|menu|opcao) (?:(?:de|do|da|das|dos) )?)?(.+)$").matcher(phrase);
+        if(!open.matches())return null;
+        String name=open.group(1).replaceFirst(" (?:no|do) onda$","");
+        switch(name){
+            case "youtube":case "you tube":return Action.OPEN_YOUTUBE;
+            case "imagens":case "imagem":case "fotos":case "imagens e mensagens":case "mensagens":return Action.OPEN_IMAGES;
+            case "atualizacao":case "atualizacoes":case "atualizacoes do app":return Action.OPEN_UPDATES;
+            case "download":case "downloads":return Action.OPEN_DOWNLOADS;
+            case "radio":case "radios":case "radios online":case "radio online":return Action.OPEN_RADIOS;
+            case "video":case "videos":return Action.OPEN_VIDEOS;
+            case "musica":case "musicas":case "biblioteca":case "tocador":return Action.OPEN_MUSIC;
+            case "pdf":case "leitor de pdf":return Action.OPEN_PDF;
+            case "som":case "estudio de som":case "equalizador":return Action.OPEN_SOUND;
+            case "conversor":case "conversor local":return Action.OPEN_CONVERTER;
+            case "playlist":case "playlists":return Action.OPEN_PLAYLISTS;
+            case "fila":case "fila de reproducao":return Action.OPEN_QUEUE;
+            case "aparencia":case "aparencias":case "temas":return Action.OPEN_APPEARANCE;
+            case "arquivos":case "arquivos do onda":case "pastas":case "pastas do onda":return Action.OPEN_FILES;
+            case "faixas":case "faixas da coletanea":return Action.OPEN_CHAPTERS;
+            case "minhas frases":case "frases de voz":return Action.OPEN_VOICE_PHRASES;
+            default:return null;
+        }
     }
     private static int minutes(String text){
         if(text.equals("meia hora"))return 30;

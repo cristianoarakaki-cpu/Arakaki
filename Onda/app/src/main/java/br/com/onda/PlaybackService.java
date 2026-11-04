@@ -14,7 +14,7 @@ import com.google.common.util.concurrent.*;
 @androidx.media3.common.util.UnstableApi
 public class PlaybackService extends MediaSessionService {
     private final ExecutorService resumeWorker=Executors.newSingleThreadExecutor();
-    private boolean restoring=true,destroyed,youtubeSession;
+    private boolean restoring=true,destroyed,youtubeSession,chapterUpdating;
     private String savedQueue="[]";private final ShelfCheckpoint shelfCheckpoint=new ShelfCheckpoint();
     private final Runnable checkpoint=new Runnable(){public void run(){if(player==null||RadioMedia.is(player.getCurrentMediaItem()))return;saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
     private DjSession personalDj;private long historyDuration;private boolean completed;
@@ -37,7 +37,7 @@ public class PlaybackService extends MediaSessionService {
             @Override public void onPlayWhenReadyChanged(boolean ready,int reason){if(ready&&RadioMedia.is(player.getCurrentMediaItem())&&player.getPlaybackState()==Player.STATE_IDLE){player.seekToDefaultPosition();player.prepare();return;}if(!ready&&reason!=Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&RadioMedia.is(player.getCurrentMediaItem())&&player.getPlaybackState()!=Player.STATE_IDLE){player.stop();return;}if(!ready&&reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM&&trackSleep.remaining()>0){if(trackSleep.completed()){player.setPauseAtEndOfMediaItems(false);android.util.Log.d("OndaSleep","track timer complete");}else player.play();}}
             @Override public void onPositionDiscontinuity(Player.PositionInfo oldPosition,Player.PositionInfo newPosition,int reason){
                 MediaItem old=oldPosition.mediaItem,next=newPosition.mediaItem;
-                if(DjSession.deviceAudio(old)&&old.localConfiguration!=null&&(next==null||!old.mediaId.equals(next.mediaId)))ShelfStore.remember(PlaybackService.this,"audio",old.localConfiguration.uri.toString(),String.valueOf(old.mediaMetadata.title),reason==Player.DISCONTINUITY_REASON_AUTO_TRANSITION?0:Math.max(0,oldPosition.positionMs),LibraryStore.number(old,"durationMs"));
+                if(DjSession.deviceAudio(old)&&old.localConfiguration!=null&&(next==null||!old.mediaId.equals(next.mediaId)))ShelfStore.remember(PlaybackService.this,"audio",old.localConfiguration.uri.toString(),String.valueOf(old.mediaMetadata.title),reason==Player.DISCONTINUITY_REASON_AUTO_TRANSITION?0:AudioChapterPlayback.absolute(old,oldPosition.positionMs),AudioChapterPlayback.duration(old,0));
             }
             @Override public void onAudioSessionIdChanged(int id){applySound();}
             @Override public void onMediaItemTransition(MediaItem item,int reason){player.setWakeMode(RadioMedia.is(item)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);if(RadioMedia.is(item)||YouTubeAudio.is(item)){if(beforeRadioSpeed==null)beforeRadioSpeed=player.getPlaybackParameters();player.setPlaybackParameters(PlaybackParameters.DEFAULT);}else if(beforeRadioSpeed!=null){PlaybackParameters restore=beforeRadioSpeed;beforeRadioSpeed=null;player.setPlaybackParameters(restore);}
@@ -46,6 +46,7 @@ public class PlaybackService extends MediaSessionService {
             }
             @Override public void onEvents(Player p,Player.Events e){
                 if(e.size()==1&&e.contains(Player.EVENT_VOLUME_CHANGED))return;
+                if(syncChapter())return;
                 if(e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)&&p.getPlaybackState()==Player.STATE_ENDED){finishListening();if(trackSleep.remaining()>0){trackSleep.arm(0);player.setPauseAtEndOfMediaItems(false);player.pause();}}
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
@@ -82,18 +83,44 @@ public class PlaybackService extends MediaSessionService {
         if(youtubeSession&&now==null)return;
         if(youtubeSession){youtubeSession=false;YouTubeAudio.clear(this);rebuild=true;}
         if(rebuild){List<String> ids=new ArrayList<>();for(int i=0;i<player.getMediaItemCount();i++){MediaItem item=player.getMediaItemAt(i);if(!DjSession.deviceAudio(item)){ids.clear();break;}ids.add(item.mediaId);}savedQueue=MusicResume.encode(ids);}
-        MediaItem current=player.getCurrentMediaItem();if(DjSession.deviceAudio(current)&&current.localConfiguration!=null){String uri=current.localConfiguration.uri.toString(),title=String.valueOf(current.mediaMetadata.title);long pos=player.getPlaybackState()==Player.STATE_ENDED?0:Math.max(0,player.getCurrentPosition()),duration=Math.max(LibraryStore.number(current,"durationMs"),player.getDuration());if(shelfCheckpoint.save(uri+"\n"+title,pos,duration,SystemClock.elapsedRealtime()))ShelfStore.remember(this,"audio",uri,title,pos,duration);}
+        MediaItem current=player.getCurrentMediaItem();if(DjSession.deviceAudio(current)&&current.localConfiguration!=null){String uri=current.localConfiguration.uri.toString(),title=String.valueOf(current.mediaMetadata.title);long pos=AudioChapterPlayback.bookmark(current,player.getCurrentPosition(),player.getPlaybackState()==Player.STATE_ENDED),duration=AudioChapterPlayback.duration(current,player.getDuration());if(shelfCheckpoint.save(uri+"\n"+title,pos,duration,SystemClock.elapsedRealtime()))ShelfStore.remember(this,"audio",uri,title,pos,duration);}
         SharedPreferences.Editor edit=getSharedPreferences("music_resume",0).edit();
         if(rebuild){List<MediaItem> queue=new ArrayList<>();if(!savedQueue.equals("[]"))for(int i=0;i<player.getMediaItemCount();i++)queue.add(player.getMediaItemAt(i));edit.putString("queue",savedQueue).putString("dj_context",DjSession.remember(queue));}
-        edit.putInt("index",Math.max(0,player.getCurrentMediaItemIndex())).putLong("position",player.getPlaybackState()==Player.STATE_ENDED?0:Math.max(0,player.getCurrentPosition())).putBoolean("shuffle",player.getShuffleModeEnabled()).putInt("repeat",player.getRepeatMode()).apply();
+        edit.putInt("index",Math.max(0,player.getCurrentMediaItemIndex())).putLong("position",AudioChapterPlayback.bookmark(current,player.getCurrentPosition(),player.getPlaybackState()==Player.STATE_ENDED)).putString("chapter",AudioChapterPlayback.encode(current)).putBoolean("shuffle",player.getShuffleModeEnabled()).putInt("repeat",player.getRepeatMode()).apply();
+    }
+    private boolean syncChapter(){
+        if(chapterUpdating||player==null)return false;
+        MediaItem current=player.getCurrentMediaItem();boolean repeat=player.getRepeatMode()==Player.REPEAT_MODE_ONE;
+        if(AudioChapterPlayback.configured(current,repeat))return false;
+        long absolute=AudioChapterPlayback.absolute(current,player.getCurrentPosition());
+        MediaItem next=AudioChapterPlayback.configure(current,repeat);int index=player.getCurrentMediaItemIndex();
+        chapterUpdating=true;
+        try{player.replaceMediaItem(index,next);player.seekTo(index,AudioChapterPlayback.position(next,absolute));}
+        finally{chapterUpdating=false;}
+        return true;
     }
     private void restoreResume(){
         if(YouTubeAudio.active(this)){youtubeSession=true;restoring=false;return;}
         SharedPreferences preferences=getSharedPreferences("music_resume",0);List<String> ids=MusicResume.decode(preferences.getString("queue","[]"));
         if(ids.isEmpty()){restoring=false;return;}
         Map<String,DjMemory.Cue> context=DjMemory.decode(preferences.getString("dj_context","{}"));
-        int index=preferences.getInt("index",0),repeat=Math.max(0,Math.min(2,preferences.getInt("repeat",0)));long position=preferences.getLong("position",0);boolean shuffle=preferences.getBoolean("shuffle",false);
-        resumeWorker.execute(()->{try{List<MediaItem> library=LibraryStore.scan(this);Map<String,MediaItem> items=new HashMap<>();Map<String,Long> durations=new HashMap<>();for(MediaItem item:library){items.put(item.mediaId,item);durations.put(item.mediaId,LibraryStore.number(item,"durationMs"));}MusicResume.Selection chosen=MusicResume.select(ids,index,position,durations);List<MediaItem> queue=new ArrayList<>();for(String id:chosen.ids)queue.add(DjSession.restore(items.get(id),context));timer.post(()->{if(destroyed||!restoring)return;restoring=false;if(player.getMediaItemCount()>0)return;if(queue.isEmpty()){getSharedPreferences("music_resume",0).edit().clear().apply();return;}savedQueue=MusicResume.encode(chosen.ids);player.setPlayWhenReady(false);player.setMediaItems(queue,chosen.index,chosen.position);player.setShuffleModeEnabled(shuffle);player.setRepeatMode(repeat);android.util.Log.d("OndaResume","restored count="+queue.size()+" index="+chosen.index+" position="+chosen.position);});}catch(Exception e){timer.post(()->{if(!destroyed)restoring=false;});}});
+        int index=preferences.getInt("index",0),repeat=Math.max(0,Math.min(2,preferences.getInt("repeat",0)));long position=preferences.getLong("position",0);boolean shuffle=preferences.getBoolean("shuffle",false);String chapter=preferences.getString("chapter","");
+        resumeWorker.execute(()->{try{
+            List<MediaItem> library=LibraryStore.scan(this);Map<String,MediaItem> items=new HashMap<>();Map<String,Long> durations=new HashMap<>();
+            for(MediaItem item:library){items.put(item.mediaId,item);durations.put(item.mediaId,LibraryStore.number(item,"durationMs"));}
+            MusicResume.Selection chosen=MusicResume.select(ids,index,position,durations);List<MediaItem> queue=new ArrayList<>();
+            for(String id:chosen.ids)queue.add(DjSession.restore(items.get(id),context));
+            if(!queue.isEmpty()&&!chapter.isEmpty())queue.set(chosen.index,AudioChapterPlayback.restore(this,queue.get(chosen.index),chapter));
+            boolean selected=!queue.isEmpty()&&AudioChapterPlayback.selected(queue.get(chosen.index));
+            int mode=!chapter.isEmpty()&&!selected&&repeat==Player.REPEAT_MODE_ONE?Player.REPEAT_MODE_OFF:repeat;
+            if(selected)queue.set(chosen.index,AudioChapterPlayback.configure(queue.get(chosen.index),mode==Player.REPEAT_MODE_ONE));
+            long at=queue.isEmpty()?0:AudioChapterPlayback.position(queue.get(chosen.index),chosen.position);
+            timer.post(()->{if(destroyed||!restoring)return;restoring=false;if(player.getMediaItemCount()>0)return;
+                if(queue.isEmpty()){getSharedPreferences("music_resume",0).edit().clear().apply();return;}
+                savedQueue=MusicResume.encode(chosen.ids);player.setPlayWhenReady(false);player.setMediaItems(queue,chosen.index,at);player.setShuffleModeEnabled(shuffle);player.setRepeatMode(mode);
+                android.util.Log.d("OndaResume","restored count="+queue.size()+" index="+chosen.index+" position="+at);
+            });
+        }catch(Exception e){timer.post(()->{if(!destroyed)restoring=false;});}});
     }
     private void applySpeech(){speech.enabled(SpeechSettings.voice(this));speech.leveling(SpeechSettings.leveling(this));speech.quiet(SpeechSettings.quiet(this));player.setSkipSilenceEnabled(SpeechSettings.silence(this));}
     private Bundle speechStatus(){Bundle b=new Bundle();b.putBoolean("voice",SpeechSettings.voice(this));b.putBoolean("silence",player.getSkipSilenceEnabled());b.putBoolean("playing",player.isPlaying());b.putBoolean("compatible",speech.rate>0&&speech.channels>0);b.putLong("frames",speech.processedFrames);b.putInt("quiet",SpeechSettings.quiet(this));b.putLong("quiet_frames",speech.quietFrames);b.putBoolean("leveling",SpeechSettings.leveling(this));b.putLong("level_frames",speech.levelFrames);b.putLong("bypass_bytes",speech.bypassBytes);b.putFloat("level_gain_db",speech.levelGainDb);return b;}

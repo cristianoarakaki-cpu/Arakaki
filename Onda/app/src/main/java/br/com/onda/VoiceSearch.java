@@ -10,7 +10,7 @@ import java.util.ArrayList;
 final class VoiceSearch {
     static final int REQUEST=7301;
     static void start(Activity activity,boolean local){
-        start(activity,local,"Diga: toque as favoritas, próxima música ou ajuda");
+        start(activity,local,"Diga: abra YouTube, abra imagens, toque as favoritas ou ajuda");
     }
     static boolean start(Activity activity,boolean local,String prompt){
         Intent intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
@@ -24,7 +24,7 @@ final class VoiceSearch {
     }
     static void help(Activity activity){
         new android.app.AlertDialog.Builder(activity).setTitle("Comandos de voz")
-            .setMessage("Toque no microfone e diga:\n\n• Abra minha coleção Estudo\n• Continue o último vídeo / último PDF\n• Busque no Onda nome ou artista\n• Inicie o DJ Pessoal\n• Monte minha viagem\n• Mais variedade / mais desse artista\n• Toque minhas favoritas sem repetir artista\n• Por que esta música?\n• Evite esta música\n• Adicione esta música à minha playlist Viagem\n• Toque minha playlist Viagem\n• Toque minhas músicas favoritas\n• Toque Chitãozinho e Xororó\n• Pesquise por nome ou artista\n• Pause / continue / próxima música / música anterior\n• Adicione aos favoritos / remova dos favoritos\n• Ative ou desative o modo aleatório\n• Repita a música / repita todas / não repetir\n• Pare em 30 minutos / cancele o temporizador\n• Pare ao terminar esta música / pare após três músicas\n\nEm Imagens e mensagens, diga boa noite, bom dia ou o assunto de uma foto para buscar e compartilhar.\n\nFavoritas e reprodução por nome usam os arquivos do celular. Em Explorar, nomes pesquisam o catálogo online. O microfone só é usado quando você o aciona. Para pedidos livres, configure o Assistente com IA no menu.")
+            .setMessage("Toque no microfone e diga:\n\n• Abra YouTube / imagens / atualizações\n• Abra rádios / vídeos / downloads / PDF\n• Abra estúdio de som / conversor / fila / playlists\n• Abra aparências / arquivos / faixas da coletânea\n• Abra minha coleção Estudo\n• Continue o último vídeo / último PDF\n• Busque no Onda nome ou artista\n• Inicie o DJ Pessoal\n• Monte minha viagem\n• Mais variedade / mais desse artista\n• Toque minhas favoritas sem repetir artista\n• Por que esta música?\n• Evite esta música\n• Adicione esta música à minha playlist Viagem\n• Toque minha playlist Viagem\n• Toque minhas músicas favoritas\n• Toque Chitãozinho e Xororó\n• Pesquise por nome ou artista\n• Pause / continue / próxima música / música anterior\n• Adicione aos favoritos / remova dos favoritos\n• Ative ou desative o modo aleatório\n• Repita esta faixa / repita todas / não repetir\n• Pare em 30 minutos / cancele o temporizador\n• Pare ao terminar esta música / pare após três músicas\n\nEm Imagens e mensagens, diga boa noite, bom dia ou o assunto de uma foto para buscar e compartilhar.\n\nFavoritas e reprodução por nome usam os arquivos do celular. Em Explorar, nomes pesquisam o catálogo online. O microfone só é usado quando você o aciona. Para pedidos livres, configure o Assistente com IA no menu.")
             .setPositiveButton("Entendi",null).setNeutralButton("Minhas frases",(d,w)->activity.startActivity(new Intent(activity,VoicePhrasesActivity.class))).show();
     }
     static String result(int code,Intent data){

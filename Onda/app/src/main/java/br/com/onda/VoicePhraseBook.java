@@ -11,10 +11,11 @@ final class VoicePhraseBook {
         Entry(String id,String phrase,VoiceCommand command){this.id=id;this.phrase=phrase;this.command=command;}
     }
     final List<Entry> entries=new ArrayList<>();
+    private boolean loading=true;
     VoicePhraseBook(String json){
         try{JSONArray array=new JSONArray(json);for(int i=0;i<array.length()&&entries.size()<LIMIT;i++){
             try{JSONObject o=array.getJSONObject(i);put(o.getString("id"),o.getString("phrase"),VoiceCommand.Action.valueOf(o.getString("action")),o.getString("query"),o.getInt("minutes"));}catch(JSONException|IllegalArgumentException ignored){}
-        }}catch(JSONException ignored){}
+        }}catch(JSONException ignored){}finally{loading=false;}
     }
     static String key(String phrase){return SearchText.normalize(VoiceCommand.cleanPhrase(phrase));}
     Entry put(String id,String phrase,VoiceCommand.Action action,String query,int minutes){
@@ -22,7 +23,7 @@ final class VoicePhraseBook {
         if(normalized.length()<3||phrase.length()>120)throw new IllegalArgumentException("Use uma frase entre 3 e 120 caracteres.");
         if(normalized.matches("(?:busque|buscar|pesquise|pesquisar|procure|procurar) .*"))throw new IllegalArgumentException("Frases iniciadas por buscar ou pesquisar são reservadas para buscas. Escolha outra frase.");
         VoiceCommand.Action builtIn=VoiceCommand.parse(phrase).action;
-        if(builtIn!=VoiceCommand.Action.SEARCH&&builtIn!=VoiceCommand.Action.PLAY_QUERY)throw new IllegalArgumentException("Essa frase já é um comando padrão. Escolha uma nova frase para seu atalho.");
+        if(builtIn!=VoiceCommand.Action.SEARCH&&builtIn!=VoiceCommand.Action.PLAY_QUERY&&!(loading&&builtIn.name().startsWith("OPEN_")))throw new IllegalArgumentException("Essa frase já é um comando padrão. Escolha uma nova frase para seu atalho.");
         for(Entry e:entries)if(key(e.phrase).equals(normalized)&&!e.id.equals(id))throw new IllegalArgumentException("Essa frase já está cadastrada. Edite a frase existente.");
         VoiceCommand command=VoiceCommand.custom(action,query,minutes);
         if(id==null){if(entries.size()>=LIMIT)throw new IllegalArgumentException("Limite de 100 frases. Edite ou exclua uma frase existente.");id=UUID.randomUUID().toString();}

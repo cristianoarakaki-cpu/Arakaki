@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.72.1
+# Revisão de interface — Onda 0.72.2
+
+Faixas da coletânea: o mesmo ↻ 1 limita a reprodução ao intervalo selecionado; desligar restaura o arquivo inteiro na posição absoluta. Título do trecho visível durante o recorte; controles de tempo relativos ao trecho. Atalhos por voz abrem telas existentes, com prioridade para frases personalizadas; microfones de YouTube e Imagens preservam a busca comum. Nenhum menu principal ou Activity adicional.
 
 Repetição do áudio do YouTube: usa o mesmo botão do tocador, com dois estados (desligado / ↻ 1), descrição acessível e destaque existentes. Sem botão ou Activity adicional. Aleatório, anterior/próximo e repetição de rádio permanecem bloqueados conforme a origem.
 

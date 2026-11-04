@@ -10,6 +10,7 @@ import androidx.media3.session.*;
 final class VoiceControl {
     static boolean execute(Activity activity,MediaController player,VoiceCommand command){
         PlaylistVoice.cancel();
+        if(VoiceNavigation.execute(activity,command))return true;
         if(command.action==VoiceCommand.Action.ADD_PLAYLIST){PlaylistVoice.addCurrent(activity,player,command.query);return true;}
         if(command.action==VoiceCommand.Action.PLAY_PLAYLIST){PlaylistVoice.play(activity,player,command.query);return true;}
         if(command.action==VoiceCommand.Action.SEARCH||command.action==VoiceCommand.Action.PLAY_QUERY||command.action==VoiceCommand.Action.FAVORITES||command.action==VoiceCommand.Action.FAVORITE_ADD||command.action==VoiceCommand.Action.FAVORITE_REMOVE)return false;
@@ -29,7 +30,7 @@ final class VoiceControl {
                 boolean shuffle=command.action==VoiceCommand.Action.SHUFFLE_ON;player.setShuffleModeEnabled(shuffle);say(activity,shuffle?"Modo aleatório ativado":"Modo aleatório desativado");break;
             case REPEAT_ONE:case REPEAT_ALL:case REPEAT_OFF:
                 int mode=command.action==VoiceCommand.Action.REPEAT_ONE?Player.REPEAT_MODE_ONE:command.action==VoiceCommand.Action.REPEAT_ALL?Player.REPEAT_MODE_ALL:Player.REPEAT_MODE_OFF;
-                player.setRepeatMode(mode);say(activity,mode==Player.REPEAT_MODE_ONE?"Repetindo a música atual":mode==Player.REPEAT_MODE_ALL?"Repetindo a fila":"Repetição desativada");break;
+                player.setRepeatMode(mode);say(activity,mode==Player.REPEAT_MODE_ONE?(AudioChapterPlayback.selected(player.getCurrentMediaItem())?"Repetindo "+AudioChapterPlayback.label(player.getCurrentMediaItem())+" da coletânea":YouTubeAudio.is(player.getCurrentMediaItem())?"Repetindo o áudio do YouTube":"Repetindo a música atual"):mode==Player.REPEAT_MODE_ALL?"Repetindo a fila":"Repetição desativada");break;
             case SLEEP_TRACKS:
                 if(player.getMediaItemCount()==0||player.getPlaybackState()==Player.STATE_ENDED){say(activity,"Escolha uma música primeiro.");break;}
                 Bundle tracks=new Bundle();tracks.putInt("tracks",command.minutes);player.sendCustomCommand(new SessionCommand("sleep",Bundle.EMPTY),tracks);say(activity,"Vou pausar após "+command.minutes+" música(s) concluída(s)");break;

@@ -29,13 +29,19 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — repetir o áudio do YouTube
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — repetição de faixas e atalhos por voz
 
-O botão de repetição do tocador de músicas também controla o áudio extraído pelo modo “Ouvir com tela desligada”. Toque para ativar “↻ 1” e repetir a mesma faixa; toque novamente para desligar. Funciona com a tela desligada e não retoma a música anterior. A repetição das músicas do celular mantém os três modos existentes; rádios ao vivo continuam sem repetição.
+O botão de repetição do tocador também controla o áudio extraído pelo modo “Ouvir com tela desligada”. Toque para ativar “↻ 1” e repetir o mesmo áudio do YouTube; toque novamente para desligar. A escolha é separada da fila local e preservada ao consultar novamente o mesmo vídeo. Outra origem começa sem repetição. Streams continuam sujeitos à disponibilidade e expiração do provedor.
 
-A escolha fica associada ao vídeo atual e é preservada quando seu áudio precisa ser consultado novamente. Outra origem começa sem repetição. A fila local e seu modo de repetição ficam guardados separadamente. Ao voltar à fila local, o modo de áudio do YouTube é encerrado. Reutiliza o player e os eventos existentes, sem temporizadores novos ou extração a cada volta. Streams continuam sujeitos à disponibilidade e expiração do provedor.
+Em Faixas da coletânea, escolha uma faixa e volte ao tocador. Ative “↻ 1” para repetir apenas o intervalo selecionado. O player usa os limites nativos de reprodução, sem cortar ou converter o arquivo. Ao desligar, a reprodução continua no arquivo inteiro, na posição correspondente. As divisões por pausas continuam aproximadas; confira as marcações antes de usá-las. Os nomes editáveis não são reconhecimento automático de músicas.
 
-Mantém a preferência por português do Brasil quando disponível, nivelamento opcional de volume, retomada, melhorias de processamento, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
+A retomada guarda a posição absoluta e valida o arquivo e as divisões antes de restaurar a seleção. Se as divisões ou o arquivo mudarem, o recorte não é reutilizado. A fila e o arquivo original são preservados. Músicas comuns mantêm os três modos de repetição; rádios ao vivo continuam sem repetição.
+
+Atalhos por voz: “abra YouTube”, “abra imagens”, “abra atualizações”, “abra rádios”, “abra vídeos”, “abra downloads”, “abra PDF”, “abra estúdio de som”, “abra conversor”, “abra playlists”, “abra fila”, “abra aparências”, “abra arquivos”, “abra músicas”, “abra faixas da coletânea” e “abra minhas frases”. Também aceita pedidos explícitos como “ir para a aba imagens”. Busca e reprodução por nome mantêm seu significado. Minhas frases permite associar expressões próprias a essas telas; atalhos antigos são preservados. “Repita esta faixa” usa a seleção da coletânea quando houver.
+
+Usa o player, os eventos e o reconhecimento de voz já existentes. Não mantém microfone aberto, não adiciona serviços pagos, varredura periódica ou nova extração de áudio a cada repetição. A disponibilidade do reconhecimento depende do serviço do aparelho.
+
+Mantém preferência por pt-BR quando disponível, nivelamento opcional de volume, melhorias de processamento, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
