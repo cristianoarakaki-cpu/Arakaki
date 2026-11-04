@@ -223,7 +223,7 @@ jobs:
             adb shell am instrument -w -e class br.com.onda.YouTubeAudioTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-audio-tests.txt
             cat /tmp/onda-youtube-audio-tests.txt
             adb exec-out run-as br.com.onda.musica cat files/youtube-native-audio.json > Onda/ui-preview/youtube-native-audio.json || true
-            python -c 's=open("/tmp/onda-youtube-audio-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-youtube-audio-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-tests.txt
             cat /tmp/onda-youtube-fullscreen-tests.txt

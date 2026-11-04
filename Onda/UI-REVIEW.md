@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.72.0
+# Revisão de interface — Onda 0.72.1
+
+Repetição do áudio do YouTube: usa o mesmo botão do tocador, com dois estados (desligado / ↻ 1), descrição acessível e destaque existentes. Sem botão ou Activity adicional. Aleatório, anterior/próximo e repetição de rádio permanecem bloqueados conforme a origem.
 
 Equilíbrio de volume: novo controle opcional em Estúdio de som, em formulário rolável e com altura natural. YouTube: botão de repetição ao concluir e estado de carregamento separado de reprodução iniciada; erros de leitura visíveis. Preferência automática por áudio pt-BR no modo com tela desligada, com aviso de idioma e fallback informado. Nenhuma Activity nova.
 

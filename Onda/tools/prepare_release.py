@@ -29,17 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — continuidade, som e eficiência
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — repetir o áudio do YouTube
 
-Estúdio de som → Equilibrar volume entre faixas: ajuste opcional e gradual durante a reprodução de áudio compatível, com ganho limitado, canais ligados e proteção de picos. Não analisa arquivos inteiros nem usa serviços pagos. Começa desligado para preservar o som original. Pode suavizar a dinâmica e tornar ruídos da gravação mais perceptíveis. Aplica-se ao tocador de músicas e ao modo de áudio do YouTube; vídeos e o player da página usam tocadores separados.
+O botão de repetição do tocador de músicas também controla o áudio extraído pelo modo “Ouvir com tela desligada”. Toque para ativar “↻ 1” e repetir a mesma faixa; toque novamente para desligar. Funciona com a tela desligada e não retoma a música anterior. A repetição das músicas do celular mantém os três modos existentes; rádios ao vivo continuam sem repetição.
 
-O modo de áudio do YouTube prioriza português do Brasil antes da qualidade ou formato. Depois busca português sem região e outras variantes; se não houver português, prefere a faixa original quando identificada. A tela informa o idioma declarado ou a ausência dessa informação. Solicita localização pt-BR ao extrator, sem traduzir nem criar faixas inexistentes. A preferência só atua nas faixas acessíveis disponibilizadas pelo YouTube.
+A escolha fica associada ao vídeo atual e é preservada quando seu áudio precisa ser consultado novamente. Outra origem começa sem repetição. A fila local e seu modo de repetição ficam guardados separadamente. Ao voltar à fila local, o modo de áudio do YouTube é encerrado. Reutiliza o player e os eventos existentes, sem temporizadores novos ou extração a cada volta. Streams continuam sujeitos à disponibilidade e expiração do provedor.
 
-No modo de áudio do YouTube, o fim da reprodução volta ao início com um toque; marcadores antigos próximos ao fim são corrigidos durante a retomada. O estado diferencia carregamento, pausa, conclusão e áudio efetivamente tocando. Falhas de leitura aparecem na tela e continuam no relatório, sem iniciar a música anterior. A disponibilidade dos streams depende do YouTube.
-
-Com os ajustes de áudio desligados, o processamento de PCM também usa cópia em bloco para buffers fragmentados, mantendo os bytes originais. Eventos repetidos do tocador deixam de regravar o mesmo progresso na prateleira em menos de um segundo. Mantém a frequência existente de salvamento e a reprodução com tela desligada; não adiciona análise contínua em segundo plano nem aplicativos pagos. Não é uma medição de autonomia do aparelho.
-
-Mantém downloads, conversões, favoritos, retomada de músicas/vídeos/PDF, rádios, voz, OCR, aparências, faixas da coletânea e demais recursos existentes.
+Mantém a preferência por português do Brasil quando disponível, nivelamento opcional de volume, retomada, melhorias de processamento, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
