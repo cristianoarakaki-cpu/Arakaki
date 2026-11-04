@@ -1,0 +1,36 @@
+name: Onda - Diagnostico PDF 0723
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-pdf-diagnostic-0723.yml']
+permissions:
+  actions: read
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Ler diagnostico exato da tentativa testada
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13346198062/zip > /tmp/onda-diag.zip
+          python - <<'PY'
+          import zipfile,base64
+          z=zipfile.ZipFile('/tmp/onda-diag.zip')
+          for p in z.namelist():
+              if p.endswith('pdf-failure.xml'):
+                  print('PDF_XML_BEGIN')
+                  print(z.read(p).decode())
+                  print('PDF_XML_END')
+              if p.endswith('pdf-failure.png'):
+                  print('PDF_IMAGE_BASE64_BEGIN')
+                  print(base64.b64encode(z.read(p)).decode())
+                  print('PDF_IMAGE_BASE64_END')
+              if p.endswith('pdf-failure-logcat.txt'):
+                  s=z.read(p).decode(errors='replace')
+                  print('PDF_LOG_BEGIN')
+                  print('\n'.join(l for l in s.splitlines() if any(w in l.lower() for w in ['exception','pdf','boleto','fatal','tesseract','ocr']))[-30000:])
+                  print('PDF_LOG_END')
+          PY
