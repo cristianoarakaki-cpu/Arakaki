@@ -34,7 +34,7 @@ final class QuickAccess {
     }
     static AlertDialog help(Activity activity){
         return new AlertDialog.Builder(activity).setTitle("Ajuda rápida do Onda").setMessage(
-                "REPETIÇÃO\nNo cartão Tocando agora, o último botão à direita, depois de Próxima, é o de repetição. O texto abaixo mostra se está desligada, repetindo uma música ou repetindo a fila. Toque para alternar; segure o botão para abrir esta ajuda.\n\n"+
+                "REPETIÇÃO\nNo cartão Tocando agora, o último botão à direita, depois de Próxima, é o de repetição. O texto no cartão mostra se está desligada, repetindo uma música ou repetindo a fila. Toque para alternar; segure o botão para abrir esta ajuda.\n\n"+
                 "FAIXAS DA COLETÂNEA\nEscolha a faixa em Faixas, volte ao tocador e ative ↻ 1. O nome e os horários de início e fim identificam o trecho. Desligar libera o restante do arquivo. As divisões detectadas por pausas são aproximadas; o original é preservado.\n\n"+
                 "ATALHOS POR VOZ\nNa tela Músicas, toque no microfone ao lado de Buscar no celular. Diga: abrir YouTube, abrir imagens, abrir atualizações ou repita esta faixa. O microfone só funciona quando você o aciona.\n\n"+
                 "MEUS ATALHOS\nToque em Atalhos → Escolher atalhos, marque as telas e salve. Cancelar mantém a escolha anterior. A seleção é separada dos favoritos de músicas e vídeos.\n\n"+

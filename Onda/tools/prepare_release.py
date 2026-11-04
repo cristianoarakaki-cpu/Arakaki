@@ -33,7 +33,7 @@ manifest = {
 
 O tocador mostra por escrito se a repetição está desligada, repetindo uma música, um áudio do YouTube ou a fila. Ao tocar no mesmo botão de repetição, um aviso confirma a escolha. Avisos anteriores são cancelados ao alternar novamente.
 
-Ao repetir uma faixa da coletânea, o nome aparece no tocador e os horários de início e fim ficam visíveis em uma linha separada. São os limites da divisão selecionada, aproximados conforme a análise por pausas. A reprodução, os três modos das músicas comuns e o recorte nativo das faixas mantêm o comportamento anterior; o áudio original não é alterado.
+Ao repetir uma faixa da coletânea, o nome aparece no tocador e os horários de início e fim ficam visíveis sob o nome, no espaço de metadados. São os limites da divisão selecionada, aproximados conforme a análise por pausas. A reprodução, os três modos das músicas comuns e o recorte nativo das faixas mantêm o comportamento anterior; o áudio original não é alterado.
 
 Novo botão Atalhos na biblioteca: abre diretamente as telas escolhidas, sem acrescentar itens ao menu principal. Escolher atalhos permite marcar as telas e salvar; Cancelar mantém a seleção anterior. Essa preferência é independente dos favoritos de músicas, vídeos e rádios. As opções iniciais são YouTube, Imagens e mensagens e Rádios online.
 

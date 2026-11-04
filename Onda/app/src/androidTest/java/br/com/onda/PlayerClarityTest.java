@@ -33,6 +33,11 @@ public class PlayerClarityTest {
         ins.runOnMainSync(()->connection=new MediaController.Builder(c,new SessionToken(c,new ComponentName(c,PlaybackService.class))).buildAsync());player=connection.get(15,TimeUnit.SECONDS);
     }
     @After public void after(){ins.runOnMainSync(()->{if(dialog!=null)dialog.dismiss();if(opened!=null)opened.finish();if(player!=null){player.pause();player.stop();player.clearMediaItems();player.setRepeatMode(Player.REPEAT_MODE_OFF);}if(main!=null)main.finish();if(connection!=null)MediaController.releaseFuture(connection);});ins.waitForIdleSync();SharedPreferences.Editor edit=c.getSharedPreferences(QuickAccess.PREF,0).edit();if(oldShortcuts==null)edit.remove(QuickAccess.KEY);else edit.putStringSet(QuickAccess.KEY,oldShortcuts);edit.commit();if(audio!=null)audio.delete();}
+    private void tapNode(String text,boolean checkbox)throws Exception{
+        AccessibilityNodeInfo target=null;
+        for(int n=0;n<160&&target==null;n++){AccessibilityNodeInfo root=ins.getUiAutomation().getRootInActiveWindow();if(root!=null)for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText(text))if(text.equals(String.valueOf(node.getText()))&&node.isClickable()&&(!checkbox||node.isCheckable())){target=node;break;}if(target==null)Thread.sleep(50);}
+        assertNotNull("Visible control missing: "+text,target);assertTrue("Control did not accept click: "+text,target.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+    }
     private void repeat(){ins.runOnMainSync(()->{try{((Button)field("repeat")).performClick();}catch(Exception e){throw new RuntimeException(e);}});}
     @Test public void existingRepeatModesAndChapterBoundsAreVisibleWithoutCoveringLibrary()throws Exception{
         audio=AudioTestFixtures.tone(c,45000);MediaItem item=new MediaItem.Builder().setMediaId("clarity-audio").setUri(Uri.fromFile(audio)).setMediaMetadata(new MediaMetadata.Builder().setTitle("Coletânea de teste").build()).build();
@@ -41,16 +46,16 @@ public class PlayerClarityTest {
         AudioChapterStore.Data data=new AudioChapterStore.Data(45000,Arrays.asList(new AudioChapterStore.Chapter(0,"Primeira"),new AudioChapterStore.Chapter(10000,"Trecho escolhido"),new AudioChapterStore.Chapter(20000,"Última")));
         MediaItem selected=AudioChapterPlayback.configure(AudioChapterPlayback.select(item,data,1,AudioChapterStore.stamp(c,Uri.fromFile(audio))),true);
         ins.runOnMainSync(()->{player.setRepeatMode(Player.REPEAT_MODE_ONE);player.setMediaItem(selected);player.prepare();player.play();});
-        waitFor(()->player.isPlaying()&&label().contains("Trecho escolhido")&&((TextView)field("chapterRange")).getText().toString().equals("Início: 0:10 • Fim: 0:20"));
-        ins.runOnMainSync(()->{try{TextView range=(TextView)field("chapterRange");Rect visible=new Rect();assertTrue(range.getGlobalVisibleRect(visible));assertEquals(range.getHeight(),visible.height());assertTrue(((View)field("libraryList")).getHeight()>0);Toast toast=(Toast)field("repeatToast");if(toast!=null)toast.cancel();player.pause();}catch(Exception e){throw new RuntimeException(e);}});
+        waitFor(()->player.isPlaying()&&label().contains("Trecho escolhido")&&((TextView)field("chapterRange")).getText().toString().equals("0:10 → 0:20"));
+        ins.runOnMainSync(()->{try{TextView range=(TextView)field("chapterRange");Rect visible=new Rect();assertTrue("Chapter bounds were not visible",range.getGlobalVisibleRect(visible));assertEquals("Chapter bounds were clipped",range.getHeight(),visible.height());assertEquals("Início: 0:10 • Fim: 0:20",range.getContentDescription());assertTrue("Library must retain a usable touch area",((View)field("libraryList")).getHeight()>=Math.round(48*c.getResources().getDisplayMetrics().density));Toast toast=(Toast)field("repeatToast");if(toast!=null)toast.cancel();player.pause();}catch(Exception e){throw new RuntimeException(e);}});
         ins.waitForIdleSync();Bitmap screenshot=ins.getUiAutomation().takeScreenshot();assertNotNull(screenshot);try(OutputStream out=new FileOutputStream(new File(c.getFilesDir(),"player-clarity.png"))){screenshot.compress(Bitmap.CompressFormat.PNG,100,out);}finally{screenshot.recycle();}
     }
     @Test public void shortcutCancelPreservesSelectionSavePersistsAndChosenScreenActuallyOpens()throws Exception{
         Set<String> before=new HashSet<>(QuickAccess.read(c));assertEquals(3,before.size());
         ins.runOnMainSync(()->dialog=QuickAccess.choose(main));ins.waitForIdleSync();
-        ins.runOnMainSync(()->{ListView list=dialog.getListView();list.performItemClick(list.getAdapter().getView(4,null,list),4,4);dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();});assertEquals(before,QuickAccess.read(c));
+        tapNode("Atualizações",true);waitFor(()->dialog.getListView().isItemChecked(4));assertEquals("Draft changes must not be saved",before,QuickAccess.read(c));ins.runOnMainSync(()->dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick());assertEquals(before,QuickAccess.read(c));
         ins.runOnMainSync(()->dialog=QuickAccess.choose(main));ins.waitForIdleSync();
-        ins.runOnMainSync(()->{ListView list=dialog.getListView();list.performItemClick(list.getAdapter().getView(4,null,list),4,4);dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();});assertTrue(QuickAccess.read(c).contains("OPEN_UPDATES"));assertTrue(QuickAccess.read(c).containsAll(before));
+        tapNode("Atualizações",true);waitFor(()->dialog.getListView().isItemChecked(4));ins.runOnMainSync(()->dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick());assertTrue("Saved shortcut missing: "+QuickAccess.read(c),QuickAccess.read(c).contains("OPEN_UPDATES"));assertTrue("Other choices changed",QuickAccess.read(c).containsAll(before));
         Instrumentation.ActivityMonitor monitor=ins.addMonitor(UpdateActivity.class.getName(),null,false);
         try{
             ins.runOnMainSync(()->QuickAccess.menu(main,main.getWindow().getDecorView()));

@@ -21,5 +21,6 @@ final class PlaybackLabels {
         if(player==null||player.getRepeatMode()!=Player.REPEAT_MODE_ONE||!AudioChapterPlayback.selected(item))return "";
         return "Início: "+AudioChaptersActivity.time(AudioChapterPlayback.start(item))+" • Fim: "+AudioChaptersActivity.time(AudioChapterPlayback.end(item));
     }
+    static String compactRange(Player player){if(chapterRange(player).isEmpty())return "";MediaItem item=player.getCurrentMediaItem();return AudioChaptersActivity.time(AudioChapterPlayback.start(item))+" → "+AudioChaptersActivity.time(AudioChapterPlayback.end(item));}
     static String announcement(Player player){String range=chapterRange(player);return repetition(player)+(range.isEmpty()?"":"\n"+range);}
 }
