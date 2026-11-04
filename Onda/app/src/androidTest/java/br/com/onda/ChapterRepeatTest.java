@@ -37,7 +37,7 @@ public class ChapterRepeatTest {
             Thread.sleep(50);
         }
         String[] state={"disconnected"};
-        ins.runOnMainSync(()->{if(player!=null&&player.isConnected()){MediaItem item=player.getCurrentMediaItem();state[0]="state="+player.getPlaybackState()+" playing="+player.isPlaying()+" ready="+player.getPlayWhenReady()+" repeat="+player.getRepeatMode()+" position="+player.getCurrentPosition()+" duration="+player.getDuration()+" selected="+AudioChapterPlayback.selected(item)+" clipped="+AudioChapterPlayback.clipped(item)+" start="+AudioChapterPlayback.start(item)+" end="+AudioChapterPlayback.end(item)+" error="+player.getPlayerError();}});
+        ins.runOnMainSync(()->{if(player!=null&&player.isConnected()){MediaItem item=player.getCurrentMediaItem();state[0]="state="+player.getPlaybackState()+" playing="+player.isPlaying()+" ready="+player.getPlayWhenReady()+" repeat="+player.getRepeatMode()+" position="+player.getCurrentPosition()+" duration="+player.getDuration()+" selected="+AudioChapterPlayback.selected(item)+" clipped="+AudioChapterPlayback.clipped(item)+" start="+AudioChapterPlayback.start(item)+" end="+AudioChapterPlayback.end(item)+" error="+player.getPlayerError()+" savedPosition="+c.getSharedPreferences("music_resume",0).getLong("position",-1)+" savedChapter="+c.getSharedPreferences("music_resume",0).getString("chapter","");}});
         fail("Chapter repeat scenario timed out: "+state[0]);
     }
     private Object field(Object target,String name)throws Exception{
@@ -124,8 +124,9 @@ public class ChapterRepeatTest {
         String stamp=AudioChapterStore.stamp(c,stored);AudioChapterStore.save(c,stored,stamp,markers);
         MediaItem selected=AudioChapterPlayback.configure(AudioChapterPlayback.select(item(id,stored),markers,1,stamp),true);
         ins.runOnMainSync(()->{player.setRepeatMode(Player.REPEAT_MODE_ONE);player.setMediaItem(selected,900);player.prepare();player.play();});
-        waitFor(()->player.isPlaying()&&player.getCurrentPosition()>1000);ins.runOnMainSync(()->player.pause());
-        waitFor(()->c.getSharedPreferences("music_resume",0).getLong("position",0)>33650&&!c.getSharedPreferences("music_resume",0).getString("chapter","").isEmpty());
+        waitFor(()->player.isPlaying()&&player.getCurrentPosition()>1000);long[] paused={0};
+        ins.runOnMainSync(()->{player.pause();paused[0]=AudioChapterPlayback.absolute(player.getCurrentMediaItem(),player.getCurrentPosition());});
+        waitFor(()->{long saved=c.getSharedPreferences("music_resume",0).getLong("position",0);return saved>=32650&&saved<65450&&Math.abs(saved-paused[0])<=500&&!c.getSharedPreferences("music_resume",0).getString("chapter","").isEmpty();});
         long absolute=c.getSharedPreferences("music_resume",0).getLong("position",0);
         ins.runOnMainSync(()->{anchor.finish();MediaController.releaseFuture(connection);});ins.waitForIdleSync();player=null;connection=null;anchor=null;
         c.stopService(new Intent(c,PlaybackService.class));
