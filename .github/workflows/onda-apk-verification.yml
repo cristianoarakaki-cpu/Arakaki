@@ -8,9 +8,9 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41812303498'
-  SOURCE_SHA: '0208734acbdb9c5bc47897df58efdf30b9c09078'
-  SOURCE_ATTEMPT: '2'
+  SOURCE_RUN: '41851747145'
+  SOURCE_SHA: '09b4a11ad1bab82bf3dae445c61dd337a3eb6b50'
+  SOURCE_ATTEMPT: '1'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -51,7 +51,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='88' versionName='0.72.2'" in info
+          assert "package: name='br.com.onda.musica' versionCode='89' versionName='0.72.3'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -71,11 +71,13 @@ jobs:
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
               assert 'Desativar repetição da faixa da coletânea'.encode('utf-8') in dex
-              for added in [b'YouTubeAudio;',b'YouTubeAudioPlayback;',b'AudioChaptersActivity;',b'AudioChapterScanner;',b'AudioChapterStore;',b'SilenceChapters;',b'LevelDsp;',b'PlaybackContinuity;',b'ShelfCheckpoint;',b'AudioLanguage;',b'YoutubeAudioChoice;',b'AudioChapterPlayback;',b'VoiceNavigation;']:
+              assert 'Escolher atalhos'.encode('utf-8') in dex
+              assert 'Repetição desligada'.encode('utf-8') in dex
+              for added in [b'YouTubeAudio;',b'YouTubeAudioPlayback;',b'AudioChaptersActivity;',b'AudioChapterScanner;',b'AudioChapterStore;',b'SilenceChapters;',b'LevelDsp;',b'PlaybackContinuity;',b'ShelfCheckpoint;',b'AudioLanguage;',b'YoutubeAudioChoice;',b'AudioChapterPlayback;',b'VoiceNavigation;',b'PlaybackLabels;',b'QuickAccess;']:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.72.2',versionCode=88,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.72.3',versionCode=89,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
