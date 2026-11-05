@@ -8,9 +8,9 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '41884759849'
-  SOURCE_SHA: '68dc57609fe5b8140c11c27577d0e4ad515ac5b4'
-  SOURCE_ATTEMPT: '2'
+  SOURCE_RUN: '42098467024'
+  SOURCE_SHA: '8e7daa0f50f8d86c5f22ee2717ea66ccdf0ffbb4'
+  SOURCE_ATTEMPT: '1'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -51,7 +51,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='89' versionName='0.72.3'" in info
+          assert "package: name='br.com.onda.musica' versionCode='90' versionName='0.72.4'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -72,18 +72,42 @@ jobs:
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
               assert 'Desativar repetição da faixa da coletânea'.encode('utf-8') in dex
               assert 'Escolher atalhos'.encode('utf-8') in dex
+              assert b'Pesquisa e resultados de explorar' in dex
               assert 'Repetição desligada'.encode('utf-8') in dex
               for added in [b'YouTubeAudio;',b'YouTubeAudioPlayback;',b'AudioChaptersActivity;',b'AudioChapterScanner;',b'AudioChapterStore;',b'SilenceChapters;',b'LevelDsp;',b'PlaybackContinuity;',b'ShelfCheckpoint;',b'AudioLanguage;',b'YoutubeAudioChoice;',b'AudioChapterPlayback;',b'VoiceNavigation;',b'PlaybackLabels;',b'QuickAccess;']:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.72.3',versionCode=89,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.72.4',versionCode=90,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
           report['updateManifestSha256']=hashlib.sha256(encoded).hexdigest()
           Path('verify/apk-verified.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
+          PY
+      - name: Conferir auditoria e mostrar capturas das telas corrigidas
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13449521341 > /tmp/ui-audit-metadata.json
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13449521341/zip > /tmp/ui-audit.zip
+          python - <<'PY'
+          import json,zipfile,tarfile,io,base64
+          metadata=json.load(open('/tmp/ui-audit-metadata.json'))
+          assert metadata['workflow_run']['head_sha']=='8e7daa0f50f8d86c5f22ee2717ea66ccdf0ffbb4'
+          z=zipfile.ZipFile('/tmp/ui-audit.zip');assert z.testzip() is None
+          for label in ['normal','compact']:
+              name=next(n for n in z.namelist() if n.endswith(label+'.json'))
+              report=json.loads(z.read(name));assert report['screenCount']==28 and report['fontScale']==1.3 and not report['clippedNativeText']
+              print('FINAL_UI_AUDIT='+json.dumps(report))
+          tar=tarfile.open(fileobj=io.BytesIO(z.read(next(n for n in z.namelist() if n.endswith('screens.tar')))))
+          for screen in ['MainActivity','OnlineActivity','DjActivity']:
+              member=next(m for m in tar.getmembers() if m.name.endswith('audit-'+screen+'-compact.png'))
+              data=tar.extractfile(member).read();assert data.startswith(bytes([137,80,78,71]))
+              print('UI_IMAGE_'+screen+'_BEGIN')
+              print(base64.b64encode(data).decode())
+              print('UI_IMAGE_'+screen+'_END')
           PY
       - name: Dividir cópia exata sem alterar o APK
         run: |
