@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.72.3
+# Revisão de interface — Onda 0.72.4
+
+Revisão 0.72.4: checagem de 28 telas em largura normal e 320 dp com fonte de 130%, incluindo largura dos rótulos de botões/seletores, recorte vertical e ações fora da janela. Corrige título e navegação da biblioteca em tela estreita com filtro junto da busca; Explorar usa uma área rolável para atalhos, pesquisa, filtros e resultados, mantendo tocador/navegação separados. Filtros com altura natural e rótulos multilinha, incluindo os seletores do DJ e a opção mais longa. A lista de músicas deve manter pelo menos 48 dp de área útil na configuração estreita. O teste restaura tamanho, densidade, fonte e preferências ao terminar. Reticências intencionais em títulos de mídia não são tratadas como defeito. Nenhum trabalho periódico de layout foi adicionado ao produto.
 
 Clareza: estado da repetição no cabeçalho já existente do tocador; limites do trecho sob o nome, no espaço de metadados, com descrição acessível completa; nome selecionado preservado no título. Atalhos em botão textual no cabeçalho, painel rolável existente com destinos personalizados, ajuda rápida e seleção com Salvar/Cancelar. Nenhuma Activity ou item adicional no menu principal. Preferências independentes dos favoritos de mídia, sem animações ou temporizadores novos. Teste dedicado com fonte de 130%, navegação real pelo atalho e captura do tocador.
 

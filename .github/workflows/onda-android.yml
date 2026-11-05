@@ -391,8 +391,11 @@ jobs:
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-screen-review-tests.txt
             cat /tmp/onda-screen-review-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review.json > Onda/ui-preview/screen-layout-review.json || true
-            python -c 's=open("/tmp/onda-screen-review-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review-normal.json > Onda/ui-preview/screen-layout-review-normal.json || true
+            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review-compact.json > Onda/ui-preview/screen-layout-review-compact.json || true
+            adb exec-out run-as br.com.onda.musica cat files/audit-MainActivity-compact.png > Onda/ui-preview/library-compact.png || true
+            adb exec-out run-as br.com.onda.musica cat files/audit-OnlineActivity-compact.png > Onda/ui-preview/explore-compact.png || true
+            python -c 's=open("/tmp/onda-screen-review-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             python Onda/tools/check_appearance.py
             adb shell am force-stop br.com.onda.musica

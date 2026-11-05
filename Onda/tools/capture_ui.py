@@ -36,6 +36,7 @@ def click(description=None,text=None,prefix=None):
         attrs=node.attrib
         if (description is not None and attrs.get('content-desc')==description) or (text is not None and attrs.get('text')==text) or (prefix is not None and attrs.get('content-desc','').startswith(prefix)):
             coords=[int(v) for v in re.findall(r'\d+',attrs['bounds'])]
+            if coords[2]<=coords[0] or coords[3]<=coords[1]:continue
             shell('input','tap',(coords[0]+coords[2])//2,(coords[1]+coords[3])//2)
             time.sleep(1)
             return True
@@ -132,9 +133,15 @@ for _ in range(12):
         desc=node.attrib.get('content-desc','')
         plain=''.join(c for c in unicodedata.normalize('NFD',desc.lower()) if unicodedata.category(c)!='Mn')
         if desc.startswith('Ouvir prévia de ') and 'chitaozinho' in plain and 'xororo' in plain:
-            found=True
-            break
+            bounds=[int(v) for v in re.findall(r'\d+',node.attrib['bounds'])]
+            if bounds[2]>bounds[0] and bounds[3]>bounds[1]:
+                found=True
+                break
     if found:break
+    browse=next((n for n in tree if n.attrib.get('content-desc')=='Pesquisa e resultados de explorar'),None)
+    if browse is not None:
+        l,t,r,b=[int(v) for v in re.findall(r'\d+',browse.attrib['bounds'])]
+        if r>l and b>t:shell('input','swipe',(l+r)//2,t+int((b-t)*.8),(l+r)//2,t+int((b-t)*.2),300)
     time.sleep(2)
 assert found,'Chitaozinho e xororo not found in Android catalog search'
 capture('06-busca-artista')

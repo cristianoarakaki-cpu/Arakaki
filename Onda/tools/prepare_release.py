@@ -29,17 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — controles claros, atalhos e ajuda
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — revisão de interface para telas estreitas
 
-O tocador mostra por escrito se a repetição está desligada, repetindo uma música, um áudio do YouTube ou a fila. Ao tocar no mesmo botão de repetição, um aviso confirma a escolha. Avisos anteriores são cancelados ao alternar novamente.
+Revisão das 28 telas principais com fonte de 130% em duas larguras. A checagem mede altura e largura dos textos, rótulos truncados em botões/seletores e controles fora da janela. Nomes longos de músicas e arquivos continuam usando reticências intencionais.
 
-Ao repetir uma faixa da coletânea, o nome aparece no tocador e os horários de início e fim ficam visíveis sob o nome, no espaço de metadados. São os limites da divisão selecionada, aproximados conforme a análise por pausas. A reprodução, os três modos das músicas comuns e o recorte nativo das faixas mantêm o comportamento anterior; o áudio original não é alterado.
+Biblioteca em telas estreitas: o filtro fica junto da busca, sem perder o microfone. O cabeçalho ocupa menos espaço, o título não fica cortado e a lista mantém área utilizável. Os controles de reprodução e a navegação continuam acessíveis.
 
-Novo botão Atalhos na biblioteca: abre diretamente as telas escolhidas, sem acrescentar itens ao menu principal. Escolher atalhos permite marcar as telas e salvar; Cancelar mantém a seleção anterior. Essa preferência é independente dos favoritos de músicas, vídeos e rádios. As opções iniciais são YouTube, Imagens e mensagens e Rádios online.
+Explorar: atalhos, busca, filtros e resultados agora compartilham uma área rolável; o tocador e a navegação inferior ficam separados. Os nomes das fontes e filtros podem ocupar mais de uma linha. Não muda as fontes de busca nem a reprodução. No DJ Pessoal, os seletores também mostram os nomes completos em mais de uma linha.
 
-Atalhos → Ajuda rápida explica onde ficam os controles e dá exemplos dos comandos de voz. Segurar o botão de repetição também abre essa ajuda. Nenhuma tela adicional nem serviço pago. Os textos acompanham os eventos existentes do player, sem novos temporizadores, varreduras ou microfone aberto em segundo plano.
-
-Mantém a preferência por pt-BR quando disponível, nivelamento opcional de volume, economia de processamento com efeitos desligados, retomada, downloads, conversões, favoritos, músicas/vídeos/PDF, rádios, voz, OCR, aparências e demais recursos existentes.
+Mantém repetição de músicas, trechos e áudio do YouTube, preferência por pt-BR quando disponível, atalhos personalizáveis, downloads, conversões, favoritos, vídeos, PDF/OCR, rádios, voz, aparências e demais recursos existentes. Sem novas dependências, serviços, temporizadores ou análise contínua de layout no aplicativo.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
