@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '42098467024'
-  SOURCE_SHA: '8e7daa0f50f8d86c5f22ee2717ea66ccdf0ffbb4'
+  SOURCE_RUN: '42100167423'
+  SOURCE_SHA: '4f082ca00e4e524cf2814bdfe96582ea435b141a'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
@@ -90,12 +90,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13449521341 > /tmp/ui-audit-metadata.json
-          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13449521341/zip > /tmp/ui-audit.zip
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13450315848 > /tmp/ui-audit-metadata.json
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/13450315848/zip > /tmp/ui-audit.zip
           python - <<'PY'
           import json,zipfile,tarfile,io,base64
           metadata=json.load(open('/tmp/ui-audit-metadata.json'))
-          assert metadata['workflow_run']['head_sha']=='8e7daa0f50f8d86c5f22ee2717ea66ccdf0ffbb4'
+          assert metadata['workflow_run']['head_sha']=='4f082ca00e4e524cf2814bdfe96582ea435b141a'
           z=zipfile.ZipFile('/tmp/ui-audit.zip');assert z.testzip() is None
           for label in ['normal','compact']:
               name=next(n for n in z.namelist() if n.endswith(label+'.json'))
