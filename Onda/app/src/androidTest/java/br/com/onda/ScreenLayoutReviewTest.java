@@ -12,13 +12,14 @@ public class ScreenLayoutReviewTest {
   if(view instanceof android.webkit.WebView)return;
   if(view instanceof TextView&&view.isShown()){
    TextView t=(TextView)view;Layout l=t.getLayout();String value=t.getText().toString();
+   if(t instanceof Button&&t.isEnabled()&&!scrolling(t)&&!value.isEmpty()&&(t.getWidth()==0||t.getHeight()==0||l==null))problems.add(screen.getClass().getSimpleName()+": "+value+" UNMEASURED_CONTROL");
    if(l!=null&&!value.isEmpty()&&t.getWidth()>0&&t.getHeight()>0){
     String label=screen.getClass().getSimpleName()+": "+value.replace('\n',' ').substring(0,Math.min(75,value.length()));
     int h=t.getHeight()-t.getCompoundPaddingTop()-t.getCompoundPaddingBottom(),w=t.getWidth()-t.getCompoundPaddingLeft()-t.getCompoundPaddingRight();Rect visible=new Rect();boolean shown=t.getGlobalVisibleRect(visible);
     if(shown&&visible.height()>=t.getHeight()-2&&h+3<l.getHeight())problems.add(label+" VERTICAL text="+l.getHeight()+" available="+h);
     if((t instanceof Button||t.getParent() instanceof Spinner)&&shown){for(int i=0;i<l.getLineCount();i++)if(l.getLineWidth(i)>w+3||l.getEllipsisCount(i)>0){problems.add(label+" BUTTON_WIDTH text="+l.getLineWidth(i)+" available="+w);break;}}
     if(!scrolling(t)&&t.isClickable()&&t.isEnabled()){Rect own=new Rect();int[] xy=new int[2];t.getLocationOnScreen(xy);own.set(xy[0],xy[1],xy[0]+t.getWidth(),xy[1]+t.getHeight());Rect frame=new Rect();screen.getWindow().getDecorView().getWindowVisibleDisplayFrame(frame);if(!frame.contains(own))problems.add(label+" OUTSIDE_WINDOW "+own.toShortString()+" frame="+frame.toShortString());}
-    if(shown&&t.getParent() instanceof LinearLayout&&((LinearLayout)t.getParent()).getOrientation()==LinearLayout.HORIZONTAL){ViewGroup parent=(ViewGroup)t.getParent();if(t.getRight()>parent.getWidth()-parent.getPaddingRight()+2||t.getLeft()<parent.getPaddingLeft()-2)problems.add(label+" OUTSIDE_ROW right="+t.getRight()+" row="+parent.getWidth());}
+    if(shown&&t.getParent() instanceof LinearLayout&&((LinearLayout)t.getParent()).getOrientation()==LinearLayout.HORIZONTAL){ViewGroup parent=(ViewGroup)t.getParent();if(t.getRight()>parent.getWidth()-parent.getPaddingRight()+2||t.getLeft()<parent.getPaddingLeft()-2)problems.add(label+" OUTSIDE_ROW right="+t.getRight()+" row="+parent.getWidth());if(t.getTop()<parent.getPaddingTop()-2||t.getBottom()>parent.getHeight()-parent.getPaddingBottom()+2)problems.add(label+" OUTSIDE_ROW_VERTICAL top="+t.getTop()+" bottom="+t.getBottom()+" row="+parent.getHeight());}
    }
   }
   if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++)inspect(screen,((ViewGroup)view).getChildAt(i),problems);
