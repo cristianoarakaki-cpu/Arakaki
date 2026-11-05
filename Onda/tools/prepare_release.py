@@ -35,7 +35,7 @@ Revisão das 28 telas principais com fonte de 130% em duas larguras. A checagem 
 
 Biblioteca em telas estreitas: o filtro fica junto da busca, sem perder o microfone. O cabeçalho ocupa menos espaço, o título não fica cortado e a lista mantém área utilizável. Os controles de reprodução e a navegação continuam acessíveis.
 
-Explorar: atalhos, busca, filtros e resultados agora compartilham uma área rolável; o tocador e a navegação inferior ficam separados. Os nomes das fontes e filtros podem ocupar mais de uma linha. Não muda as fontes de busca nem a reprodução. No DJ Pessoal, os seletores também mostram os nomes completos em mais de uma linha.
+Explorar: atalhos, busca, filtros e resultados agora compartilham uma área rolável; o tocador e a navegação inferior ficam separados. Os nomes das fontes e filtros podem ocupar mais de uma linha. Não muda as fontes de busca nem a reprodução. No DJ Pessoal, os seletores também mostram os nomes completos e ficam um por linha em telas estreitas, evitando partir palavras.
 
 Mantém repetição de músicas, trechos e áudio do YouTube, preferência por pt-BR quando disponível, atalhos personalizáveis, downloads, conversões, favoritos, vídeos, PDF/OCR, rádios, voz, aparências e demais recursos existentes. Sem novas dependências, serviços, temporizadores ou análise contínua de layout no aplicativo.
 
