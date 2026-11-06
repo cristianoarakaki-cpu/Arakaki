@@ -29,15 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — correção da palavra Atalhos
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — fotos do TikTok com áudio
 
-O botão Atalhos agora acompanha a largura real do texto e mantém a palavra em uma única linha, sem partir o s e sem substituí-la por reticências. O tamanho de fonte escolhido no Android continua sendo respeitado.
+Reconhece links curtos que levam a publicações de fotos do TikTok. O link enviado pelo usuário contém uma foto com música, não um vídeo MP4: agora o Onda oferece as imagens e o áudio acessível separadamente, sem informar incorretamente que o link expirou e sem inventar um MP4.
 
-Em telas estreitas com fonte muito ampliada, o cabeçalho prioriza o nome Onda e os botões; o desenho decorativo do cabeçalho deixa espaço para os textos. Os ícones das músicas, os temas e todos os acessos permanecem disponíveis.
+Cada imagem pública é conferida pelo conteúdo e salva sem recodificar em Onda/Imagens, criada automaticamente dentro da pasta já autorizada. Áudio original reconhecido é preservado em Onda/Áudios. Abrir último arquivo e compartilhar continuam usando as opções existentes do Android. Não inclui criação de vídeo a partir da foto.
 
-Teste nativo específico de cabeçalho confere fonte de 130% e 160%, larguras de 320 e 411 dp, temas Original e Espectro 3D, leitura integral da palavra, nome do app, visibilidade do menu e abertura real dos atalhos. A auditoria também passa a detectar palavras únicas quebradas entre linhas.
+Confere a publicação exata, ignora recomendações, rejeita posts privados/restritos e páginas HTML disfarçadas de arquivos. A disponibilidade depende do que o TikTok libera em cada consulta; não resolve login ou verificações. Vídeos MP4 e conversões existentes permanecem disponíveis.
 
-Mantém os ajustes de interface da versão anterior e todos os recursos de reprodução, voz, faixas, downloads, favoritos, vídeos, PDF/OCR, rádios e aparências. Nenhum novo serviço, dependência ou processamento contínuo.
+Mantém a correção de Atalhos, todos os recursos anteriores e a mesma assinatura. Nenhum serviço contínuo, SDK ou dependência adicionado. Testes de parser, conteúdo real, preservação da imagem e fluxo Android, além da regressão existente.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
