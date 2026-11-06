@@ -1,10 +1,11 @@
 {
   "packageName": "com.arakaki.prismavoz",
-  "versionCode": 4,
-  "versionName": "1.2.0",
-  "notes": "Revisão de segurança: PDF.js corrigido para 4.10.38, isolamento do leitor com política de conteúdo, Safe Browsing mantido e acesso a arquivos limitado ao seletor nativo. Atualizador interno preservado com hash, assinatura e confirmação do Android. Versão candidata à revisão; não representa liberação pelo Google Play Protect.",
-  "sha256": "5b9ad37c3dbc49e17ed3b534189e302bfb3cae80550502591cc0d16998a03b85",
-  "size": 16292649,
+  "versionCode": 5,
+  "versionName": "1.3.0",
+  "architecture": "native",
+  "notes": "Leitor Android nativo sem navegador nem WebView. Visualização pelo sistema Android, OCR latino no aparelho, escolha de vozes, velocidade, tom, pausa/continuação e atualização interna preservados. Mesma identidade e assinatura; não representa liberação do Google Play Protect.",
+  "sha256": "81a3bf06ac8c412e03ad77b4464c530e7dcbc3c7a069c2b1c41884c5ba12187e",
+  "size": 22395511,
   "certificateSha256": "76a281f5ca3a25a42e490f2926482d63d597ba51ab48f24c2a1379258b14f7e1",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.2.0/Prisma-Voz.apk"
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.3.0/Prisma-Voz.apk"
 }

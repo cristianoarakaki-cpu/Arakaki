@@ -1,0 +1,7 @@
+Prisma Voz — implementação Android nativa
+
+Android SDK / Android Open Source Project: componentes do sistema Android sujeitos aos respectivos termos e licenças.
+Google ML Kit Text Recognition 16.0.1 (modelo latino incorporado) e Google Play services/ML Kit comuns: https://developers.google.com/ml-kit/terms
+AndroidX e componentes Google de código aberto mantêm suas respectivas licenças e avisos nos artefatos fornecidos pelos distribuidores. As versões exatas estão no gradle.lockfile e os SHA-256 dos artefatos no arquivo verification-metadata.xml.
+
+Esta implementação não distribui PDF.js, pdf-lib, Tesseract.js, páginas HTML, JavaScript ou WASM. Arquivos do leitor web anterior podem permanecer no histórico do repositório, mas não fazem parte do APK nativo.

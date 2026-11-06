@@ -1,3 +1,5 @@
+> Esta branch contém o leitor Android nativo 1.3.0, sem WebView. Veja [README_NATIVE.md](README_NATIVE.md). O texto abaixo registra o leitor anterior e a revisão de segurança.
+
 # Prisma Voz
 
 Aplicativo Android dedicado a ler PDFs em voz alta, independente do Prisma PDF. Pacote `com.arakaki.prismavoz`, Android 8 ou superior. Não substitui nem modifica outros aplicativos.

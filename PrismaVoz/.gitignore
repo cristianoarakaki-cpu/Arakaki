@@ -5,3 +5,8 @@ test-output/
 *.jks
 *.keystore
 **/__pycache__/
+
+native-build/.gradle/
+native-build/local.properties
+
+test-output-native/

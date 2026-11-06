@@ -1,0 +1,11 @@
+Prisma Voz — leitor Android nativo
+
+Interface Android e PdfRenderer do sistema, sem navegador, WebView, JavaScript ou WASM.
+OCR latino incorporado: Google ML Kit Text Recognition 16.0.1. O reconhecimento do conteúdo é feito no aparelho, sem conta Google e sem envio do PDF para reconhecimento remoto. O SDK de terceiros pode coletar metadados técnicos/diagnósticos conforme os termos do fornecedor. Não se afirma ausência absoluta de tráfego de diagnóstico.
+
+Atualizações: o app consulta seu canal GitHub apenas com a opção de atualizações/vozes online permitida. Antes de abrir a instalação, confere SHA-256, pacote, versão e assinatura. A confirmação do Android continua necessária. Vozes online pertencem ao motor de fala escolhido pelo usuário e podem enviar texto ao fornecedor desse motor.
+
+O documento escolhido é copiado temporariamente para o cache privado para permitir acesso aleatório do renderizador. A cópia é excluída ao fechar o documento; cópias remanescentes após encerramento abrupto devem ser removidas na próxima inicialização. Não há biblioteca persistente de PDFs ou envio de arquivos pelo código do app.
+
+Termos dos componentes Android/ML Kit: https://developers.google.com/ml-kit/terms
+Modelos e bibliotecas pertencem aos respectivos titulares. A assinatura e os testes não equivalem a aprovação do Google Play Protect. Não desative o Play Protect nem force instalação se houver bloqueio.

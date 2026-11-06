@@ -1,5 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.2.0",
-  "notes": "Revisão de segurança: PDF.js corrigido para 4.10.38, isolamento do leitor com política de conteúdo, Safe Browsing mantido e acesso a arquivos limitado ao seletor nativo. Atualizador interno preservado com hash, assinatura e confirmação do Android. Versão candidata à revisão; não representa liberação pelo Google Play Protect."
+  "versionCode": 5,
+  "versionName": "1.3.0",
+  "architecture": "native",
+  "notes": "Leitor Android nativo sem navegador nem WebView. Visualização pelo sistema Android, OCR latino no aparelho, escolha de vozes, velocidade, tom, pausa/continuação e atualização interna preservados. Mesma identidade e assinatura; não representa liberação do Google Play Protect."
 }

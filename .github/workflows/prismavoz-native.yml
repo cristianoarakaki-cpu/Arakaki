@@ -1,0 +1,79 @@
+name: Prisma Voz — leitor Android nativo
+on:
+  push:
+    branches: ['prismavoz/native-reader']
+    paths: ['PrismaVoz/src/**','PrismaVoz/native-build/**','PrismaVoz/native-assets/**','PrismaVoz/AndroidManifest.xml','PrismaVoz/version.json','PrismaVoz/distribution/**','PrismaVoz/tools/**','.github/workflows/prismavoz-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Preparar Android SDK 35
+        run: |
+          if [ ! -x "$ANDROID_HOME/build-tools/35.0.0/aapt2" ] || [ ! -f "$ANDROID_HOME/platforms/android-35/android.jar" ]; then
+            SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)
+            test -n "$SDKMANAGER"
+            "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
+          fi
+      - name: Compilar release ARM e executar testes de texto
+        run: gradle --no-daemon -p PrismaVoz/native-build testReleaseUnitTest assembleRelease
+      - name: Preparar APKs do emulador
+        run: gradle --no-daemon -p PrismaVoz/native-build -PemulatorBuild=true assembleDebug assembleDebugAndroidTest
+      - name: Habilitar aceleração do emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Testar renderizador e OCR real sem conexão no Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb install -r PrismaVoz/native-build/build/outputs/apk/debug/PrismaVozNative-debug.apk
+            adb install -r PrismaVoz/native-build/build/outputs/apk/androidTest/debug/PrismaVozNative-debug-androidTest.apk
+            adb shell am instrument -w com.arakaki.prismavoz.test/androidx.test.runner.AndroidJUnitRunner > /tmp/prismavoz-native-tests.txt
+            cat /tmp/prismavoz-native-tests.txt
+            python3 -c 's=open("/tmp/prismavoz-native-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s, s'
+            mkdir -p PrismaVoz/test-output-native
+            adb pull /sdcard/Android/data/com.arakaki.prismavoz/files/native-reader.png PrismaVoz/test-output-native/native-reader.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Prisma-Voz-nativo-evidencias
+          path: |
+            PrismaVoz/native-build/build/test-results/
+            PrismaVoz/test-output-native/
+            /tmp/prismavoz-native-tests.txt
+
+  publish-candidate:
+    needs: validate-native
+    if: github.ref == 'refs/heads/prismavoz/native-reader'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Conferir candidato assinado e fontes
+        run: |
+          python3 PrismaVoz/tools/publish_signed.py prepare "$ANDROID_HOME/build-tools/35.0.0"
+          python3 PrismaVoz/tools/verify_release.py
+      - name: Publicar candidato nativo sem ativar canal automático
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 PrismaVoz/tools/publish_native_candidate.py

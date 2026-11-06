@@ -16,5 +16,6 @@ channel={key:info[key] for key in ['packageName','versionCode','versionName','do
 if not (root/'update.json').exists():(root/'update.json').write_text(json.dumps(channel,ensure_ascii=False,indent=2)+'\n')
 print('Partes, identidade e metadados preparados; o canal só é ativado após conferir o download publicado.')
 
-source={p.as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and ((p.suffix=='.java' and (root/'src') in p.parents) or (p.parent==root/'assets' and p.suffix in {'.js','.css','.html'}) or p in [root/'AndroidManifest.xml',root/'version.json',root/'build.sh',root/'dependencies/manifest.json'])}
+from source_files import source_files
+source={p.as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in source_files(root)}
 (out/'source-sha256.json').write_text(json.dumps(source,indent=2,sort_keys=True)+'\n')
