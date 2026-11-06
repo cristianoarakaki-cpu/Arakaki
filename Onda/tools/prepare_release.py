@@ -29,15 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — revisão de interface para telas estreitas
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — correção da palavra Atalhos
 
-Revisão das 28 telas principais com fonte de 130% em duas larguras. A checagem mede altura e largura dos textos, rótulos truncados em botões/seletores e controles fora da janela. Nomes longos de músicas e arquivos continuam usando reticências intencionais.
+O botão Atalhos agora acompanha a largura real do texto e mantém a palavra em uma única linha, sem partir o s e sem substituí-la por reticências. O tamanho de fonte escolhido no Android continua sendo respeitado.
 
-Biblioteca em telas estreitas: o filtro fica junto da busca, sem perder o microfone. O cabeçalho ocupa menos espaço, o título não fica cortado e a lista mantém área utilizável. Os controles de reprodução e a navegação continuam acessíveis.
+Em telas estreitas com fonte muito ampliada, o cabeçalho prioriza o nome Onda e os botões; o desenho decorativo do cabeçalho deixa espaço para os textos. Os ícones das músicas, os temas e todos os acessos permanecem disponíveis.
 
-Explorar: atalhos, busca, filtros e resultados agora compartilham uma área rolável; o tocador e a navegação inferior ficam separados. Os nomes das fontes e filtros podem ocupar mais de uma linha. Não muda as fontes de busca nem a reprodução. No DJ Pessoal, os seletores também mostram os nomes completos e ficam um por linha em telas estreitas, evitando partir palavras.
+Teste nativo específico de cabeçalho confere fonte de 130% e 160%, larguras de 320 e 411 dp, temas Original e Espectro 3D, leitura integral da palavra, nome do app, visibilidade do menu e abertura real dos atalhos. A auditoria também passa a detectar palavras únicas quebradas entre linhas.
 
-Mantém repetição de músicas, trechos e áudio do YouTube, preferência por pt-BR quando disponível, atalhos personalizáveis, downloads, conversões, favoritos, vídeos, PDF/OCR, rádios, voz, aparências e demais recursos existentes. Sem novas dependências, serviços, temporizadores ou análise contínua de layout no aplicativo.
+Mantém os ajustes de interface da versão anterior e todos os recursos de reprodução, voz, faixas, downloads, favoritos, vídeos, PDF/OCR, rádios e aparências. Nenhum novo serviço, dependência ou processamento contínuo.
 
 Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 

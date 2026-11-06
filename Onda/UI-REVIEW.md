@@ -1,4 +1,6 @@
-# Revisão de interface — Onda 0.72.4
+# Revisão de interface — Onda 0.72.5
+
+Correção 0.72.5: Atalhos com largura natural e linha única. Em cabeçalho estreito com fonte acima de 140%, omite somente a arte decorativa para preservar espaço para Onda/Atalhos/menu. Teste específico mede o texto real, exige a palavra inteira em uma linha, valida o nome do app/menu e abre o menu nas oito combinações de 130%/160%, 320/411 dp, Original/Espectro 3D. O restante do aplicativo continua coberto pela auditoria de 130%; o teste de 160% é específico do cabeçalho. A auditoria geral também rejeita rótulos de palavra única quebrados em várias linhas. Sem novas varreduras de layout em produção.
 
 Revisão 0.72.4: checagem de 28 telas em largura normal e 320 dp com fonte de 130%, incluindo largura dos rótulos de botões/seletores, recorte vertical e ações fora da janela. Corrige título e navegação da biblioteca em tela estreita com filtro junto da busca; Explorar usa uma área rolável para atalhos, pesquisa, filtros e resultados, mantendo tocador/navegação separados. Filtros com altura natural e rótulos multilinha, incluindo os seletores do DJ e a opção mais longa; em tela estreita, os seletores ficam um por linha para não partir palavras. A lista de músicas deve manter pelo menos 48 dp de área útil na configuração estreita. O teste restaura tamanho, densidade, fonte e preferências ao terminar. Reticências intencionais em títulos de mídia não são tratadas como defeito. Nenhum trabalho periódico de layout foi adicionado ao produto.
 

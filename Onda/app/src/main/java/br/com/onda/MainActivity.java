@@ -54,12 +54,13 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("library", MODE_PRIVATE);libraryOrder=Math.max(0,Math.min(LibraryOrder.NAMES.length-1,prefs.getInt("sort_order",0)));downloadsOnly=prefs.getBoolean("downloads_only",false);
         favorites = new HashSet<>(prefs.getStringSet("favorites", Collections.emptySet()));
         final boolean compact=getResources().getConfiguration().screenWidthDp<=360;
+        final boolean headerArt=!compact||getResources().getConfiguration().fontScale<=1.4f;
         LinearLayout root=column();Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),dp(compact?8:12)+insets.getSystemWindowInsetTop(),dp(20),dp(compact?8:12)+insets.getSystemWindowInsetBottom());return insets;});setContentView(root);
-        LinearLayout topBar=new LinearLayout(this);topBar.setGravity(Gravity.CENTER_VERTICAL);topBar.addView(Ui.art(this,38,0));
+        LinearLayout topBar=new LinearLayout(this);topBar.setGravity(Gravity.CENTER_VERTICAL);if(headerArt)topBar.addView(Ui.art(this,38,0));
         LinearLayout identity=column();TextView brand=Ui.text(this,"onda",27,Ui.TEXT);brand.setLetterSpacing(.08f);Ui.bold(brand);identity.addView(brand);TextView subbrand=Ui.text(this,compact?"MÚSICAS":"MEDIA PLAYER",9,Ui.MUTED);subbrand.setLetterSpacing(.18f);identity.addView(subbrand);
-        LinearLayout.LayoutParams identityParams=new LinearLayout.LayoutParams(0,-2,1);identityParams.leftMargin=dp(10);topBar.addView(identity,identityParams);
-        Button shortcuts=Ui.button(this,"Atalhos",v->QuickAccess.menu(this,v));shortcuts.setContentDescription("Atalhos e ajuda rápida");Ui.ghost(shortcuts);topBar.addView(shortcuts,new LinearLayout.LayoutParams(dp(84),-2));
+        LinearLayout.LayoutParams identityParams=new LinearLayout.LayoutParams(0,-2,1);identityParams.leftMargin=headerArt?dp(10):0;topBar.addView(identity,identityParams);
+        Button shortcuts=Ui.button(this,"Atalhos",v->QuickAccess.menu(this,v));shortcuts.setContentDescription("Atalhos e ajuda rápida");shortcuts.setSingleLine(true);shortcuts.setHorizontallyScrolling(false);Ui.ghost(shortcuts);topBar.addView(shortcuts,new LinearLayout.LayoutParams(-2,-2));
         Button menu=Ui.menuButton(this,"Menu da biblioteca",this::showLibraryMenu);topBar.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));root.addView(topBar);
         LinearLayout section=new LinearLayout(this);section.setGravity(Gravity.CENTER_VERTICAL);TextView library=Ui.text(this,"Minhas músicas",24,Ui.TEXT);Ui.bold(library);section.addView(library,new LinearLayout.LayoutParams(0,-2,1));
         searchFilter=button("Filtrar",v->filter());Ui.ghost(searchFilter);searchFilter.setContentDescription("Filtrar busca no celular");section.addView(searchFilter,new LinearLayout.LayoutParams(dp(90),dp(48)));LinearLayout.LayoutParams sectionParams=new LinearLayout.LayoutParams(-1,dp(56));sectionParams.topMargin=dp(8);if(!compact)root.addView(section,sectionParams);
