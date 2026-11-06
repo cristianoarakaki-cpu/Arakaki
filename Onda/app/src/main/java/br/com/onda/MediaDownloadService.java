@@ -30,7 +30,7 @@ public class MediaDownloadService extends Service {
  private void check()throws IOException{if(cancelled||Thread.currentThread().isInterrupted())throw new InterruptedIOException("Cancelado");long now=SystemClock.elapsedRealtime();if(now-lastSpaceCheck>=1000){lastSpaceCheck=now;DownloadStorage.check(getCacheDir(),0);}}
  private void fetch(String link,File target)throws IOException{
   stage="Download";progressBytes=0;progressExpected=-1;check();
-  ResilientDownload.fetch(link,target,Long.MAX_VALUE,referer.isEmpty()?ExtractorHttp.AGENT:PublicMediaHttp.agent(MediaLinks.isTikTok(referer)),new ResilientDownload.Control(){
+  ResilientDownload.fetch(link,target,Long.MAX_VALUE,referer.isEmpty()?ExtractorHttp.AGENT:PublicMediaHttp.requestAgent(false,link,referer),new ResilientDownload.Control(){
    public void check()throws IOException{MediaDownloadService.this.check();}
    public void size(long expected,long stored)throws IOException{DownloadStorage.check(getCacheDir(),expected<0?0:Math.max(0,expected-stored));}
    public void opened(HttpURLConnection c){active=c;}
