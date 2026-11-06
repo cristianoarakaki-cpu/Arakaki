@@ -25,7 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-PDF.js 3.11.174, Tesseract.js/core 5.1.1 e modelos de idioma
+PDF.js 4.10.38, Tesseract.js/core 5.1.1 e modelos de idioma
 Apache License 2.0. Avisos de autoria específicos também permanecem nos arquivos vendor distribuídos.
 
                                  Apache License
@@ -229,3 +229,5 @@ Apache License 2.0. Avisos de autoria específicos também permanecem nos arquiv
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+PDF.js 4.10.38: Apache-2.0; full upstream license in vendor/PDFJS-LICENSE.txt. Bundled CMaps and standard fonts retain their upstream licenses in vendor/pdfjs/. The unused pdf-lib runtime is no longer included.

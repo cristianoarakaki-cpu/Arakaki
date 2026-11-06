@@ -1,0 +1,26 @@
+RASCUNHO — REVISAR E ENVIAR PELO RESPONSÁVEL PELO APP
+
+Assunto: Solicitação de revisão do bloqueio Google Play Protect — Prisma Voz
+
+Nome/contato do responsável: [preencher na sessão/formulário do Google]
+Pacote: com.arakaki.prismavoz
+Nome exibido: Prisma Voz
+
+O Google Play Protect exibiu “App nocivo bloqueado” ao tentar instalar o aplicativo. Solicito a revisão da classificação e, se possível, informação sobre o comportamento ou categoria que motivou o alerta. Não tenho confirmação de que seja falso positivo.
+
+O APK público investigado é a versão 1.1.1:
+https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.1.1/Prisma-Voz.apk
+SHA-256: 9d8220ca9428cca727ce982194339cc5e7aab6d1a5810d3880a3fe254a64912e
+SHA-256 do certificado: 76a281f5ca3a25a42e490f2926482d63d597ba51ab48f24c2a1379258b14f7e1
+A versão exata que acionou o alerta no dispositivo ainda precisa ser confirmada pelo usuário.
+
+O aplicativo lê PDFs em voz alta usando o motor de texto para fala do Android e faz OCR local com modelos incluídos. As ações online começam desativadas. Vozes online exigem autorização; podem enviar texto ao fornecedor da voz. O serviço de reprodução em primeiro plano permite leitura com tela apagada. REQUEST_INSTALL_PACKAGES é usada para a atualização interna que o usuário escolhe baixar, com SHA-256, pacote, versão e assinatura conferidos e confirmação do Android.
+
+Foi preparada uma candidata 1.2.0 com PDF.js 4.10.38, Content Security Policy restritiva, Safe Browsing ativo, seletor nativo de documentos e provedor de atualização somente leitura. A versão anterior já desativava isEvalSupported, mitigação documentada para CVE-2024-4367. A candidata mantém o mesmo pacote e assinatura; não foi reidentificada para contornar o bloqueio.
+SHA-256 da candidata: 5b9ad37c3dbc49e17ed3b534189e302bfb3cae80550502591cc0d16998a03b85
+Arquivo da candidata para anexar, se o formulário aceitar: Prisma-Voz-1.2.0-REVISAO.apk
+A candidata ainda não possui link de instalação pública nem confirmação de liberação pelo Google.
+
+Anexos sugeridos: tela do alerta, relatório de revisão, APK/hash correspondente à versão que realmente acionou o bloqueio e, se solicitado, candidata corrigida.
+
+A auditoria de dependências, os testes funcionais e a assinatura não substituem a avaliação do Google. Peço instruções sobre eventuais correções ou evidências adicionais necessárias.

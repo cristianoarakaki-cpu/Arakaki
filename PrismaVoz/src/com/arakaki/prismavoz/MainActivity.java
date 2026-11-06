@@ -28,12 +28,12 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         web=new WebView(this);setContentView(web);web.setBackgroundColor(0xfff4f6fb);
         if(Build.VERSION.SDK_INT>=35)web.setOnApplyWindowInsetsListener((v,i)->{android.graphics.Insets b=i.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());v.setPadding(b.left,b.top,b.right,b.bottom);return i;});
-        WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);s.setJavaScriptCanOpenWindowsAutomatically(false);s.setSafeBrowsingEnabled(true);WebView.setWebContentsDebuggingEnabled(false);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.addJavascriptInterface(new Bridge(),"PrismAndroid");
         web.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return !local(r.getUrl());}
             @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){return asset(r.getUrl());}
-            @Override public void onPageFinished(WebView v,String url){ready=true;deliverPending();updater.checkAutomatic();}
+            @Override public void onPageStarted(WebView v,String url,android.graphics.Bitmap icon){ready=false;}
         });
         web.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> callback,FileChooserParams params){
             if(chooser!=null)chooser.onReceiveValue(null);chooser=callback;
@@ -46,9 +46,10 @@ public final class MainActivity extends Activity {
     private WebResourceResponse asset(Uri uri){
         if(!local(uri)||uri.getPath()==null||uri.getPath().contains(".."))return response(403);
         String path=uri.getPath();if(path.equals("/"))path="/index.html";
-        String mime=path.endsWith(".js")?"application/javascript":path.endsWith(".css")?"text/css":path.endsWith(".html")?"text/html":path.endsWith(".wasm")?"application/wasm":"application/octet-stream";
-        try{return new WebResourceResponse(mime,"UTF-8",200,"OK",Collections.emptyMap(),getAssets().open(path.substring(1)));}catch(IOException e){return response(404);}
+        String mime=(path.endsWith(".js")||path.endsWith(".mjs"))?"application/javascript":path.endsWith(".css")?"text/css":path.endsWith(".html")?"text/html":path.endsWith(".wasm")?"application/wasm":"application/octet-stream";
+        try{return new WebResourceResponse(mime,"UTF-8",200,"OK",Collections.singletonMap("Content-Security-Policy",contentPolicy()),getAssets().open(path.substring(1)));}catch(IOException e){return response(404);}
     }
+    private static String contentPolicy(){return "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; font-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'";}
     private WebResourceResponse response(int code){return new WebResourceResponse("text/plain","UTF-8",code,code==403?"Forbidden":"Not Found",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]));}
     boolean online(){return getPreferences(0).getBoolean("online",false);}
     boolean connected(){ConnectivityManager c=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);Network n=c.getActiveNetwork();NetworkCapabilities caps=c.getNetworkCapabilities(n);return caps!=null&&caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);}
@@ -62,6 +63,8 @@ public final class MainActivity extends Activity {
         new Thread(()->{try{byte[] data=readLimited(getContentResolver().openInputStream(source),LIMIT);if(!new String(data,0,Math.min(data.length,1024),"ISO-8859-1").contains("%PDF-"))throw new IOException("Este arquivo não é um PDF.");String name="documento.pdf";try(Cursor c=getContentResolver().query(source,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())name=c.getString(0);}final String finalName=name,encoded=Base64.encodeToString(data,Base64.NO_WRAP);runOnUiThread(()->{pendingName=finalName;pendingData=encoded;deliverPending();});}catch(Exception e){notice(e.getMessage()==null?"Não foi possível abrir o PDF.":e.getMessage());}finally{importing.set(false);}},"voice-open-pdf").start();
     }
     public final class Bridge {
+        @JavascriptInterface public void readerReady(){runOnUiThread(()->{if(!isFinishing()&&!isDestroyed()){ready=true;deliverPending();updater.checkAutomatic();}});}
+        @JavascriptInterface public void choosePdf(){runOnUiThread(()->{try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/pdf"),14);}catch(Exception e){notice("Não foi possível abrir o seletor de documentos.");}});}
         @JavascriptInterface public String state(){try{return new JSONObject().put("version",getPackageManager().getPackageInfo(getPackageName(),0).versionName).put("onlineAllowed",online()).put("connected",connected()).toString();}catch(Exception e){return "{}";}}
         @JavascriptInterface public void allowOnline(boolean allowed){getPreferences(0).edit().putBoolean("online",allowed).apply();if(!allowed)runOnUiThread(()->SpeechService.stopIfNetwork(MainActivity.this));else runOnUiThread(()->updater.checkAutomatic());}
         @JavascriptInterface public void checkUpdates(){runOnUiThread(()->updater.check());}
@@ -82,7 +85,7 @@ public final class MainActivity extends Activity {
         }
     }
     @Override protected void onResume(){super.onResume();if(catalog!=null){catalog.close();catalog=null;}if(updater!=null&&ready)updater.checkAutomatic();if(ready)web.evaluateJavascript("window.PrismaSpeech&&window.PrismaSpeech.refreshVoices()",null);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==10&&chooser!=null){chooser.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new Uri[]{data.getData()}:null);chooser=null;}if(request==12)updater.install();}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==10&&chooser!=null){chooser.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new Uri[]{data.getData()}:null);chooser=null;}if(request==14&&result==RESULT_OK&&data!=null&&data.getData()!=null)receive(new Intent(Intent.ACTION_VIEW,data.getData()));if(request==12)updater.install();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);if(Intent.ACTION_VIEW.equals(intent.getAction())||Intent.ACTION_SEND.equals(intent.getAction()))new AlertDialog.Builder(this).setTitle("Abrir outro PDF?").setMessage("A leitura atual será interrompida ao abrir o novo documento.").setPositiveButton("Abrir",(d,w)->receive(intent)).setNegativeButton("Cancelar",null).show();}
     @Override public void onBackPressed(){new AlertDialog.Builder(this).setTitle("Sair do Prisma Voz?").setMessage("A leitura em andamento pode continuar pela notificação.").setPositiveButton("Sair",(d,w)->finish()).setNegativeButton("Ficar",null).show();}
     @Override protected void onDestroy(){ready=false;if(catalog!=null)catalog.close();if(chooser!=null)chooser.onReceiveValue(null);web.removeJavascriptInterface("PrismAndroid");web.destroy();super.onDestroy();}

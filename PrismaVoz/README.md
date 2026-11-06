@@ -57,3 +57,9 @@ Validação adicional: núcleo de extração com fragmentos, duas colunas e núm
 ### Versão 1.1.1
 
 Preserva as melhorias da 1.1.0 e acomoda os controles de OCR em linhas inteiras para fonte ampliada, com teste de conteúdo dentro dos limites de cada rótulo.
+
+## Candidata 1.2.0 — revisão de segurança
+
+Mantém o atualizador interno, conforme preferência do proprietário. PDF.js atualizado para 4.10.38, com integridade do pacote oficial registrada em `dependencies/provenance.json`. O bundle legado e pdf-lib não utilizado foram retirados do runtime. CMaps e fontes são locais. O leitor usa CSP sem autorização de eval JavaScript; a autorização de compilação WebAssembly é restrita às bibliotecas locais de OCR. Safe Browsing permanece ativo. O seletor nativo entrega apenas o PDF escolhido pelo usuário, sem acesso WebView a arquivos ou provedores de conteúdo. O provedor do atualizador aceita somente leitura do APK verificado.
+
+A branch `prismavoz/security-review` executa validação, mas não publica nem ativa o canal de atualização. O bloqueio informado pelo Play Protect ainda não teve causa confirmada nem liberação do Google. Não desative a proteção nem force instalação com o alerta ativo. A auditoria de dependências, os testes e a assinatura não substituem o veredito do Play Protect.

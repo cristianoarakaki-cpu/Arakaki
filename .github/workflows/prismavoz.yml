@@ -1,7 +1,7 @@
 name: Prisma Voz — validar e publicar
 on:
   push:
-    branches: [main]
+    branches: [main, 'prismavoz/security-review']
     paths: ['PrismaVoz/**', '.github/workflows/prismavoz.yml']
   pull_request:
     paths: ['PrismaVoz/**', '.github/workflows/prismavoz.yml']
@@ -27,6 +27,8 @@ jobs:
       - name: Conferir bibliotecas e lógica de voz
         run: |
           python3 PrismaVoz/tools/vendor.py
+          node --input-type=module --check < PrismaVoz/assets/bootstrap.js
+          node --input-type=module --check < PrismaVoz/assets/pdf-worker.js
           node --check PrismaVoz/assets/app.js
           node --check PrismaVoz/assets/speech.js
           node --check PrismaVoz/assets/speech-core.js
@@ -34,6 +36,7 @@ jobs:
           node --check PrismaVoz/assets/ocr-engine.js
           node PrismaVoz/tools/test_speech.cjs
           node PrismaVoz/tools/test_ocr.cjs
+          python3 PrismaVoz/tools/test_security.py
       - name: Testar leitor, controles, privacidade e OCR offline
         env:
           PRISMA_NODE_MODULES: ${{ runner.temp }}/prismavoz-ui/node_modules

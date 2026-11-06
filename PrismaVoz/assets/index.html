@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Prisma Voz</title><link rel="stylesheet" href="style.css"></head>
 <body><header><div class="mark" aria-hidden="true">◖))</div><div><h1>Prisma Voz</h1><p>Seus PDFs, em voz alta.</p></div><button id="theme" class="quiet" aria-label="Alternar tema">◐</button></header>
-<main><section class="welcome"><div class="eyebrow">OUÇA NO SEU RITMO</div><h2>Abra um PDF.<br>Escolha uma voz.</h2><p>Leia ouvindo, ajuste a velocidade e continue com a tela apagada.</p><button id="openPdf">＋ Abrir PDF</button><input id="pdfInput" type="file" accept="application/pdf" hidden><small>Android 8 ou superior · PDF de até 25 MB</small></section>
+<main><section class="welcome"><div class="eyebrow">OUÇA NO SEU RITMO</div><h2>Abra um PDF.<br>Escolha uma voz.</h2><p>Leia ouvindo, ajuste a velocidade e continue com a tela apagada.</p><button id="openPdf" disabled>＋ Abrir PDF</button><input id="pdfInput" type="file" accept="application/pdf" hidden><small>Android 8 ou superior · PDF de até 25 MB</small></section>
 <p id="notice" role="status" aria-live="polite"></p>
 <section id="reader" hidden><div class="document-heading"><div><span class="eyebrow">DOCUMENTO ABERTO</span><h2 id="readerName"></h2></div></div>
 <details id="speechPanel" class="speech-panel" open><summary>Ouvir este PDF</summary>
@@ -17,4 +17,4 @@
 <label class="check"><input id="followReading" type="checkbox" checked>Acompanhar página lida</label><div class="canvas-wrap"><canvas id="pageCanvas"></canvas></div></section>
 <details class="settings"><summary>Conexão e atualizações</summary><label class="check"><input id="allowOnline" type="checkbox">Permitir ações online</label><p>Quando permitido, o app verifica atualizações ao abrir, uma vez ao dia. O download e a instalação exigem sua confirmação.</p><button id="checkUpdate" class="secondary">Verificar atualização</button><p id="appVersion"></p><small>O texto fica na sessão de leitura e é descartado ao parar. Preferências de voz são salvas no aparelho. O app não guarda uma cópia dos PDFs.</small></details>
 <footer>Prisma Voz · Feito para ouvir.</footer></main>
-<script src="vendor/pdf.js"></script><script src="vendor/tesseract.js"></script><script src="speech-core.js"></script><script src="ocr-core.js"></script><script src="ocr-engine.js"></script><script src="speech.js"></script><script src="app.js"></script></body></html>
+<script src="vendor/tesseract.js"></script><script type="module" src="bootstrap.js"></script></body></html>
