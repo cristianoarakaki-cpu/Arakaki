@@ -1,0 +1,10 @@
+{
+  "packageName": "com.arakaki.prismavoz",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "notes": "Primeira versão do Prisma Voz: leitor de PDF com escolha de vozes, velocidade, tom, intervalo de páginas, pausa e leitura em segundo plano. OCR offline opcional para páginas digitalizadas. Aplicativo independente do Prisma PDF.",
+  "sha256": "8286e7e91fbfe78f6ec49ac3c3158255be80667dbafc685c3eb09d36febe6366",
+  "size": 14690600,
+  "certificateSha256": "76a281f5ca3a25a42e490f2926482d63d597ba51ab48f24c2a1379258b14f7e1",
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.0.0/Prisma-Voz.apk"
+}

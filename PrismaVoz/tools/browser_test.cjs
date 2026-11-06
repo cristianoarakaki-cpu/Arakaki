@@ -1,0 +1,51 @@
+'use strict';
+const {chromium}=require(process.env.PRISMA_NODE_MODULES+'/playwright');
+const {PDFDocument,StandardFonts}=require(process.env.PRISMA_NODE_MODULES+'/pdf-lib');
+const fs=require('fs/promises'),path=require('path'),assert=require('assert/strict');
+(async()=>{
+ const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Helvetica);
+ pdf.addPage([400,600]).drawText('Primeira página para ouvir.',{x:20,y:500,font,size:16});pdf.addPage([400,600]);pdf.addPage([400,600]).drawText('Terceira página com texto final.',{x:20,y:500,font,size:16});const bytes=Buffer.from(await pdf.save());
+ const browser=await chromium.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+ const context=await browser.newContext({viewport:{width:412,height:915}}),remote=[],errors=[];
+ const root=path.resolve(__dirname,'../assets');
+ await context.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname!=='appassets.androidplatform.net'){remote.push(u.href);return route.abort()}try{const target=path.resolve(root,'.'+decodeURIComponent(u.pathname==='/'?'/index.html':u.pathname));if(!target.startsWith(root+path.sep))return route.abort();const data=await fs.readFile(target);return route.fulfill({status:200,contentType:target.endsWith('.js')?'application/javascript':target.endsWith('.css')?'text/css':target.endsWith('.html')?'text/html':target.endsWith('.wasm')?'application/wasm':'application/octet-stream',body:data})}catch{return route.fulfill({status:404,body:'Not found'})}});
+ await context.addInitScript(()=>{
+  window.speechRequests=[];window.nativeOnline=false;window.mockSpeech={status:'idle'};window.updateChecks=0;
+  window.PrismAndroid={state:()=>JSON.stringify({version:'1.0.0',onlineAllowed:window.nativeOnline,connected:false}),allowOnline:v=>{window.nativeOnline=v;if(!v&&window.mockSpeech.network)window.mockSpeech.status='stopped'},checkUpdates:()=>window.updateChecks++,speechSettings:()=>window.voiceSettingsOpened=true,
+   speechVoices:()=>JSON.stringify({ready:true,voices:[{id:'pt-offline',label:'Português Brasil — offline',language:'pt-BR',network:false},{id:'pt-online',label:'Português Brasil — online',language:'pt-BR',network:true},{id:'en-offline',label:'English — offline',language:'en-US',network:false}]}),
+   speechState:()=>JSON.stringify(window.mockSpeech),speechStop:()=>window.mockSpeech={...window.mockSpeech,status:'stopped'},
+   speechCommand:command=>window.mockSpeech={...window.mockSpeech,status:command==='pause'?'paused':'playing'},
+   speechStart:payload=>{const data=JSON.parse(payload);window.speechRequests.push(data);window.mockSpeech={session:data.session,status:'playing',page:data.segments[0].page,total:data.segments.length,index:0,network:data.allowNetwork}}
+  };
+ });
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('https://appassets.androidplatform.net/index.html');
+ await page.locator('#pdfInput').setInputFiles({name:'exemplo.pdf',mimeType:'application/pdf',buffer:bytes});await page.locator('#pageCounter').filter({hasText:'1 / 3'}).waitFor();
+ assert.equal(await page.locator('#speechVoice').inputValue(),'pt-offline');assert.equal(await page.locator('#speechVoice option').count(),2);
+ await page.locator('#speechPlay').click();await page.waitForFunction(()=>speechRequests.length===1,{}, {timeout:5000}).catch(async e=>{console.error('Diagnostico de inicio:',await page.locator('#speechStatus').innerText(),errors);throw e});await page.locator('#speechStatus').filter({hasText:'Lendo a página 1'}).waitFor();
+ let request=await page.evaluate(()=>speechRequests[0]);assert.deepEqual(request.segments.map(s=>s.page),[1,3]);assert(request.segments[0].text.includes('Primeira página'));assert.equal(request.allowNetwork,false);
+ await page.locator('#speechPause').click();await page.locator('#speechPause').filter({hasText:'Continuar'}).waitFor();await page.locator('#speechPause').click();await page.locator('#speechPause').filter({hasText:'Pausar'}).waitFor();
+ await page.evaluate(()=>mockSpeech.page=3);await page.locator('#pageCounter').filter({hasText:'3 / 3'}).waitFor();await page.locator('#followReading').uncheck();await page.evaluate(()=>mockSpeech.page=1);await page.waitForTimeout(1000);assert.equal(await page.locator('#pageCounter').innerText(),'3 / 3');
+ await page.locator('#speechStop').click();assert(await page.locator('#speechPlay').isEnabled());
+ console.log('PDF real: extração por página, página vazia ignorada, início, pausa/continuação/parada e acompanhamento de página com ponte nativa simulada: OK');
+ await page.locator('#speechFrom').fill('4');await page.locator('#speechPlay').click();assert((await page.locator('#speechStatus').innerText()).includes('intervalo válido'));assert.equal(await page.evaluate(()=>speechRequests.length),1);await page.locator('#speechFrom').fill('1');
+ await page.locator('#speechRate').selectOption('1.5');await page.locator('#speechPitch').selectOption('0.75');await page.locator('#speechNetwork').check();await page.locator('#speechVoice').selectOption('pt-online');await page.locator('#speechPlay').click();assert((await page.locator('#speechStatus').innerText()).includes('Permitir ações online'));assert.equal(await page.evaluate(()=>speechRequests.length),1);
+ await page.locator('.settings summary').click();await page.locator('#allowOnline').check();await page.locator('#speechPlay').click();await page.waitForFunction(()=>speechRequests.length===2);request=await page.evaluate(()=>speechRequests[1]);assert.equal(request.allowNetwork,true);assert.equal(request.rate,1.5);assert.equal(request.pitch,0.75);await page.locator('#allowOnline').uncheck();await page.locator('#speechStatus').filter({hasText:'Leitura parada'}).waitFor();await page.locator('#speechStop').evaluate(e=>{e.disabled=false;e.click()});
+ await page.locator('#allowOnline').check();await page.locator('#checkUpdate').click();assert.equal(await page.evaluate(()=>updateChecks),1);await page.locator('#voiceSettings').click();assert.equal(await page.evaluate(()=>voiceSettingsOpened),true);
+ console.log('Vozes: offline primeiro, online exige duas autorizações, velocidade/tom enviados e preferências salvas; revogação online, configuração e canal de atualização: OK');
+ // A scan without text must fail visibly until OCR is enabled.
+ const blank=await PDFDocument.create();blank.addPage([400,600]);await page.locator('#pdfInput').setInputFiles({name:'digitalizado.pdf',mimeType:'application/pdf',buffer:Buffer.from(await blank.save())});await page.locator('#pageCounter').filter({hasText:'1 / 1'}).waitFor();await page.locator('#speechNetwork').uncheck();await page.locator('#speechPlay').click();await page.locator('#speechStatus').filter({hasText:'Ative o OCR offline'}).waitFor();assert.equal(await page.evaluate(()=>speechRequests.length),2);
+ // Actual local OCR on a raster-only PDF, never a mock recognition result.
+ const scanPng=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=1000;c.height=500;const x=c.getContext('2d');x.fillStyle='white';x.fillRect(0,0,c.width,c.height);x.fillStyle='black';x.font='48px Arial';x.fillText('PRISMA VOZ TESTE OFFLINE',45,180);return c.toDataURL('image/png').split(',')[1]});
+ const scan=await PDFDocument.create(),img=await scan.embedPng(Buffer.from(scanPng,'base64'));scan.addPage([500,250]).drawImage(img,{x:0,y:0,width:500,height:250});await page.locator('#pdfInput').setInputFiles({name:'scan.pdf',mimeType:'application/pdf',buffer:Buffer.from(await scan.save())});await page.locator('#readerName').filter({hasText:'scan.pdf'}).waitFor();await page.locator('#speechOcr').check();await page.locator('#speechPlay').click();await page.waitForFunction(()=>speechRequests.length===3,{},{timeout:120000});request=await page.evaluate(()=>speechRequests[2]);assert.match(request.segments.map(s=>s.text).join(' '),/PRISMA.*VOZ.*TESTE.*OFFLINE/i);await page.locator('#speechStop').click();await page.locator('#speechOcr').uncheck();
+ console.log('PDF digitalizado: sem texto não inicia fala; OCR português real, bibliotecas e modelo locais, reconhece a imagem e prepara leitura: OK');
+ // Cancel extraction before the async page arrives: no late playback.
+ await page.evaluate(()=>{window.releaseText=null;PrismaSpeech.setDocument({numPages:1,getPage:async()=>({getTextContent:()=>new Promise(r=>window.releaseText=r)})},{name:'lento.pdf'},1)});await page.locator('#speechPlay').click();await page.waitForFunction(()=>typeof releaseText==='function');await page.locator('#speechStop').click();await page.evaluate(()=>releaseText({items:[{str:'Não deve ser falado'}]}));await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>speechRequests.length),3);
+ console.log('Cancelamento durante extração: nenhum início tardio de leitura: OK');
+ // Responsive controls and enlarged fonts with real PDF content.
+ await page.locator('#pdfInput').setInputFiles({name:'exemplo.pdf',mimeType:'application/pdf',buffer:bytes});await page.locator('#readerName').filter({hasText:'exemplo.pdf'}).waitFor();await page.locator('#theme').click();assert.equal(await page.locator('#pageCanvas').evaluate(c=>getComputedStyle(c).filter),'none');
+ for(const width of [320,360,412,700]){await page.setViewportSize({width,height:915});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));const bad=await page.locator('#speechPanel button').evaluateAll(es=>es.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.id));assert.deepEqual(bad,[])}
+ await page.setViewportSize({width:360,height:915});await page.evaluate(()=>{for(const e of document.querySelectorAll('button,label,summary'))e.style.fontSize='22px'});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await fs.mkdir(path.resolve(__dirname,'../test-output'),{recursive:true});await page.screenshot({path:path.resolve(__dirname,'../test-output/reader-large-text.png'),fullPage:true});
+ assert.deepEqual(remote,[]);assert.deepEqual(errors,[]);await browser.close();console.log('320–700px, fonte ampliada, tema escuro sem inverter PDF, zero destinos externos e zero erros JavaScript: OK');
+})().catch(e=>{console.error(e);process.exit(1)});

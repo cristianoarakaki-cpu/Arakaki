@@ -1,0 +1,16 @@
+{
+  "PrismaVoz/AndroidManifest.xml": "5e905861d68db0a2da77b4513fa537f9546a3a9ca502b22fe751da7d7efba453",
+  "PrismaVoz/assets/app.js": "749de7fa071be3b1f2646acba8a1dfffbb4c13a2e3409e628b4fa5a0537bd955",
+  "PrismaVoz/assets/index.html": "add51e568486337f547a6086f559d8f8b9897e9a934f5fe21736a3a0d88d0c9b",
+  "PrismaVoz/assets/speech-core.js": "91577aa7757f3d5fe1d25e492a4b77d5a2b08a1dc7aa4243a3b5a99e2135a230",
+  "PrismaVoz/assets/speech.js": "b5fbbc02eee32a73026b305e9d3dc100629f619e24c6bd773df0792832395007",
+  "PrismaVoz/assets/style.css": "de4a3ea44142ef4d1d3357fbfd6118965744ae8eb25a35e3b6337ed3b44b85a0",
+  "PrismaVoz/build.sh": "2c2bd5a76ab5ad28f836d868d54a7491b42747ef0797b6f0b33ffbcfec54f006",
+  "PrismaVoz/dependencies/manifest.json": "d6f1f4625072da0846de849a2180dab1c32d5ba8cdfc645c7c900c836d45ba58",
+  "PrismaVoz/src/com/arakaki/prismavoz/MainActivity.java": "37c56eb7232d1b956c3a19f87191117a7aa28926fec84085492527a7bd039019",
+  "PrismaVoz/src/com/arakaki/prismavoz/SharedFileProvider.java": "368be9d5ddb825f93abaf9aea0d8ac2cc9dc5b9cb969c66e165f5a0eb333bd9e",
+  "PrismaVoz/src/com/arakaki/prismavoz/SpeechCatalog.java": "5b2b19f13ba6ac71bbd69690be4b39748e3d9688edfcf48f291f7a446e299694",
+  "PrismaVoz/src/com/arakaki/prismavoz/SpeechService.java": "280a4995e83665873df93bcb3cfcb4369b1f19cbc46b23b603616cdd99b163c0",
+  "PrismaVoz/src/com/arakaki/prismavoz/UpdateManager.java": "a112db72cdc2436bb13033add4974faf5cd2b9913c76c5ed18b5922f7d02155f",
+  "PrismaVoz/version.json": "fbe55a5560eb5e65fe034f13f1e2744691f54155ceda9aa65e24f05e12e81cd1"
+}

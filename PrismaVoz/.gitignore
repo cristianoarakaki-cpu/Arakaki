@@ -1,0 +1,7 @@
+assets/vendor/
+build/
+test-output/
+*.p12
+*.jks
+*.keystore
+**/__pycache__/
