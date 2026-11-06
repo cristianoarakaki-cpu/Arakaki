@@ -6,7 +6,27 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
+  prior-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ler diagnóstico da execução anterior
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/cristianoarakaki-cpu/Arakaki/actions/runs/42287767873/logs > /tmp/native-prior-logs.zip
+          python3 - <<'PY_LOGS'
+          import zipfile,re
+          with zipfile.ZipFile('/tmp/native-prior-logs.zip') as z:
+              for name in z.namelist():
+                  if 'Testar' in name and name.endswith('.txt'):
+                      text=z.read(name).decode('utf-8',errors='replace')
+                      lines=text.splitlines()
+                      selected=[line for line in lines if re.search(r'FAIL|Error|Exception|INSTRUMENTATION|tests|not found|No such|Caused by|OCR|Assertion',line,re.I)]
+                      summary='\n'.join(selected[-90:])[-9000:]
+                      print('::notice title=Native runtime diagnostics::'+summary.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY_LOGS
   validate-native:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -71,6 +91,16 @@ jobs:
             python3 -c 's=open("/tmp/prismavoz-native-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s, s'
             mkdir -p PrismaVoz/test-output-native
             adb pull /sdcard/Android/data/com.arakaki.prismavoz/files/native-reader.png PrismaVoz/test-output-native/native-reader.png
+      - name: Resumir resultado Android
+        if: always()
+        run: |
+          python3 - <<'PY_RESULT'
+          from pathlib import Path
+          p=Path('/tmp/prismavoz-native-tests.txt')
+          if p.exists():
+              text=p.read_text()[-7000:];kind='notice' if 'OK (2 tests)' in text else 'error'
+              print('::'+kind+' title=Native Android test results::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY_RESULT
       - uses: actions/upload-artifact@v4
         if: always()
         with:
