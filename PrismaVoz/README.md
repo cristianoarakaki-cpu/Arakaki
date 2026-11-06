@@ -53,3 +53,7 @@ Extração por coordenadas une fragmentos de uma mesma palavra, ordena linhas e 
 O OCR sensível usa média local em memória limitada, escolhe candidatos por confiança/conteúdo e não altera o PDF. As tentativas extras só ocorrem em resultados fracos. Recortes inclinados recebem margem para não perder bordas. Reconhecimento de manuscritos, texto borrado e detalhes que não existem na imagem não é garantido.
 
 Validação adicional: núcleo de extração com fragmentos, duas colunas e números; limiar adaptativo comparado pixel a pixel com uma implementação de referência; deskew sintético; OCR real em letras pequenas/claras, fundo irregular e inclinação, inclusive quando já existe um cabeçalho selecionável. A continuação por palavra exige teste prático com o motor TTS do aparelho.
+
+### Versão 1.1.1
+
+Preserva as melhorias da 1.1.0 e acomoda os controles de OCR em linhas inteiras para fonte ampliada, com teste de conteúdo dentro dos limites de cada rótulo.

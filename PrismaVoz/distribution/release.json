@@ -1,10 +1,10 @@
 {
   "packageName": "com.arakaki.prismavoz",
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "notes": "Leitura mais contínua: melhora a união de fragmentos e linhas, a ordem de duas colunas simples e preserva números e pontuação. Continuação mais próxima da palavra pausada em vozes compatíveis. OCR mais sensível com resolução maior, contraste, alinhamento e nova tentativa em páginas difíceis; opção para refazer páginas com texto incompleto. Reconhecimento permanece offline.",
-  "sha256": "5488aa79a18d5c3c7a2dc3c9d3358b938f5062db13a597e26511aea697de136b",
+  "versionCode": 3,
+  "versionName": "1.1.1",
+  "notes": "Leitura mais contínua: melhora a união de fragmentos e linhas, a ordem de duas colunas simples e preserva números e pontuação. Continuação mais próxima da palavra pausada em vozes compatíveis. OCR mais sensível com resolução maior, contraste, alinhamento e nova tentativa em páginas difíceis; opção para refazer páginas com texto incompleto. Reconhecimento permanece offline. Controles de OCR com espaço próprio para fonte ampliada.",
+  "sha256": "9d8220ca9428cca727ce982194339cc5e7aab6d1a5810d3880a3fe254a64912e",
   "size": 14694826,
   "certificateSha256": "76a281f5ca3a25a42e490f2926482d63d597ba51ab48f24c2a1379258b14f7e1",
-  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.1.0/Prisma-Voz.apk"
+  "downloadUrl": "https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/prismavoz-v1.1.1/Prisma-Voz.apk"
 }

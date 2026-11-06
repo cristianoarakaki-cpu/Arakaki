@@ -1,5 +1,5 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "notes": "Leitura mais contínua: melhora a união de fragmentos e linhas, a ordem de duas colunas simples e preserva números e pontuação. Continuação mais próxima da palavra pausada em vozes compatíveis. OCR mais sensível com resolução maior, contraste, alinhamento e nova tentativa em páginas difíceis; opção para refazer páginas com texto incompleto. Reconhecimento permanece offline."
+  "versionCode": 3,
+  "versionName": "1.1.1",
+  "notes": "Leitura mais contínua: melhora a união de fragmentos e linhas, a ordem de duas colunas simples e preserva números e pontuação. Continuação mais próxima da palavra pausada em vozes compatíveis. OCR mais sensível com resolução maior, contraste, alinhamento e nova tentativa em páginas difíceis; opção para refazer páginas com texto incompleto. Reconhecimento permanece offline. Controles de OCR com espaço próprio para fonte ampliada."
 }

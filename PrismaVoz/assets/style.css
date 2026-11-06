@@ -3,3 +3,5 @@
 .speech-options label{justify-content:space-between}.action-row button{flex-basis:100px;min-width:100px}.document-open .welcome{padding:12px 16px}.document-open .welcome h2,.document-open .welcome p,.document-open .welcome small,.document-open .welcome .eyebrow{display:none}
 
 .speech-report{font-size:12px;color:var(--muted);line-height:1.5}.speech-report:empty{display:none}
+
+.speech-options .speech-full{grid-column:1/-1}.speech-options label{overflow-wrap:anywhere}
