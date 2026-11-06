@@ -30,7 +30,10 @@ jobs:
           node --check PrismaVoz/assets/app.js
           node --check PrismaVoz/assets/speech.js
           node --check PrismaVoz/assets/speech-core.js
+          node --check PrismaVoz/assets/ocr-core.js
+          node --check PrismaVoz/assets/ocr-engine.js
           node PrismaVoz/tools/test_speech.cjs
+          node PrismaVoz/tools/test_ocr.cjs
       - name: Testar leitor, controles, privacidade e OCR offline
         env:
           PRISMA_NODE_MODULES: ${{ runner.temp }}/prismavoz-ui/node_modules

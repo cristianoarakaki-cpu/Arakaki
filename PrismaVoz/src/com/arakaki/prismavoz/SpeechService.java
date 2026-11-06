@@ -22,7 +22,7 @@ public final class SpeechService extends Service {
     private boolean ready, paused, foreground, destroyed;
     private JSONArray segments=new JSONArray();
     private String voiceId="", title="PDF", status="idle", session="";
-    private int index, generation;
+    private int index, generation, resumeOffset, utteranceBase;
     private float rate=1, pitch=1;
     private AudioManager audio;
     private AudioFocusRequest focus;
@@ -50,7 +50,8 @@ public final class SpeechService extends Service {
             engine.setAudioAttributes(attributes);
             engine.setOnUtteranceProgressListener(new UtteranceProgressListener(){
                 @Override public void onStart(String id){}
-                @Override public void onDone(String id){main.post(()->{if(valid(id)&&!paused){index++;speakNext();}});}
+                @Override public void onDone(String id){main.post(()->{if(valid(id)&&!paused){index++;resumeOffset=0;speakNext();}});}
+                @Override public void onRangeStart(String id,int start,int end,int frame){main.post(()->{if(valid(id)&&!paused)resumeOffset=utteranceBase+Math.max(0,start);});}
                 @Override public void onError(String id){main.post(()->{if(valid(id))finish("error","Não foi possível falar este trecho. Confira a voz e a conexão, se for online.");});}
             });
             if(segments.length()>0&&!paused)configureAndSpeak();
@@ -73,7 +74,7 @@ public final class SpeechService extends Service {
                 if(Float.isNaN(rate)||Float.isInfinite(rate)||rate<0.5f||rate>2f||Float.isNaN(pitch)||Float.isInfinite(pitch)||pitch<0.5f||pitch>2f)throw new IOException("Ajuste de voz inválido.");
                 networkVoice=data.optBoolean("allowNetwork",false);
                 if(networkVoice&&!online())throw new IOException("Ative as ações online antes de usar uma voz online.");
-                generation++;if(engine!=null)engine.stop();index=0;paused=false;publish("preparing","");
+                generation++;if(engine!=null)engine.stop();index=0;resumeOffset=0;utteranceBase=0;paused=false;publish("preparing","");
                 if(ready)configureAndSpeak();
             }catch(Exception e){finish("error",e.getMessage()==null?"Não foi possível preparar a leitura.":e.getMessage());}
             finally{input.delete();}
@@ -102,11 +103,15 @@ public final class SpeechService extends Service {
         if(!hasFocus){hasFocus=audio.requestAudioFocus(focus)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;if(!hasFocus){paused=true;publish("paused","Outro aplicativo está usando o áudio. Toque em Continuar quando estiver disponível.");showNotification();return;}}
         if(!wake.isHeld())wake.acquire(30*60*1000L);
         media.setActive(true);publish("playing","");showNotification();
-        String text=segments.optJSONObject(index).optString("text");
+        String fullText=segments.optJSONObject(index).optString("text");
+        resumeOffset=Math.max(0,Math.min(resumeOffset,Math.max(0,fullText.length()-1)));
+        if(resumeOffset>0&&Character.isLowSurrogate(fullText.charAt(resumeOffset))&&Character.isHighSurrogate(fullText.charAt(resumeOffset-1)))resumeOffset--;
+        utteranceBase=resumeOffset;
+        String text=fullText.substring(resumeOffset);
         if(engine.speak(text,TextToSpeech.QUEUE_FLUSH,null,generation+":"+index)!=TextToSpeech.SUCCESS)finish("error","O motor de voz recusou a leitura.");
     }
     private void pause(){if(segments.length()==0)return;generation++;paused=true;if(engine!=null)engine.stop();releaseAudio();publish("paused","");showNotification();}
-    private void resume(){if(segments.length()==0)return;paused=false;if(ready)configureAndSpeak();else publish("preparing","");}
+    private void resume(){if(segments.length()==0||!paused)return;paused=false;if(ready)configureAndSpeak();else publish("preparing","");}
     private void releaseAudio(){if(wake!=null&&wake.isHeld())wake.release();if(audio!=null&&focus!=null&&hasFocus)audio.abandonAudioFocusRequest(focus);hasFocus=false;}
     private void publish(String next,String error){status=next;try{JSONObject state=new JSONObject().put("session",session).put("status",next).put("page",index<segments.length()?segments.optJSONObject(index).optInt("page"):0).put("index",index).put("total",segments.length()).put("message",error==null?"":error);snapshot=state.toString();}catch(Exception ignored){}if(media!=null)media.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_STOP).setState("playing".equals(next)?PlaybackState.STATE_PLAYING:"paused".equals(next)?PlaybackState.STATE_PAUSED:PlaybackState.STATE_STOPPED,PlaybackState.PLAYBACK_POSITION_UNKNOWN,1).build());}
     private PendingIntent command(String action,int id){return PendingIntent.getService(this,id,new Intent(this,SpeechService.class).setAction(action),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);}

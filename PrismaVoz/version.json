@@ -1,1 +1,5 @@
-{"versionCode":1,"versionName":"1.0.0","notes":"Primeira versão do Prisma Voz: leitor de PDF com escolha de vozes, velocidade, tom, intervalo de páginas, pausa e leitura em segundo plano. OCR offline opcional para páginas digitalizadas. Aplicativo independente do Prisma PDF."}
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "notes": "Leitura mais contínua: melhora a união de fragmentos e linhas, a ordem de duas colunas simples e preserva números e pontuação. Continuação mais próxima da palavra pausada em vozes compatíveis. OCR mais sensível com resolução maior, contraste, alinhamento e nova tentativa em páginas difíceis; opção para refazer páginas com texto incompleto. Reconhecimento permanece offline."
+}
