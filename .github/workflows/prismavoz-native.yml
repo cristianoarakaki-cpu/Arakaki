@@ -9,6 +9,7 @@ permissions:
   actions: read
 jobs:
   prior-diagnostics:
+    if: contains(github.event.head_commit.message, 'diagnostics-only')
     runs-on: ubuntu-latest
     steps:
       - name: Ler diagnóstico da execução anterior
@@ -24,10 +25,11 @@ jobs:
                       text=z.read(name).decode('utf-8',errors='replace')
                       lines=text.splitlines()
                       selected=[line for line in lines if re.search(r'FAIL|Error|Exception|INSTRUMENTATION|tests|not found|No such|Caused by|OCR|Assertion',line,re.I)]
-                      summary='\n'.join(selected[-90:])[-9000:]
+                      start=text.find('Error in nativePdfRendererAndBundledOcrWorkOffline');summary=text[start:start+7000] if start>=0 else '\n'.join(selected[-90:])[-9000:]
                       print('::notice title=Native runtime diagnostics::'+summary.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PY_LOGS
   validate-native:
+    if: ${{ !contains(github.event.head_commit.message, 'diagnostics-only') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
