@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for ONDA_CHECK in $(seq 1 90); do
-            gh api repos/$GITHUB_REPOSITORY/actions/runs/42263364992 > /tmp/source-run.json
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/42282215982 > /tmp/source-run.json
             ONDA_STATUS=$(python -c "import json; print(json.load(open('/tmp/source-run.json'))['status'])")
             if [ "$ONDA_STATUS" = completed ]; then break; fi
             sleep 45
@@ -24,7 +24,7 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('/tmp/source-run.json'))
-          assert r['head_sha']=='d4dd3cd692dea3cb9d912a14154b88adfae84be9' and r['run_attempt']==1 and r['conclusion']=='success'
+          assert r['head_sha']=='e53bd3c22af66f5f35e9f37925a8a60771d90560' and r['run_attempt']==1 and r['conclusion']=='success'
           PY
       - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
         env:
@@ -37,7 +37,7 @@ jobs:
           
           root = Path('/tmp/onda-public-proof')
           root.mkdir(exist_ok=True)
-          (root/'v726-apk-verified.json').write_text('{"version": "0.72.6", "versionCode": 92, "sourceAttempt": 1, "bytes": 64547375, "sha256": "55c71a2365faf3abf58ef5343571222d5e755ae1a144af42d14171e2d1630472", "certificate": "e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e", "abis": ["arm64-v8a", "armeabi-v7a"], "zipIntegrity": true, "youtubeAutomaticPictureInPicture": false, "nativeYouTubeAudio": true, "localVideoPictureInPicture": true, "offlineBrazilCityCount": 5571, "menuIconIndependentFromFont": true, "updateManifestBytes": 280, "updateManifestSha256": "bb5b9826ba8d36a94254e8778acb6d0c67720e0a270fe8f82f2a16cfa7dda43a"}')
+          (root/'v726-apk-verified.json').write_text('{"version": "0.72.6", "versionCode": 92, "sourceAttempt": 1, "bytes": 64547375, "sha256": "fef2142b61e34559acca9e3f30793a48e3d155f5c5615a2fbbbda4fd5a24bf70", "certificate": "e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e", "abis": ["arm64-v8a", "armeabi-v7a"], "zipIntegrity": true, "youtubeAutomaticPictureInPicture": false, "nativeYouTubeAudio": true, "localVideoPictureInPicture": true, "offlineBrazilCityCount": 5571, "menuIconIndependentFromFont": true, "updateManifestBytes": 280, "updateManifestSha256": "1108791019a338e7347ed42ca4b3b710422d081bda402735796eef7981e18267"}')
           proof = json.loads((root/'v726-apk-verified.json').read_text())
           prefix = 'https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/onda-v0.72.6/'
           def open_url(url):
@@ -112,6 +112,6 @@ jobs:
                   assert len(update['sha256'])==64
                   if best is None or update['versionCode']>best['versionCode']:best=update
           assert best['versionCode']==92 and best['versionName']=='0.72.6',best
-          assert best['sha256']=='55c71a2365faf3abf58ef5343571222d5e755ae1a144af42d14171e2d1630472'
+          assert best['sha256']=='fef2142b61e34559acca9e3f30793a48e3d155f5c5615a2fbbbda4fd5a24bf70'
           print(json.dumps({'responseBytes':len(data),'legacyLimit':1048576,'manifestsChecked':count,'update':best},indent=2))
           PY
