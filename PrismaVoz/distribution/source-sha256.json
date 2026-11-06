@@ -6,7 +6,7 @@
   "PrismaVoz/native-build/build.gradle": "d8c6d8f03ce3d14d7386a80a0ce50e8077b185e0b255371df546289611c1d85e",
   "PrismaVoz/native-build/gradle.lockfile": "14c79c701a139fe9609078fdd6da3ad95ad4a10d1e4bf677a696a541c88f206c",
   "PrismaVoz/native-build/gradle.properties": "47fc84ac53459498fdd195f2ccce45b1f3858152ead00fd544361b7df1a80640",
-  "PrismaVoz/native-build/gradle/verification-metadata.xml": "ea1e29ad5b9806d3de76ace7de8e421ea8b1636543b895a614c80a1672d14556",
+  "PrismaVoz/native-build/gradle/verification-metadata.xml": "59ddfb82e48ab819e420768e872636b64a80cba9e95bd212682799a355a5298d",
   "PrismaVoz/native-build/settings.gradle": "8896a135e7f0d59edc4f67ac86a9c181b12c4cf295ddbf00324735394a818e40",
   "PrismaVoz/native-build/src/androidTest/java/com/arakaki/prismavoz/NativeReaderDeviceTest.java": "1bb1e4ddf5c1d3a5a3178926e7596b031c8225eeb6a987ae5b7144ef1e3f152f",
   "PrismaVoz/native-build/src/test/java/com/arakaki/prismavoz/NativeSpeechTextTest.java": "e48d05eeea3fdc528a144a5ae10bda074efaf2af91b3bab772ebe99e99fb1adc",
