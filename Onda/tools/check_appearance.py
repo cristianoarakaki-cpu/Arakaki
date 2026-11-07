@@ -11,7 +11,7 @@ def nodes():
  raise AssertionError('No appearance accessibility tree')
 def bounds(n):return list(map(int,re.findall(r'\d+',n.attrib['bounds'])))
 def tap(label,desc=False):
- names=['Onda Original','Nebulosa','Circuito','Cyber Solar','Grafite','Aurora 3D','Titânio 3D','Holograma 3D','Plasma 3D','Abissal 3D','Esmeralda 3D','Nova 3D','Lunar 3D','Obsidiana 3D','Espectro 3D']
+ names=['Onda Original','Nebulosa','Circuito','Cyber Solar','Grafite','Aurora 3D','Titânio 3D','Holograma 3D','Plasma 3D','Abissal 3D','Esmeralda 3D','Nova 3D','Lunar 3D','Obsidiana 3D','Espectro 3D','Festival','Algodão','Pôr do Sol','Lagoa']
  for _ in range(40):
   ns=nodes();node=next((n for n in ns if n.attrib.get('content-desc' if desc else 'text')==label),None)
   scroll=next((n for n in ns if n.attrib.get('content-desc') in ('Lista de aparências','Opções do menu')),None)
@@ -40,7 +40,7 @@ try:
  try:old=shell('run-as',P,'cat','shared_prefs/appearance.xml')
  except subprocess.CalledProcessError:pass
  results=[]
- for index,(theme,name) in enumerate([('nebula','Nebulosa'),('circuit','Circuito'),('solar','Cyber Solar'),('graphite','Grafite'),('aurora','Aurora 3D'),('titanium','Titânio 3D'),('spectrum','Espectro 3D'),('original','Onda Original')]):
+ for index,(theme,name) in enumerate([('nebula','Nebulosa'),('circuit','Circuito'),('solar','Cyber Solar'),('graphite','Grafite'),('aurora','Aurora 3D'),('titanium','Titânio 3D'),('spectrum','Espectro 3D'),('festival','Festival'),('candy','Algodão'),('sunset','Pôr do Sol'),('lagoon','Lagoa'),('original','Onda Original')]):
   launch();tap('Menu da biblioteca',True);tap('Aparências');tap('Usar aparência '+name,True)
   assert any(n.attrib.get('text')=='Aparência atual: '+name for n in nodes())
   prefs=ET.fromstring(shell('run-as',P,'cat','shared_prefs/appearance.xml'));assert any(n.attrib.get('name')=='theme' and n.text==theme for n in prefs)

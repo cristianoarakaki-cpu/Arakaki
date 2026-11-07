@@ -28,4 +28,8 @@
     <style name="AccentLunar"><item name="android:colorAccent">#D9E3FF</item><item name="android:colorControlActivated">#D9E3FF</item></style>
     <style name="AccentObsidian"><item name="android:colorAccent">#E0C3FF</item><item name="android:colorControlActivated">#E0C3FF</item></style>
     <style name="AccentSpectrum"><item name="android:colorAccent">#9CF3F5</item><item name="android:colorControlActivated">#9CF3F5</item></style>
+<style name="AccentFestival"><item name="android:colorAccent">#FF9CE1</item><item name="android:colorControlActivated">#FF9CE1</item></style>
+<style name="AccentCandy"><item name="android:colorAccent">#FFA9D8</item><item name="android:colorControlActivated">#FFA9D8</item></style>
+<style name="AccentSunset"><item name="android:colorAccent">#FFBE87</item><item name="android:colorControlActivated">#FFBE87</item></style>
+<style name="AccentLagoon"><item name="android:colorAccent">#79F3DC</item><item name="android:colorControlActivated">#79F3DC</item></style>
 </resources>

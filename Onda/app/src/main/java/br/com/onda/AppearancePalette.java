@@ -20,7 +20,11 @@ final class AppearancePalette {
   new AppearancePalette("nova","Nova 3D","Estrelas âmbar e comandos com recortes espaciais",0xFF191009,0xFF281C12,0xFF2D2219,0xFF392D22,0xFF71573D,0xFFFFD59B,0xFFFFBFB0,.25f,7),
   new AppearancePalette("lunar","Lunar 3D","Órbitas prateadas, reflexos frios e curvas de cápsula",0xFF11121B,0xFF1A1D2B,0xFF222638,0xFF2C3142,0xFF59637B,0xFFD9E3FF,0xFFCFBEFF,1.5f,8),
   new AppearancePalette("obsidian","Obsidiana 3D","Monólitos escuros, cristal violeta e linhas de precisão",0xFF100E18,0xFF1B1728,0xFF231F32,0xFF30293E,0xFF605174,0xFFE0C3FF,0xFFFFC9DD,.2f,9),
-  new AppearancePalette("spectrum","Espectro 3D","Portais multicoloridos, ciano e rosa com relevo suave",0xFF0C101B,0xFF171A2B,0xFF1D2436,0xFF293145,0xFF53627E,0xFF9CF3F5,0xFFFFC2EC,1.05f,10)
+  new AppearancePalette("spectrum","Espectro 3D","Portais multicoloridos, ciano e rosa com relevo suave",0xFF0C101B,0xFF171A2B,0xFF1D2436,0xFF293145,0xFF53627E,0xFF9CF3F5,0xFFFFC2EC,1.05f,10),
+  new AppearancePalette("festival","Festival","Rosa elétrico, ciano e portais coloridos em relevo",0xFF0A0C18,0xFF18102A,0xFF15172A,0xFF1B1D31,0xFF7351A2,0xFFFF9CE1,0xFF8EF2FF,1.05f,10),
+  new AppearancePalette("candy","Algodão","Rosa doce, lilás e cristais com contraste suave",0xFF170C1A,0xFF241025,0xFF26152A,0xFF2D1B31,0xFF865777,0xFFFFA9D8,0xFFC8B1FF,1.25f,4),
+  new AppearancePalette("sunset","Pôr do Sol","Coral, pêssego e magenta em painéis luminosos",0xFF190D14,0xFF241322,0xFF2A1920,0xFF301F27,0xFF925466,0xFFFFBE87,0xFFFF9FD5,.6f,7),
+  new AppearancePalette("lagoon","Lagoa","Turquesa, azul claro e cristais oceânicos",0xFF071620,0xFF0B2330,0xFF102633,0xFF182F3B,0xFF377D91,0xFF79F3DC,0xFF9AD5FF,.9f,3)
  };
  static AppearancePalette find(String id){for(AppearancePalette p:ALL)if(p.id.equals(id))return p;return ALL[0];}
  static int blend(int first,int second,float mix){float m=Math.max(0,Math.min(1,mix));int r=Math.round(((first>>16)&255)*(1-m)+((second>>16)&255)*m),g=Math.round(((first>>8)&255)*(1-m)+((second>>8)&255)*m),b=Math.round((first&255)*(1-m)+(second&255)*m);return 0xFF000000|r<<16|g<<8|b;}

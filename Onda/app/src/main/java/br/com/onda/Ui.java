@@ -10,7 +10,7 @@ import android.text.TextUtils;
 import android.view.*;
 import android.widget.*;
 
-/** Static native artwork and shared styling; no animation loop or image downloads. */
+/** Static native artwork and shared styling; finite touch feedback only, no animation loop or image downloads. */
 final class Ui {
     static AppearancePalette palette=AppearancePalette.ALL[0];
     static int BG=palette.bg,SURFACE=palette.surface,RAISED=palette.raised,BORDER=palette.border,TEXT=AppearancePalette.TEXT,MUTED=AppearancePalette.MUTED,CYAN=palette.accent,VIOLET=palette.secondary;
@@ -35,7 +35,7 @@ final class Ui {
     static TextView text(Context c,String value,int size,int color){TextView t=new TextView(c);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setFontFeatureSettings("kern");t.setIncludeFontPadding(false);return t;}
     static void bold(TextView v){v.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));}
     static TextView eyebrow(Context c,String value){TextView t=text(c,value,10,CYAN);t.setLetterSpacing(.16f);bold(t);return t;}
-    static Button button(Context c,String value,View.OnClickListener listener){Button b=new Button(c);b.setText(value);b.setTextSize(13);b.setTextColor(TEXT);b.setAllCaps(false);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));b.setPadding(dp(c,10),dp(c,6),dp(c,10),dp(c,6));b.setStateListAnimator(null);bind(b,w->w.setBackground(ripple(w.getContext(),face(w.getContext(),RAISED,BORDER,14),14)));b.setOnClickListener(listener);return b;}
+    static Button button(Context c,String value,View.OnClickListener listener){Button b=new TouchButton(c);b.setText(value);b.setTextSize(13);b.setTextColor(TEXT);b.setAllCaps(false);b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));b.setPadding(dp(c,10),dp(c,6),dp(c,10),dp(c,6));b.setStateListAnimator(null);bind(b,w->w.setBackground(ripple(w.getContext(),face(w.getContext(),RAISED,BORDER,14),14)));b.setOnClickListener(listener);return b;}
     static void ghost(Button b){Context c=b.getContext();bind(b,w->w.setBackground(ripple(w.getContext(),shape(w.getContext(),Color.TRANSPARENT,0,14),14)));b.setTextColor(MUTED);}
     static void primary(Button b){Context c=b.getContext();b.setTextColor(BG);bind(b,w->w.setBackground(ripple(w.getContext(),accentFace(w.getContext(),16),16)));}
     static void chip(Button b,boolean selected){Context c=b.getContext();b.setTextColor(selected?CYAN:MUTED);bind(b,w->w.setBackground(ripple(w.getContext(),face(w.getContext(),selected?selectedFill():SURFACE,selected?(palette==AppearancePalette.ALL[0]?0xFF3D6B7B:AppearancePalette.blend(BORDER,CYAN,.35f)):BORDER,14),14)));}
@@ -64,7 +64,7 @@ final class Ui {
     }
     static Button transport(Context c,String kind,View.OnClickListener listener){TransportButton b=new TransportButton(c,kind);b.setText("play".equals(kind)?"▶":"");b.setTextColor("play".equals(kind)?BG:MUTED);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);b.setPadding(0,0,0,0);bind(b,w->{Context context=w.getContext();w.setBackground("play".equals(kind)?ripple(context,palette.variant>0?accentFace(context,28):gradient(context,CYAN,palette==AppearancePalette.ALL[0]?0xFF9BBBFF:VIOLET,28),28):ripple(context,palette.variant>0?face(context,SURFACE,BORDER,24):shape(context,Color.TRANSPARENT,0,24),24));});b.setOnClickListener(listener);return b;}
     static Button voiceButton(Context c,String description,View.OnClickListener listener){
-        Button b=new Button(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
+        Button b=new TouchButton(c){private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);@Override protected void onDraw(Canvas canvas){float u=dp(c,1),x=getWidth()/2f,y=getHeight()/2f;p.setColor(CYAN);p.setStrokeWidth(2*u);p.setStrokeCap(Paint.Cap.ROUND);p.setStyle(Paint.Style.FILL);canvas.drawRoundRect(x-4*u,y-10*u,x+4*u,y+3*u,4*u,4*u,p);p.setStyle(Paint.Style.STROKE);canvas.drawArc(x-8*u,y-8*u,x+8*u,y+8*u,0,180,false,p);canvas.drawLine(x,y+8*u,x,y+12*u,p);canvas.drawLine(x-4*u,y+12*u,x+4*u,y+12*u,p);}};
         b.setText("");b.setContentDescription(description);b.setMinWidth(0);b.setMinimumWidth(0);b.setStateListAnimator(null);bind(b,w->w.setBackground(ripple(w.getContext(),face(w.getContext(),RAISED,BORDER,16),16)));b.setOnClickListener(listener);return b;
     }
     static void menu(Activity activity,View anchor,String[] labels,String[] descriptions,Runnable[] actions){
@@ -112,7 +112,7 @@ final class Ui {
         @Override protected void onDraw(Canvas canvas){if(palette.variant>0){if(drawn!=palette){drawn=palette;future=new FutureArt(palette);}future.setBounds(0,0,getWidth(),getHeight());future.draw(canvas);return;}float w=getWidth(),h=getHeight();paint.setShader(new LinearGradient(0,0,w,h,new int[]{palette==AppearancePalette.ALL[0]?0xFF19364C:AppearancePalette.blend(SURFACE,CYAN,.15f),palette==AppearancePalette.ALL[0]?0xFF272145:AppearancePalette.blend(SURFACE,VIOLET,.18f)},null,Shader.TileMode.CLAMP));canvas.drawRoundRect(0,0,w,h,w*.24f,w*.24f,paint);paint.setShader(null);paint.setColor(0x33000000|(CYAN&0xFFFFFF));paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(Math.max(1,w*.017f));canvas.drawCircle(w*.5f,h*.5f,w*.36f,paint);paint.setStyle(Paint.Style.FILL);float[] bars={.18f,.38f,.60f,.36f,.20f};for(int i=0;i<5;i++){float bh=h*bars[i];paint.setColor(i<3?CYAN:VIOLET);canvas.drawRoundRect(w*(.27f+i*.10f),h*.5f-bh*.5f,w*(.315f+i*.10f),h*.5f+bh*.5f,w*.025f,w*.025f,paint);} }
     }
     /** Heart geometry uses dp, so Android font scaling cannot crop the icon. */
-    private static final class HeartButton extends Button {
+    private static final class HeartButton extends TouchButton {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final Path path=new Path();
         HeartButton(Context c){super(c);}
         @Override protected void onDraw(Canvas canvas){
@@ -128,18 +128,18 @@ final class Ui {
         }
     }
     /** A menu icon must not inherit a large emoji/font ascent and be cropped at 48dp. */
-    private static final class MenuButton extends Button {
+    private static final class MenuButton extends TouchButton {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         MenuButton(Context context){super(context);}
         @Override protected void onDraw(Canvas canvas){float size=Math.max(0,Math.min(dp(getContext(),24),Math.min(getWidth(),getHeight())-dp(getContext(),16)));if(size<=0)return;float x=getWidth()/2f,y=getHeight()/2f;paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(dp(getContext(),2));paint.setStrokeCap(Paint.Cap.ROUND);for(int i=-1;i<=1;i++)canvas.drawLine(x-size*.42f,y+i*size*.30f,x+size*.42f,y+i*size*.30f,paint);}
     }
     /** Static geometry independent of font size; the touch target stays 48dp. */
-    private static final class ShareButton extends Button {
+    private static final class ShareButton extends TouchButton {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         ShareButton(Context context){super(context);}
         @Override protected void onDraw(Canvas canvas){float unit=Math.max(0,Math.min(dp(getContext(),28),Math.min(getWidth(),getHeight())-dp(getContext(),16)))/24f;if(unit<=0)return;float x=getWidth()/2f,y=getHeight()/2f;paint.setColor(getCurrentTextColor());paint.setAlpha(isEnabled()?255:100);paint.setStrokeWidth(2*unit);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStyle(Paint.Style.STROKE);canvas.drawLine(x-8*unit,y,x+8*unit,y-9*unit,paint);canvas.drawLine(x-8*unit,y,x+8*unit,y+9*unit,paint);paint.setStyle(Paint.Style.FILL);canvas.drawCircle(x-8*unit,y,3*unit,paint);canvas.drawCircle(x+8*unit,y-9*unit,3*unit,paint);canvas.drawCircle(x+8*unit,y+9*unit,3*unit,paint);}
     }
-    private static final class TransportButton extends Button {
+    private static final class TransportButton extends TouchButton {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final String kind;
         TransportButton(Context c,String kind){super(c);this.kind=kind;}
         @Override protected void onDraw(Canvas canvas){

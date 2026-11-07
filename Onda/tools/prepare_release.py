@@ -29,17 +29,17 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — fotos do TikTok com áudio
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — cores e toque leve
 
-Reconhece links curtos que levam a publicações de fotos do TikTok. O link enviado pelo usuário contém uma foto com música, não um vídeo MP4: agora o Onda oferece as imagens e o áudio acessível separadamente, sem informar incorretamente que o link expirou e sem inventar um MP4.
+Quatro interfaces novas: Festival, Algodão, Pôr do Sol e Lagoa, com fundos escuros, cores vivas e ícones em relevo. As quinze interfaces anteriores permanecem disponíveis. Escolha em Menu → Aparências.
 
-Cada imagem pública é conferida pelo conteúdo e salva sem recodificar em Onda/Imagens, criada automaticamente dentro da pasta já autorizada. Áudio original reconhecido é preservado em Onda/Áudios. Abrir último arquivo e compartilhar continuam usando as opções existentes do Android. Não inclui criação de vídeo a partir da foto.
+Botões de texto, reprodução, favoritos, compartilhar, voz e menu ganham um leve efeito de pressão e retorno ao toque. O tamanho dos controles e a área de toque são preservados. Em Aparências, a opção Botões animados permite desligar o efeito.
 
-Confere a publicação exata, ignora recomendações, rejeita posts privados/restritos e páginas HTML disfarçadas de arquivos. A disponibilidade depende do que o TikTok libera em cada consulta; não resolve login ou verificações. Vídeos MP4 e conversões existentes permanecem disponíveis.
+Animações finitas de 85/130 ms, somente durante interação: sem repetição, temporizador de animação, camada permanente, rede ou serviço adicional. A economia de bateria e a opção de desligar animações do Android impedem o efeito. Ao ocultar, desativar ou remover o botão, a escala volta ao normal. Não há promessa de consumo zero: a meta é minimizar o trabalho visual. Prévias e fundos permanecem estáticos.
 
-Mantém a correção de Atalhos, todos os recursos anteriores e a mesma assinatura. Nenhum serviço contínuo, SDK ou dependência adicionado. Testes de parser, conteúdo real, preservação da imagem e fluxo Android, além da regressão existente.
+Contraste das dezenove interfaces verificado. Testes Android verificam toque real, clique, retorno ao repouso, ausência de redesenho ocioso, preferência e cancelamento; a regressão existente confere reprodução e recursos anteriores.
 
-Mesmo pacote e certificado; instalar sobre a versão anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
+Mantém downloads de foto e áudio do TikTok, MP4, interfaces, reprodução, favoritos, compartilhamento, voz, PDF/OCR e rádios. Mesmo pacote e certificado; instale sobre a anterior. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
 Licenças e fontes: esta edição do aplicativo é software livre sob GNU GPL v3 ou posterior, sem garantia, com licença na tela Downloads → Licença e código-fonte e no pacote de fontes Onda-Fontes.zip. Inclui NewPipe Extractor (GPL v3 ou posterior), LAME (GNU Library GPL v2 ou posterior) e LibVLC 3.7.7 © VideoLAN e colaboradores (LGPL 2.1 ou posterior); as dependências conservam suas respectivas licenças. Fontes do aplicativo, NewPipe e LAME estão anexadas a esta release. Fonte do LibVLC: https://code.videolan.org/videolan/libvlcjni .
 
