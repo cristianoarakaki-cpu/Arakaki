@@ -1,0 +1,68 @@
+name: Onda - Conferir foto MP4 e toque 0727
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-feature-check-0727.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  features:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f1114489865f751110f5a8db70604a3c9cd1c17b
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Preparar amostra e assinatura isolada dos testes
+        run: |
+          mkdir -p Onda/.signing Onda/app/src/androidTest/assets checks
+          keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Onda isolated feature test'
+          python -m pip install --disable-pip-version-check imageio-ffmpeg==0.6.0
+          python - <<'PY'
+          import subprocess,imageio_ffmpeg
+          subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-hide_banner','-loglevel','error','-y','-f','lavfi','-i','sine=frequency=440:sample_rate=44100','-t','3','-c:a','aac','-b:a','128k','Onda/app/src/androidTest/assets/audio.m4a'],check=True)
+          PY
+      - name: Compilar apenas a variante de teste x86
+        run: gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug assembleDebugAndroidTest
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Executar os seis testes reais das novidades
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disk-size: 2048M
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
+            adb shell am instrument -w -e class br.com.onda.PhotoVideoTest,br.com.onda.TouchMotionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > checks/tests.txt
+            cat checks/tests.txt
+            adb exec-out run-as br.com.onda.musica cat files/photo-video-tests.json > checks/photo-video-tests.json || true
+            adb exec-out run-as br.com.onda.musica cat files/touch-motion-tests.json > checks/touch-motion-tests.json || true
+            cat checks/photo-video-tests.json
+            cat checks/touch-motion-tests.json
+            adb logcat -d > checks/logcat.txt
+            python -c 's=open("checks/tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Onda-Feature-Evidence-0727
+          path: checks/
