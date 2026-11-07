@@ -2,7 +2,7 @@ package br.com.onda;
 import java.util.*;
 import java.util.regex.*;
 import org.json.*;
-/** Exact public photo post. Photo and soundtrack are separate files, never a fabricated video. */
+/** Exact public photo post. Original files remain available; explicit MP4 composition is an additional choice. */
 final class TiktokPhotos {
  static JSONObject item(String html,String id)throws Exception{
   if(html==null||html.length()>8*1024*1024||id==null||!id.matches("[0-9]{10,24}"))throw new Exception("Publicação de fotos inválida.");
@@ -31,8 +31,10 @@ final class TiktokPhotos {
   }
   JSONObject music=post.optJSONObject("music");String audio=music==null?"":TiktokPage.address(music.opt("playUrl"));
   if(!audio.isEmpty())try{PublicMediaHttp.Page file=reader.read(audio,referer);String ext=PublicMediaHttp.mediaHeader(file.bytes,"mp3")?"mp3":PublicMediaHttp.mediaHeader(file.bytes,"aac")?"aac":PublicMediaHttp.mediaHeader(file.bytes,"m4a")?"m4a":"";if(!ext.isEmpty())options.add(new YoutubeDownloads.Option("Áudio da publicação • "+ext.toUpperCase(Locale.ROOT)+" original",file.url,null,ext,MediaDownloads.mime(ext),true,referer,false,session.snapshot()));}catch(java.io.InterruptedIOException error){if(Thread.currentThread().isInterrupted())throw error;}catch(Exception unavailable){}
+  YoutubeDownloads.Option soundtrack=null;for(YoutubeDownloads.Option option:options)if(option.mime.startsWith("audio/"))soundtrack=option;
+  if(soundtrack!=null){List<YoutubeDownloads.Option> original=new ArrayList<>(options);int number=0;for(YoutubeDownloads.Option image:original)if(image.mime.startsWith("image/")){number++;options.add(new YoutubeDownloads.Option("MP4 • montar foto "+number+" com música",image.first,soundtrack.first,"mp4","video/mp4",false,referer,false,session.snapshot(),true));}}
   if(options.isEmpty())throw new Exception("Esta publicação contém fotos com música, não um vídeo MP4. Os arquivos não ficaram acessíveis nesta consulta.");
-  return new YoutubeDownloads.Result(title+" • fotos e áudio separados",options);
+  return new YoutubeDownloads.Result(title+" • foto, áudio ou montar MP4",options);
  }
  static String imageExtension(byte[] b){if(b.length>=3&&(b[0]&255)==255&&(b[1]&255)==216&&(b[2]&255)==255)return "jpg";if(b.length>=8&&(b[0]&255)==137&&b[1]=='P'&&b[2]=='N'&&b[3]=='G'&&b[4]==13&&b[5]==10&&b[6]==26&&b[7]==10)return "png";if(b.length>=12&&b[0]=='R'&&b[1]=='I'&&b[2]=='F'&&b[3]=='F'&&b[8]=='W'&&b[9]=='E'&&b[10]=='B'&&b[11]=='P')return "webp";return "";}
  static String imageMime(String ext){return ext.equals("jpg")?"image/jpeg":"image/"+ext;}

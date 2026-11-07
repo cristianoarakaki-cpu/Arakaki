@@ -8,11 +8,12 @@ import java.util.*;
 
 final class YoutubeDownloads {
  static final class Option {
-  final String title,first,second,extension,mime,referer,requestCookies;final boolean original,combinedAudio;
+  final String title,first,second,extension,mime,referer,requestCookies;final boolean original,combinedAudio,photoVideo;
   Option(String title,String first,String second,String extension,String mime){this(title,first,second,extension,mime,false,"");}
   Option(String title,String first,String second,String extension,String mime,boolean original,String referer){this(title,first,second,extension,mime,original,referer,false);}
   Option(String title,String first,String second,String extension,String mime,boolean original,String referer,boolean combinedAudio){this(title,first,second,extension,mime,original,referer,combinedAudio,"");}
-  Option(String title,String first,String second,String extension,String mime,boolean original,String referer,boolean combinedAudio,String requestCookies){this.requestCookies=requestCookies==null?"":requestCookies;this.combinedAudio=combinedAudio;this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;this.original=original;this.referer=referer;}
+  Option(String title,String first,String second,String extension,String mime,boolean original,String referer,boolean combinedAudio,String requestCookies){this(title,first,second,extension,mime,original,referer,combinedAudio,requestCookies,false);}
+  Option(String title,String first,String second,String extension,String mime,boolean original,String referer,boolean combinedAudio,String requestCookies,boolean photoVideo){this.photoVideo=photoVideo;this.requestCookies=requestCookies==null?"":requestCookies;this.combinedAudio=combinedAudio;this.title=title;this.first=first;this.second=second;this.extension=extension;this.mime=mime;this.original=original;this.referer=referer;}
  }
  static final class Result {final String title;final List<Option> options;Result(String t,List<Option> o){title=t;options=o;}}
  private static boolean ready;

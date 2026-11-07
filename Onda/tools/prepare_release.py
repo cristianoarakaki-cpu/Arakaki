@@ -29,13 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — cores e toque leve
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — cores, toque leve e foto com música
 
 Quatro interfaces novas: Festival, Algodão, Pôr do Sol e Lagoa, com fundos escuros, cores vivas e ícones em relevo. As quinze interfaces anteriores permanecem disponíveis. Escolha em Menu → Aparências.
 
 Botões de texto, reprodução, favoritos, compartilhar, voz e menu ganham um leve efeito de pressão e retorno ao toque. O tamanho dos controles e a área de toque são preservados. Em Aparências, a opção Botões animados permite desligar o efeito.
 
 Animações finitas de 85/130 ms, somente durante interação: sem repetição, temporizador de animação, camada permanente, rede ou serviço adicional. A economia de bateria e a opção de desligar animações do Android impedem o efeito. Ao ocultar, desativar ou remover o botão, a escala volta ao normal. Não há promessa de consumo zero: a meta é minimizar o trabalho visual. Prévias e fundos permanecem estáticos.
+
+Foto com música do TikTok: além de salvar os originais separados, agora é possível escolher Vídeo MP4 • foto com música. O Onda monta a foto escolhida com o áudio em H.264/AAC, até 720 × 1280 com proporção preservada, somente quando solicitado. Em publicações com várias fotos, cada foto acessível pode ser escolhida para seu próprio vídeo. Não é uma montagem automática de todos os slides. A criação usa dois quadros por segundo para uma imagem estática e o codec nativo do aparelho; AAC compatível é reutilizado e outros áudios mono/estéreo compatíveis são convertidos para AAC. Usa processamento durante a montagem e mantém as opções de arquivos originais.
 
 Contraste das dezenove interfaces verificado. Testes Android verificam toque real, clique, retorno ao repouso, ausência de redesenho ocioso, preferência e cancelamento; a regressão existente confere reprodução e recursos anteriores.
 
