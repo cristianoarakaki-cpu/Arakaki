@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '42282215982'
-  SOURCE_SHA: 'e53bd3c22af66f5f35e9f37925a8a60771d90560'
+  SOURCE_RUN: '42385493900'
+  SOURCE_SHA: 'bd9bcc22a9f598049284075a804fd1ce26a90452'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
@@ -51,7 +51,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='92' versionName='0.72.6'" in info
+          assert "package: name='br.com.onda.musica' versionCode='93' versionName='0.72.7'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -66,7 +66,7 @@ jobs:
               assert 5500<=city_count<6000
               assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
-              for cls in [b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              for cls in [b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
@@ -78,7 +78,7 @@ jobs:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.72.6',versionCode=92,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.72.7',versionCode=93,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
