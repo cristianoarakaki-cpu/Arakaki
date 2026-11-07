@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '42385493900'
-  SOURCE_SHA: 'bd9bcc22a9f598049284075a804fd1ce26a90452'
+  SOURCE_RUN: '42387035073'
+  SOURCE_SHA: 'f1114489865f751110f5a8db70604a3c9cd1c17b'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
@@ -66,7 +66,7 @@ jobs:
               assert 5500<=city_count<6000
               assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
-              for cls in [b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              for cls in [b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
