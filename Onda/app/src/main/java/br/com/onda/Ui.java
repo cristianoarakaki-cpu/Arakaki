@@ -107,9 +107,9 @@ final class Ui {
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(activity,56));params.topMargin=dp(activity,8);bar.setLayoutParams(params);return bar;
     }
     private static final class SignalArt extends View {
-        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int seed;private FutureArt future;private AppearancePalette drawn;
-        SignalArt(Context c,int seed){super(c);this.seed=seed;}
-        @Override protected void onDraw(Canvas canvas){if(palette.variant>0){if(drawn!=palette){drawn=palette;future=new FutureArt(palette);}future.setBounds(0,0,getWidth(),getHeight());future.draw(canvas);return;}float w=getWidth(),h=getHeight();paint.setShader(new LinearGradient(0,0,w,h,new int[]{palette==AppearancePalette.ALL[0]?0xFF19364C:AppearancePalette.blend(SURFACE,CYAN,.15f),palette==AppearancePalette.ALL[0]?0xFF272145:AppearancePalette.blend(SURFACE,VIOLET,.18f)},null,Shader.TileMode.CLAMP));canvas.drawRoundRect(0,0,w,h,w*.24f,w*.24f,paint);paint.setShader(null);paint.setColor(0x33000000|(CYAN&0xFFFFFF));paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(Math.max(1,w*.017f));canvas.drawCircle(w*.5f,h*.5f,w*.36f,paint);paint.setStyle(Paint.Style.FILL);float[] bars={.18f,.38f,.60f,.36f,.20f};for(int i=0;i<5;i++){float bh=h*bars[i];paint.setColor(i<3?CYAN:VIOLET);canvas.drawRoundRect(w*(.27f+i*.10f),h*.5f-bh*.5f,w*(.315f+i*.10f),h*.5f+bh*.5f,w*.025f,w*.025f,paint);} }
+        private final Drawable lion;
+        SignalArt(Context c,int seed){super(c);lion=LionBrand.drawable(c);}
+        @Override protected void onDraw(Canvas canvas){lion.setBounds(0,0,getWidth(),getHeight());lion.draw(canvas);}
     }
     /** Heart geometry uses dp, so Android font scaling cannot crop the icon. */
     private static final class HeartButton extends TouchButton {
