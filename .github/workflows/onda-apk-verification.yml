@@ -8,13 +8,13 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '42758456401'
-  SOURCE_SHA: '9ea3afe0b18d07c4a22249a8e4df4dc01e988547'
+  SOURCE_RUN: '43013730951'
+  SOURCE_SHA: '5a0f34bc3bc2a1da2c6f16feffded3a1ec42489b'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - name: Conferir origem do artefato
         env:
@@ -27,6 +27,16 @@ jobs:
           assert run['head_sha']==os.environ['SOURCE_SHA'] and run['head_branch']=='main' and run['event']=='push'
           assert run['run_attempt']==int(os.environ['SOURCE_ATTEMPT'])
           PY
+      - name: Aguardar o APK da compilação de origem
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for ONDA_CHECK in $(seq 1 80); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?name=Onda-Android-APK" > /tmp/artifacts.json
+            if python -c 'import json; assert any(not a["expired"] for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'; then break; fi
+            sleep 15
+          done
+          python -c 'import json; assert any(not a["expired"] for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'
       - uses: actions/download-artifact@v4
         with:
           name: Onda-Android-APK
@@ -51,7 +61,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='94' versionName='0.72.8'" in info
+          assert "package: name='br.com.onda.musica' versionCode='95' versionName='0.72.9'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -72,7 +82,8 @@ jobs:
               assert 5500<=city_count<6000
               assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
-              for cls in [b'LionBrand;',b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              assert b'PdfTestTtsService;' not in dex
+              for cls in [b'PdfSpeech;',b'PdfSpeechText;',b'LionBrand;',b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
@@ -84,7 +95,7 @@ jobs:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.72.8',versionCode=94,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.72.9',versionCode=95,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
