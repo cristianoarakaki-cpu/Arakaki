@@ -29,13 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — leão dourado rugindo
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — PDF em voz alta
 
-O símbolo anterior foi substituído pelo leão dourado 3D escolhido pelo usuário (opção 2), no ícone do Android, no cabeçalho, nos símbolos padrão da biblioteca e nas prévias de aparência. O nome Onda e as capas próprias dos conteúdos permanecem.
+O leitor de PDF agora oferece Ouvir, Pausar/Retomar, Parar, escolha de vozes offline instaladas no Android e velocidade de 50% a 200%. Prioriza português brasileiro e permite continuar nas páginas seguintes. A leitura de páginas digitalizadas usa o OCR local já existente, que pode conter erros.
 
-Imagem local e estática: não baixa recursos da internet, não toca rugido e não cria animação contínua. Os controles internos compartilham uma única imagem pequena em memória, sem decodificar uma cópia para cada música. As dezenove aparências e o efeito de toque opcional continuam disponíveis.
+A narração é iniciada apenas pelo usuário e pausa ao sair do leitor, perder o foco de áudio ou desconectar o fone. Processa uma página e um trecho de voz por vez, sem serviço pago, envio do PDF ou animação contínua. Para instalar outras vozes, use Voz → Vozes do Android.
 
-Mantém a montagem de foto com música em MP4, downloads originais, reprodução, favoritos, compartilhamento, voz, PDF/OCR e rádios. Mesmo pacote e certificado; instale sobre a versão anterior, sem desinstalar. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
+Preserva o leão dourado, as dezenove aparências, foto com música em MP4, downloads, reprodução, favoritos, compartilhamento, comandos de voz, PDF/OCR/boletos e rádios. Mesmo pacote e certificado: instale sobre a versão anterior, sem desinstalar. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
 
 Licenças e fontes: esta edição do aplicativo é software livre sob GNU GPL v3 ou posterior, sem garantia, com licença na tela Downloads → Licença e código-fonte e no pacote de fontes Onda-Fontes.zip. Inclui NewPipe Extractor (GPL v3 ou posterior), LAME (GNU Library GPL v2 ou posterior) e LibVLC 3.7.7 © VideoLAN e colaboradores (LGPL 2.1 ou posterior); as dependências conservam suas respectivas licenças. Fontes do aplicativo, NewPipe e LAME estão anexadas a esta release. Fonte do LibVLC: https://code.videolan.org/videolan/libvlcjni .
 
