@@ -3,6 +3,7 @@ import android.app.*;
 import android.content.Context;
 import android.widget.Toast;
 
+@androidx.annotation.OptIn(markerClass=androidx.media3.common.util.UnstableApi.class)
 final class VoiceAiSettings {
     static boolean enabled(Context c){return c.getSharedPreferences("voice_ai",0).getBoolean("local_enabled",true);}
     static void show(Activity activity){activity.startActivity(new android.content.Intent(activity,AutomationActivity.class));}

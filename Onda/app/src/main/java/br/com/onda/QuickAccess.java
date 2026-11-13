@@ -6,6 +6,7 @@ import android.view.View;
 import java.util.*;
 
 /** User-chosen destinations only; opened on demand with the existing navigation. */
+@androidx.annotation.OptIn(markerClass=androidx.media3.common.util.UnstableApi.class)
 final class QuickAccess {
     static final String PREF="quick_access",KEY="screens";
     static final VoiceCommand.Action[] ACTIONS={VoiceCommand.Action.OPEN_YOUTUBE,VoiceCommand.Action.OPEN_IMAGES,VoiceCommand.Action.OPEN_RADIOS,VoiceCommand.Action.OPEN_DOWNLOADS,VoiceCommand.Action.OPEN_UPDATES,VoiceCommand.Action.OPEN_VIDEOS,VoiceCommand.Action.OPEN_PDF,VoiceCommand.Action.OPEN_SOUND,VoiceCommand.Action.OPEN_CONVERTER,VoiceCommand.Action.OPEN_PLAYLISTS,VoiceCommand.Action.OPEN_QUEUE,VoiceCommand.Action.OPEN_APPEARANCE,VoiceCommand.Action.OPEN_FILES,VoiceCommand.Action.OPEN_CHAPTERS,VoiceCommand.Action.OPEN_VOICE_PHRASES,VoiceCommand.Action.OPEN_MUSIC};
