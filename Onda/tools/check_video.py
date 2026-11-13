@@ -28,6 +28,11 @@ def nodes():
         except (subprocess.CalledProcessError,ET.ParseError):
             if attempt==3:raise
             time.sleep(.3)
+def local_ai_switch(current):
+    # Android Switch accessibility text appends its ON/OFF state to the label.
+    return next((n for n in current if n.attrib.get('class')=='android.widget.Switch'
+                 and n.attrib.get('checkable')=='true'
+                 and n.attrib.get('text','').startswith('IA local nos comandos de voz')),None)
 def point(node):
     v=[int(x) for x in re.findall(r'\d+',node.attrib['bounds'])];return ((v[0]+v[2])//2,(v[1]+v[3])//2)
 def locate(desc):
@@ -440,11 +445,11 @@ capture('08-assistente-ia')
 # The assistant is now a full scrollable screen. Check the same local-AI setting
 # through its new switch instead of expecting the removed activation dialog.
 for _ in range(8):
- setting=next((n for n in nodes() if n.attrib.get('text')=='IA local nos comandos de voz'),None)
+ setting=local_ai_switch(nodes())
  if setting is not None:
   if setting.attrib.get('checked')!='true':
    shell('input','tap',*point(setting));time.sleep(.3)
-  assert any(n.attrib.get('text')=='IA local nos comandos de voz' and n.attrib.get('checked')=='true' for n in nodes())
+  assert local_ai_switch(nodes()) is not None and local_ai_switch(nodes()).attrib.get('checked')=='true'
   break
  shell('input','swipe',540,1450,540,700,300);time.sleep(.3)
 else:raise AssertionError('Local-AI switch not reachable in the new assistant')
