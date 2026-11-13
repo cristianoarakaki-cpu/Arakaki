@@ -11,13 +11,13 @@ import java.util.*;
 final class LibraryStore {
     static List<MediaItem> scan(Context context){
         ArrayList<MediaItem> songs=new ArrayList<>();
-        String[] columns={"_id","title","artist","album","duration","_size","date_added"};
+        String[] columns={"_id","title","artist","album","duration","_size","date_added","composer"};
         try(Cursor c=context.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,columns,null,null,MediaStore.Audio.Media.TITLE+" COLLATE NOCASE ASC")){
             if(c!=null)while(c.moveToNext()){
                 if(Thread.currentThread().isInterrupted())break;if(c.getLong(4)<=0)continue;
                 String id=c.getString(0),name=c.getString(1),author=c.getString(2),album=c.getString(3);
                 Bundle extras=new Bundle();extras.putLong("durationMs",c.getLong(4));extras.putLong("size",c.getLong(5));extras.putLong("added",c.getLong(6));
-                songs.add(new MediaItem.Builder().setMediaId(id).setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,c.getLong(0))).setMediaMetadata(new MediaMetadata.Builder().setTitle(name==null?"Sem título":name).setArtist(author==null||author.equals("<unknown>")?"Artista desconhecido":author).setAlbumTitle(album).setExtras(extras).build()).build());
+                songs.add(new MediaItem.Builder().setMediaId(id).setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,c.getLong(0))).setMediaMetadata(new MediaMetadata.Builder().setTitle(name==null?"Sem título":name).setArtist(author==null||author.equals("<unknown>")?"Artista desconhecido":author).setAlbumTitle(album).setComposer(c.getString(7)).setExtras(extras).build()).build());
             }
         }
         DownloadedAudio.merge(context,songs);

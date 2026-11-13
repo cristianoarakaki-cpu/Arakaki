@@ -1,0 +1,11 @@
+package br.com.onda;
+import androidx.media3.common.*;
+import java.lang.reflect.Proxy;
+import org.junit.Test;
+import static org.junit.Assert.*;
+@androidx.media3.common.util.UnstableApi
+public class NowPlayingInfoTest {
+ private Player player(MediaItem item,MediaMetadata current){return (Player)Proxy.newProxyInstance(Player.class.getClassLoader(),new Class[]{Player.class},(proxy,method,args)->{if(method.getName().equals("getCurrentMediaItem"))return item;if(method.getName().equals("getMediaMetadata"))return current;throw new AssertionError("Unexpected player operation: "+method.getName());});}
+ @Test public void radioUsesCurrentStreamMetadataAndKeepsStationIdentity(){MediaItem item=RadioMedia.item(new RadioStation("identity-test","Rádio Brasil","https://example.com/radio.mp3","Brasil","MP3",64,false));TrackIdentity first=NowPlayingInfo.read(player(item,new MediaMetadata.Builder().setTitle("Chitãozinho e Xororó - Evidências").build()));assertEquals("Evidências",first.title);assertEquals("Chitãozinho e Xororó",first.artist);assertEquals("Rádio Brasil",first.station);TrackIdentity second=NowPlayingInfo.read(player(item,new MediaMetadata.Builder().setTitle("Outra música").setArtist("Outra artista").build()));assertEquals("Outra música",second.title);assertEquals("Outra artista",second.artist);assertEquals("Rádio Brasil",item.mediaMetadata.title);assertEquals("radio:identity-test",item.mediaId);assertEquals("",NowPlayingInfo.read(player(item,item.mediaMetadata)).title);}
+ @Test public void localMetadataIncludesComposerAndMissingFieldsFallBack(){MediaItem item=new MediaItem.Builder().setMediaId("12").setUri("content://media/external/audio/media/12").setMediaMetadata(new MediaMetadata.Builder().setTitle("Canção").setArtist("Intérprete").setComposer("Compositor").setAlbumTitle("Álbum").build()).build();TrackIdentity info=NowPlayingInfo.read(player(item,new MediaMetadata.Builder().setArtist("Novo intérprete").build()));assertEquals("Canção",info.title);assertEquals("Novo intérprete",info.artist);assertEquals("Compositor",info.composer);assertEquals("Álbum",info.album);assertTrue(info.details().contains("Não é reconhecimento pelo som"));assertNull(NowPlayingInfo.read(player(null,MediaMetadata.EMPTY)));}
+}

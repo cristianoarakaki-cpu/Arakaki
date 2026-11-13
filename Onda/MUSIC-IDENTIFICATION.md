@@ -1,0 +1,2 @@
+### Informações da música (0.73.1)
+Toque no título em Tocando agora ou no quadro da emissora em Rádios para ver e copiar música, artista, compositor e álbum. Usa os metadados já recebidos pelo tocador; campos ausentes não são inventados. Rádio acompanha a música informada pela transmissão, mantendo a identidade e os favoritos da emissora. Sem microfone, servidor de reconhecimento, API paga, sondagens ou tarefa periódica adicional. Não é identificação por impressão digital do áudio.
