@@ -1,0 +1,3 @@
+Google Translate attribution badge, unmodified. Source: https://docs.cloud.google.com/static/translate/images/google-translate-attribution.zip
+Usage guidelines: https://developers.google.com/ml-kit/language/translation/translation-terms and https://cloud.google.com/translate/attribution
+Google and Google Translate are trademarks of Google LLC.

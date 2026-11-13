@@ -3,6 +3,8 @@ import android.content.Context;
 import android.view.View;
 import android.widget.Button;
 /** Button metrics and click semantics stay native; only its drawing scale changes on press. */
+// Onda uses platform Activities and a custom renderer, without an AppCompat theme.
+@android.annotation.SuppressLint("AppCompatCustomView")
 class TouchButton extends Button {
  private boolean motionActive;
  TouchButton(Context context){super(context);}

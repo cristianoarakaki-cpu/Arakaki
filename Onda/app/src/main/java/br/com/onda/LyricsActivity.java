@@ -70,7 +70,7 @@ public class LyricsActivity extends Activity {
         track = new EditText(this);track.setSingleLine(true);track.setTextColor(Color.WHITE);track.setHintTextColor(Ui.MUTED);track.setHint("Nome da música");track.setContentDescription("Nome da música para buscar letra");Ui.input(track);LinearLayout searchFields=new LinearLayout(this);LinearLayout.LayoutParams trackParams=new LinearLayout.LayoutParams(0,dp(52),1);trackParams.rightMargin=dp(8);searchFields.addView(track,trackParams);root.addView(searchFields);
         artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(Ui.MUTED);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");Ui.input(artist);searchFields.addView(artist,new LinearLayout.LayoutParams(0,dp(52),1));
         Button search=button("Buscar letra",v->load());LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,dp(48));searchParams.topMargin=dp(8);root.addView(search,searchParams);
-        translate=button("Traduzir letra",v->translationOptions());translate.setContentDescription("Traduzir letra no celular");translate.setEnabled(false);root.addView(translate,new LinearLayout.LayoutParams(-1,dp(48)));
+        translate=button("Traduzir com Google",v->translationOptions());translate.setContentDescription("Traduzir letra no celular");translate.setEnabled(false);root.addView(translate,new LinearLayout.LayoutParams(-1,dp(48)));
         scroll = new ScrollView(this);linesView = column();scroll.addView(linesView);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;if(e.getActionMasked()==android.view.MotionEvent.ACTION_UP||e.getActionMasked()==android.view.MotionEvent.ACTION_CANCEL)restartTick();return false;});
         play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});Ui.primary(play);root.addView(play);
@@ -136,6 +136,7 @@ public class LyricsActivity extends Activity {
         cancelTranslation();final int token=translationGeneration;getPreferences(0).edit().putString("translate_source",source).putString("translate_target",target).apply();originalRows.clear();translationLabels.clear();
         if(!lines.isEmpty()){for(int i=0;i<lines.size();i++){originalRows.add(lines.get(i).text);translationLabels.add(labels.get(i));labels.get(i).setText(lines.get(i).text.isEmpty()?"♪":lines.get(i).text);}}
         else{linesView.removeAllViews();for(String row:originalLyrics.plain.split("\\r?\\n",-1)){originalRows.add(row);TextView label=text(row,22,Ui.TEXT);linesView.addView(label);translationLabels.add(label);}}
+        showTranslationAttribution();
         status.setText(wifi?"Preparando idiomas • download inicial por Wi-Fi. A música continua tocando.":"Preparando idiomas • pode usar dados móveis. A música continua tocando.");
         try{translator=new LocalLyricTranslator(source,target);translator.prepare(wifi,()->{
             if(isDestroyed()||token!=translationGeneration||!screenStarted)return;status.setText("Traduzindo no celular • Google ML Kit • a música continua tocando");
@@ -147,6 +148,7 @@ public class LyricsActivity extends Activity {
             });translationJob.start();
         },error->translationFailed(token));}catch(Exception error){translationFailed(token);}
     }
+    private void showTranslationAttribution(){View old=linesView.findViewWithTag("google_translation_attribution");if(old!=null)return;ImageView badge=new ImageView(this);badge.setTag("google_translation_attribution");badge.setImageResource(br.com.onda.R.drawable.google_translation_attribution);badge.setContentDescription("powered by Google Translate");badge.setScaleType(ImageView.ScaleType.CENTER_INSIDE);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(dp(190),dp(30));params.gravity=Gravity.CENTER_HORIZONTAL;linesView.addView(badge,0,params);}
     private void translationFailed(int token){if(isDestroyed()||token!=translationGeneration)return;cancelTranslation();status.setText("Não foi possível preparar a tradução. Confira a conexão para baixar os idiomas e tente novamente. A letra original foi mantida.");}
     private void style(TextView v,boolean current){v.setTextColor(current?Ui.CYAN:Ui.MUTED);v.setTypeface(null,current?Typeface.BOLD:Typeface.NORMAL);}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
