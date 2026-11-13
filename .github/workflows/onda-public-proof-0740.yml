@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for ONDA_CHECK in $(seq 1 110); do
-            gh api repos/$GITHUB_REPOSITORY/actions/runs/43526135813 > /tmp/source-run.json
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/43530327873 > /tmp/source-run.json
             ONDA_STATUS=$(python -c "import json; print(json.load(open('/tmp/source-run.json'))['status'])")
             if [ "$ONDA_STATUS" = completed ]; then break; fi
             sleep 45
@@ -24,20 +24,20 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('/tmp/source-run.json'))
-          assert r['head_sha']=='ad38c7ae88da741e7f0a4a30fbecb8a4ebc40864' and r['run_attempt']==1 and r['conclusion']=='success'
+          assert r['head_sha']=='a87b7eecedd502f2914a72f918f0d510e6d3546a' and r['run_attempt']==1 and r['conclusion']=='success'
           PY
       - name: Conferir aprovação do verificador do APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/runs/43528982143 > /tmp/apk-run.json
-          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='ddfed07ffab534f66453e532152cc9b6efcf5ea5' and r['run_attempt']==1 and r['conclusion']=='success'"
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43530535804 > /tmp/apk-run.json
+          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='82ac4be8e2abb4fe0818ec18c9eb461505aa748b' and r['run_attempt']==1 and r['conclusion']=='success'"
       - uses: actions/download-artifact@v4
         with:
           name: Onda-Verify-Part-1
           path: verifier-proof
           github-token: ${{ github.token }}
-          run-id: '43528982143'
+          run-id: '43530535804'
       - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
         env:
           GH_TOKEN: ${{ github.token }}
@@ -133,7 +133,7 @@ jobs:
           name: Onda-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43526135813'
+          run-id: '43530327873'
       - name: Conferir a interface colorida e economia de rádio
         run: |
           python - <<'PY'
@@ -151,10 +151,10 @@ jobs:
               data=json.loads(files[0].read_text())
               if name=='on-device-translation.json':assert data['realModelDownloaded'] and data['source']=='en' and data['target']=='pt' and 'bom dia' in data['actualOutput'].lower()
               if name=='radio-playback.json':assert data['radioEconomyAdaptiveCap']==64000 and data['lowestRadioBitratePreferred'] and data['localAudioQualityRestored']
-              if name.startswith('screen-layout'):assert 'AutomationActivity' in data['screens'] and not data['clippedNativeText']
+              if name.startswith('screen-layout'):assert 'AutomationActivity' in data['screens'] and 'LyricsActivity' in data['screens'] and not data['clippedNativeText']
               print(name+'='+json.dumps(data))
           PY
-  lyrics-preview:
+  layout-preview:
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -164,17 +164,16 @@ jobs:
           name: Onda-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43526135813'
-      - name: Conferir telas reais de letras normal e compacta
+          run-id: '43530327873'
+      - name: Conferir captura real da biblioteca em tela compacta
         run: |
           python - <<'PY'
           from pathlib import Path
           import base64
-          for mode in ['normal','compact']:
-              images=list(Path('ui-proof').rglob('audit-LyricsActivity-'+mode+'.png'))
-              assert len(images)==1
-              encoded=base64.b64encode(images[0].read_bytes()).decode()
-              print('LYRICS_'+mode.upper()+'_IMAGE_BEGIN')
-              for index in range(0,len(encoded),4096):print(encoded[index:index+4096])
-              print('LYRICS_'+mode.upper()+'_IMAGE_END')
+          images=list(Path('ui-proof').rglob('library-compact.png'))
+          assert len(images)==1
+          encoded=base64.b64encode(images[0].read_bytes()).decode()
+          print('LIBRARY_COMPACT_IMAGE_BEGIN')
+          for index in range(0,len(encoded),4096):print(encoded[index:index+4096])
+          print('LIBRARY_COMPACT_IMAGE_END')
           PY
