@@ -24,20 +24,20 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('/tmp/source-run.json'))
-          assert r['head_sha']=='fba7854a51211c573d30034094eb8478028c73a5' and r['run_attempt']==1 and r['conclusion']=='success'
+          assert r['head_sha']=='fba7854a51211c573d30034094eb8478028c73a5' and r['run_attempt']==2 and r['conclusion']=='success'
           PY
       - name: Conferir aprovação do verificador do APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/runs/43462945766 > /tmp/apk-run.json
-          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='479649d56ecef263c5259523e77fb71b8d2d90c0' and r['run_attempt']==1 and r['conclusion']=='success'"
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43467774249 > /tmp/apk-run.json
+          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='1941ddafb1c755c912f6dd7fc817e61547d6bd41' and r['run_attempt']==1 and r['conclusion']=='success'"
       - uses: actions/download-artifact@v4
         with:
           name: Onda-Verify-Part-1
           path: verifier-proof
           github-token: ${{ github.token }}
-          run-id: '43462945766'
+          run-id: '43467774249'
       - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,7 +50,7 @@ jobs:
           root = Path('/tmp/onda-public-proof')
           root.mkdir(exist_ok=True)
           proof = json.loads(next(Path('verifier-proof').rglob('apk-verified.json')).read_text())
-          assert proof['version']=='0.73.0' and proof['versionCode']==96
+          assert proof['version']=='0.73.0' and proof['versionCode']==96 and proof['sourceAttempt']==2
           assert proof['certificate']=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           prefix = 'https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/onda-v0.73.0/'
           def open_url(url):
