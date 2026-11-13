@@ -21,25 +21,37 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > /tmp/onda-build.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/attempts/$SOURCE_ATTEMPT/jobs" > /tmp/onda-attempt-jobs.json
           python - <<'PY'
           import json,os
           run=json.load(open('/tmp/onda-build.json'))
           assert run['head_sha']==os.environ['SOURCE_SHA'] and run['head_branch']=='main' and run['event']=='push'
           assert run['run_attempt']==int(os.environ['SOURCE_ATTEMPT'])
+          jobs=json.load(open('/tmp/onda-attempt-jobs.json'))['jobs'];assert jobs and all(j['run_attempt']==int(os.environ['SOURCE_ATTEMPT']) for j in jobs)
+          open('/tmp/onda-attempt-start.txt','w').write(min(j['started_at'] for j in jobs if j['started_at']))
           PY
       - name: Aguardar o APK da compilação de origem
+        id: source_artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for ONDA_CHECK in $(seq 1 80); do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?name=Onda-Android-APK" > /tmp/artifacts.json
-            if python -c 'import json; assert any(not a["expired"] for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'; then break; fi
+            if python -c 'import json; assert any(not a["expired"] and a["created_at"]>=open("/tmp/onda-attempt-start.txt").read() for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'; then break; fi
             sleep 15
           done
-          python -c 'import json; assert any(not a["expired"] for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'
+          python -c 'import json; assert any(not a["expired"] and a["created_at"]>=open("/tmp/onda-attempt-start.txt").read() for a in json.load(open("/tmp/artifacts.json"))["artifacts"])'
+          python - <<'PY'
+          import json,os
+          start=open('/tmp/onda-attempt-start.txt').read()
+          artifacts=[a for a in json.load(open('/tmp/artifacts.json'))['artifacts'] if not a['expired'] and a['created_at']>=start]
+          selected=max(artifacts,key=lambda a:a['id'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('artifact_id='+str(selected['id'])+'\n')
+          print('Verified artifact from current attempt:',selected['id'],selected['created_at'])
+          PY
       - uses: actions/download-artifact@v4
         with:
-          name: Onda-Android-APK
+          artifact-ids: ${{ steps.source_artifact.outputs.artifact_id }}
           path: verify
           github-token: ${{ github.token }}
           run-id: ${{ env.SOURCE_RUN }}
