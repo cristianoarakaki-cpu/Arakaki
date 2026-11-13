@@ -50,11 +50,11 @@ final class UpdateRepository {
         File partial=new File(directory,"download.part"),apk=new File(directory,"onda-update.apk");
         HttpURLConnection c=connect(update.url);boolean complete=false;
         try{
-            long length=c.getContentLengthLong();if(length>64*1024*1024)throw new IOException("APK muito grande");
+            long length=c.getContentLengthLong();UpdateDownloadPolicy.checkSpace(length,directory.getUsableSpace());
             MessageDigest hash=MessageDigest.getInstance("SHA-256");long bytes=0,last=0;
             try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(partial)){
                 byte[] buffer=new byte[16384];int n;
-                while((n=in.read(buffer))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException();bytes+=n;if(bytes>64*1024*1024)throw new IOException("APK muito grande");out.write(buffer,0,n);hash.update(buffer,0,n);long now=System.currentTimeMillis();if(now-last>300){last=now;progress.changed(bytes,length);}}
+                while((n=in.read(buffer))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException();bytes+=n;UpdateDownloadPolicy.checkSize(bytes);out.write(buffer,0,n);hash.update(buffer,0,n);long now=System.currentTimeMillis();if(now-last>300){last=now;progress.changed(bytes,length);}}
             }
             StringBuilder actual=new StringBuilder();for(byte b:hash.digest())actual.append(String.format(java.util.Locale.ROOT,"%02x",b&255));
             if(!actual.toString().equalsIgnoreCase(update.sha))throw new IOException("Download incompleto ou alterado. Tente novamente.");

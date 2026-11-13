@@ -90,7 +90,7 @@ jobs:
         run: |
           mkdir -p Onda/distribution
           cp Onda/app/build/outputs/apk/debug/app-debug.apk Onda/distribution/Onda-Musica.apk
-          python -c 'from pathlib import Path; p=Path("Onda/distribution/Onda-Musica.apk"); assert p.stat().st_size <= 64*1024*1024, "APK excede o limite do atualizador anterior"; print("APK de distribuição:",p.stat().st_size,"bytes")'
+          python -c 'from pathlib import Path; p=Path("Onda/distribution/Onda-Musica.apk"); assert p.stat().st_size <= 256*1024*1024, "APK excede o limite do atualizador novo"; print("APK de distribuição:",p.stat().st_size,"bytes"); print("Instalação direta necessária em atualizadores antigos" if p.stat().st_size>64*1024*1024 else "Compatível com o tamanho aceito pelo atualizador antigo")'
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
       - name: Preparar gerador de vídeos de teste
         timeout-minutes: 3
