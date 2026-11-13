@@ -10,7 +10,7 @@ permissions:
 env:
   SOURCE_RUN: '43462556607'
   SOURCE_SHA: 'fba7854a51211c573d30034094eb8478028c73a5'
-  SOURCE_ATTEMPT: '1'
+  SOURCE_ATTEMPT: '2'
 jobs:
   split:
     runs-on: ubuntu-24.04
