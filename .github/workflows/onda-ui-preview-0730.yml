@@ -7,7 +7,7 @@ permissions:
   contents: read
   actions: read
 jobs:
-  player:
+  failure:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -16,36 +16,18 @@ jobs:
           name: Onda-Visual-Preview
           path: ui
           github-token: ${{ github.token }}
-          run-id: '43442596275'
-      - name: Mostrar captura do tocador ja validado nativamente
+          run-id: '43452833550'
+      - name: Inspecionar hierarquia real da central
         run: |
           python - <<'PY'
           from pathlib import Path
-          import base64
-          files=list(Path('ui').rglob('automation-color-player.png'));assert len(files)==1
+          import base64,json,xml.etree.ElementTree as ET
+          files=list(Path('ui').rglob('failure-screen.xml'));assert len(files)==1
+          root=ET.fromstring(files[0].read_bytes())
+          print('FAILURE_NODES='+json.dumps([n.attrib for n in root.iter('node')],ensure_ascii=False))
+          files=list(Path('ui').rglob('failure-screen.png'));assert len(files)==1
           data=base64.b64encode(files[0].read_bytes()).decode()
-          print('EARLY_PLAYER_BEGIN')
+          print('FAILURE_IMAGE_BEGIN')
           for i in range(0,len(data),4096):print(data[i:i+4096])
-          print('EARLY_PLAYER_END')
-          PY
-  central:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: Onda-Visual-Preview
-          path: ui
-          github-token: ${{ github.token }}
-          run-id: '43442596275'
-      - name: Mostrar captura da central ja validada nativamente
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import base64
-          files=list(Path('ui').rglob('automation-central.png'));assert len(files)==1
-          data=base64.b64encode(files[0].read_bytes()).decode()
-          print('EARLY_CENTRAL_BEGIN')
-          for i in range(0,len(data),4096):print(data[i:i+4096])
-          print('EARLY_CENTRAL_END')
+          print('FAILURE_IMAGE_END')
           PY
