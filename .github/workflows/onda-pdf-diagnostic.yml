@@ -1,0 +1,35 @@
+name: Onda - Conferir diagnóstico anterior de PDF
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-pdf-diagnostic.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: ui
+          github-token: ${{ github.token }}
+          run-id: '43522244325'
+      - name: Ler diagnóstico de falha sem alterar o aplicativo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          images=list(Path('ui').rglob('pdf-failure.png'))
+          assert len(images)==1
+          encoded=base64.b64encode(images[0].read_bytes()).decode()
+          print('PDF_FAILURE_IMAGE_BEGIN')
+          for offset in range(0,len(encoded),4096):print(encoded[offset:offset+4096])
+          print('PDF_FAILURE_IMAGE_END')
+          logs=list(Path('ui').rglob('pdf-failure-logcat.txt'))
+          for log in logs:
+              lines=[line for line in log.read_text(errors='replace').splitlines() if any(term in line for term in ['OndaPdf','Boleto','Tesseract','FATAL EXCEPTION','PdfBook','OutOfMemoryError'])]
+              print('\n'.join(lines[-80:]))
+          PY
