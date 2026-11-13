@@ -1,0 +1,6 @@
+package br.com.onda;
+import android.graphics.Bitmap;import com.google.zxing.*;import org.junit.Test;import static org.junit.Assert.*;
+public class PdfLuminanceTest {
+ @Test public void rowConversionMatchesOriginalDecoderIncludingCrop(){int w=17,h=19;int[] pixels=new int[w*h];for(int i=0;i<pixels.length;i++)pixels[i]=0xff000000|(i*23117&0xffffff);Bitmap image=Bitmap.createBitmap(pixels,w,h,Bitmap.Config.ARGB_8888);try{LuminanceSource expected=new RGBLuminanceSource(w,h,pixels),actual=BoletoScanner.luminance(image,()->false);assertArrayEquals(expected.getMatrix(),actual.getMatrix());assertArrayEquals(expected.crop(2,3,11,9).getMatrix(),actual.crop(2,3,11,9).getMatrix());assertArrayEquals(expected.getRow(16,null),actual.getRow(16,null));assertNull(BoletoScanner.luminance(image,()->true));}finally{image.recycle();}}
+ @Test public void fullPdfBarcodeResolutionUsesOnlyLuminanceBuffer(){Bitmap image=Bitmap.createBitmap(1800,1380,Bitmap.Config.ARGB_8888);try{image.eraseColor(android.graphics.Color.WHITE);LuminanceSource actual=BoletoScanner.luminance(image,()->false);assertEquals(1800*1380,actual.getMatrix().length);assertEquals(255,actual.getMatrix()[0]&255);assertEquals(255,actual.getMatrix()[actual.getMatrix().length-1]&255);}finally{image.recycle();}}
+}
