@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for ONDA_CHECK in $(seq 1 110); do
-            gh api repos/$GITHUB_REPOSITORY/actions/runs/43446081984 > /tmp/source-run.json
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/43452833550 > /tmp/source-run.json
             ONDA_STATUS=$(python -c "import json; print(json.load(open('/tmp/source-run.json'))['status'])")
             if [ "$ONDA_STATUS" = completed ]; then break; fi
             sleep 45
@@ -24,20 +24,20 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('/tmp/source-run.json'))
-          assert r['head_sha']=='5806e7ff015c4fd14963a2c30de417ba1dcfe880' and r['run_attempt']==1 and r['conclusion']=='success'
+          assert r['head_sha']=='0913a5ae025d82ef6421166d69ce3ea91dd2c0de' and r['run_attempt']==1 and r['conclusion']=='success'
           PY
       - name: Conferir aprovação do verificador do APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/$GITHUB_REPOSITORY/actions/runs/43446212142 > /tmp/apk-run.json
-          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='2c201f31bed95368802d9c82cf4d631e9afb99c3' and r['run_attempt']==1 and r['conclusion']=='success'"
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43453216475 > /tmp/apk-run.json
+          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='726a32e4e2278db4d25f12d4237f70ece9674435' and r['run_attempt']==1 and r['conclusion']=='success'"
       - uses: actions/download-artifact@v4
         with:
           name: Onda-Verify-Part-1
           path: verifier-proof
           github-token: ${{ github.token }}
-          run-id: '43446212142'
+          run-id: '43453216475'
       - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
         env:
           GH_TOKEN: ${{ github.token }}
@@ -133,7 +133,7 @@ jobs:
           name: Onda-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43446081984'
+          run-id: '43452833550'
       - name: Conferir a interface colorida e economia de rádio
         run: |
           python - <<'PY'
@@ -163,7 +163,7 @@ jobs:
           name: Onda-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43446081984'
+          run-id: '43452833550'
       - name: Conferir captura real da central inteligente
         run: |
           python - <<'PY'
