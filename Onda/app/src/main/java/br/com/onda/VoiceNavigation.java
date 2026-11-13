@@ -13,6 +13,7 @@ final class VoiceNavigation {
     static boolean execute(Activity activity,VoiceCommand command){
         Class<? extends Activity> screen;
         switch(command.action){
+            case OPEN_ASSISTANT:screen=AutomationActivity.class;break;
             case OPEN_YOUTUBE:screen=YouTubeActivity.class;break;
             case OPEN_IMAGES:screen=ImageSearchActivity.class;break;
             case OPEN_UPDATES:screen=UpdateActivity.class;break;

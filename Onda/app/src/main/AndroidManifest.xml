@@ -33,6 +33,7 @@
         <activity android:name=".ConnectScanActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".YouTubeActivity" android:enableOnBackInvokedCallback="true" android:supportsPictureInPicture="false" android:resizeableActivity="true" android:exported="false" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden" />
         <activity android:name=".YouTubeFavoritesActivity" android:exported="false" />
+        <activity android:name=".AutomationActivity" android:exported="false" />
         <activity android:name=".AppearanceActivity" android:exported="false" />
         <activity android:name=".DeleteMediaActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />

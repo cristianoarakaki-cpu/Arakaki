@@ -29,13 +29,15 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — PDF em voz alta
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Central inteligente e cores futuristas
 
-O leitor de PDF agora oferece Ouvir, Pausar/Retomar, Parar, escolha de vozes offline instaladas no Android e velocidade de 50% a 200%. Prioriza português brasileiro e permite continuar nas páginas seguintes. A leitura de páginas digitalizadas usa o OCR local já existente, que pode conter erros.
+Nova Central inteligente em Menu → Assistente com IA ou Atalhos → Central inteligente. Digite ou dite uma rotina, confira o plano e toque em Executar. Combina favoritas, reprodução, aleatório, repetição e temporizador; permite salvar pedidos no celular. Prepara buscas do YouTube e de imagens com o tema preenchido, além de abrir as telas do Onda. Exemplos: “toque minhas favoritas em ordem aleatória e pare em 30 minutos”, “pesquise Chitãozinho e Xororó no YouTube”, “imagens de boa noite”.
 
-A narração é iniciada apenas pelo usuário e pausa ao sair do leitor, perder o foco de áudio ou desconectar o fone. Processa uma página e um trecho de voz por vez, sem serviço pago, envio do PDF ou animação contínua. Para instalar outras vozes, use Voz → Vozes do Android.
+Interpretação local sem API paga, modelo pesado, microfone aberto ou tarefas permanentes. Reconhecimento de voz depende do Android e pode precisar de internet; conteúdo online exige conexão. Não automatiza ações desconhecidas ou confirmações do Android. Rotinas com músicas ausentes não alteram o tocador.
 
-Preserva o leão dourado, as dezenove aparências, foto com música em MP4, downloads, reprodução, favoritos, compartilhamento, comandos de voz, PDF/OCR/boletos e rádios. Mesmo pacote e certificado: instale sobre a versão anterior, sem desinstalar. Histórico: https://github.com/{repository}/tree/main/release-notes/onda
+Economia de dados das rádios ativada por padrão: prioriza bitrates baixos na lista, mostra estimativa de MB por hora e escolhe a faixa mais leve em transmissões HLS adaptativas, com preferência até 64 kbps. Rádios de bitrate fixo continuam usando o fluxo da emissora; não é possível economizar dados comprimindo depois de receber. Pode voltar à qualidade original em Rádios → Economia de dados. Pausar continua encerrando a conexão, sem baixar áudio em segundo plano.
+
+Controles com bordas multicoloridas e relevo estático em todas as interfaces. Aparências → Cores futuristas desliga esse acabamento. Mantém os dezenove temas, fontes, leão dourado, efeito de toque com economia de bateria e os recursos anteriores, incluindo PDF com voz, OCR, downloads, conversões, reprodução, favoritos, compartilhamento e rádios. Mesmo pacote e certificado: instale sobre a versão anterior, sem desinstalar.
 
 Licenças e fontes: esta edição do aplicativo é software livre sob GNU GPL v3 ou posterior, sem garantia, com licença na tela Downloads → Licença e código-fonte e no pacote de fontes Onda-Fontes.zip. Inclui NewPipe Extractor (GPL v3 ou posterior), LAME (GNU Library GPL v2 ou posterior) e LibVLC 3.7.7 © VideoLAN e colaboradores (LGPL 2.1 ou posterior); as dependências conservam suas respectivas licenças. Fontes do aplicativo, NewPipe e LAME estão anexadas a esta release. Fonte do LibVLC: https://code.videolan.org/videolan/libvlcjni .
 

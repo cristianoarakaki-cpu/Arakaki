@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, OPEN_YOUTUBE, OPEN_IMAGES, OPEN_UPDATES, OPEN_DOWNLOADS, OPEN_RADIOS, OPEN_VIDEOS, OPEN_MUSIC, OPEN_PDF, OPEN_SOUND, OPEN_CONVERTER, OPEN_PLAYLISTS, OPEN_QUEUE, OPEN_APPEARANCE, OPEN_FILES, OPEN_CHAPTERS, OPEN_VOICE_PHRASES, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, OPEN_YOUTUBE, OPEN_IMAGES, OPEN_UPDATES, OPEN_DOWNLOADS, OPEN_RADIOS, OPEN_VIDEOS, OPEN_MUSIC, OPEN_PDF, OPEN_SOUND, OPEN_CONVERTER, OPEN_PLAYLISTS, OPEN_QUEUE, OPEN_APPEARANCE, OPEN_FILES, OPEN_CHAPTERS, OPEN_VOICE_PHRASES, OPEN_ASSISTANT, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -87,6 +87,7 @@ final class VoiceCommand {
             case "aparencia":case "aparencias":case "temas":return Action.OPEN_APPEARANCE;
             case "arquivos":case "arquivos do onda":case "pastas":case "pastas do onda":return Action.OPEN_FILES;
             case "faixas":case "faixas da coletanea":return Action.OPEN_CHAPTERS;
+            case "assistente":case "assistente com ia":case "central inteligente":case "automacoes":return Action.OPEN_ASSISTANT;
             case "minhas frases":case "frases de voz":return Action.OPEN_VOICE_PHRASES;
             default:return null;
         }

@@ -21,6 +21,7 @@ final class QuickAccess {
         for(int i=0;i<ACTIONS.length;i++)if(chosen.contains(ACTIONS[i].name())){
             final VoiceCommand.Action action=ACTIONS[i];labels.add(LABELS[i]);actions.add(()->VoiceNavigation.execute(activity,VoiceCommand.of(action)));
         }
+        labels.add("Central inteligente");actions.add(()->activity.startActivity(new Intent(activity,AutomationActivity.class)));
         labels.add("Ajuda rápida");actions.add(()->help(activity));
         labels.add("Escolher atalhos");actions.add(()->choose(activity));
         String[] names=labels.toArray(new String[0]);Ui.menu(activity,anchor,names,names,actions.toArray(new Runnable[0]));
