@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);receiveAudio(intent);pendingAutomation=intent.getStringExtra("automation_request");runAutomation();String phrase=intent.getStringExtra("voice_phrase");if(phrase!=null)handleVoice(phrase);}
     private boolean workspaceVoice(String phrase){if(phrase==null||VoicePhrases.read(this).find(phrase)!=null||WorkspaceVoice.parse(phrase)==null)return false;startActivity(new Intent(this,UnifiedSearchActivity.class).putExtra("workspace_voice",phrase));return true;}
     private void handleVoice(String phrase){
-        LocalAutomation.Plan routine=LocalAutomation.parse(phrase);if(VoicePhrases.read(this).find(phrase)==null&&routine.valid()&&routine.commands.size()>1){startActivity(new Intent(this,AutomationActivity.class).putExtra("automation_draft",phrase));return;}
+        LocalAutomation.Plan routine=LocalAutomation.parse(phrase);if(VoiceAiSettings.enabled(this)&&VoicePhrases.read(this).find(phrase)==null&&routine.valid()&&routine.commands.size()>1){startActivity(new Intent(this,AutomationActivity.class).putExtra("automation_draft",phrase));return;}
         if(VoiceNavigation.phrase(this,phrase))return;
         if(workspaceVoice(phrase))return;
         if(player==null||!libraryReady){pendingVoice=phrase;return;}
