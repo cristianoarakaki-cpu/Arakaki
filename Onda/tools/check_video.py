@@ -431,9 +431,25 @@ menu_action('Menu da biblioteca','Minhas frases');tap('Editar frase: meu backup'
 voice('ajuda');assert any(n.attrib.get('text')=='Comandos de voz' for n in nodes());capture('07-comandos-voz')
 tap_text('Entendi')
 menu_action('Menu da biblioteca','Assistente com IA')
-assert any(n.attrib.get('text')=='Assistente local gratuito' for n in nodes())
+assert any(n.attrib.get('text')=='Central inteligente' for n in nodes())
+assert locate('Pedido para a central inteligente') is not None
+assert locate('Interpretar pedido sem executar') is not None
+execute=locate('Executar plano revisado')
+assert execute.attrib.get('enabled')=='false','Empty assistant request must not execute'
 capture('08-assistente-ia')
-tap_text('Ativar')
+# The assistant is now a full scrollable screen. Check the same local-AI setting
+# through its new switch instead of expecting the removed activation dialog.
+for _ in range(8):
+ setting=next((n for n in nodes() if n.attrib.get('text')=='IA local nos comandos de voz'),None)
+ if setting is not None:
+  if setting.attrib.get('checked')!='true':
+   shell('input','tap',*point(setting));time.sleep(.3)
+  assert any(n.attrib.get('text')=='IA local nos comandos de voz' and n.attrib.get('checked')=='true' for n in nodes())
+  break
+ shell('input','swipe',540,1450,540,700,300);time.sleep(.3)
+else:raise AssertionError('Local-AI switch not reachable in the new assistant')
+shell('input','keyevent','4');time.sleep(.5)
+assert locate('Busca por voz no celular') is not None
 voice('coloca aquelas musicas que eu mais gosto')
 assert 'PlaybackState {state=3,' not in shell('dumpsys','media_session').decode()
 # Exercise the video layout with the larger Android font seen in user reports.
