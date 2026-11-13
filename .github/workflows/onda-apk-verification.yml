@@ -8,9 +8,9 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '43462556607'
-  SOURCE_SHA: 'fba7854a51211c573d30034094eb8478028c73a5'
-  SOURCE_ATTEMPT: '2'
+  SOURCE_RUN: '43526135813'
+  SOURCE_SHA: 'ad38c7ae88da741e7f0a4a30fbecb8a4ebc40864'
+  SOURCE_ATTEMPT: '1'
 jobs:
   split:
     runs-on: ubuntu-24.04
@@ -73,7 +73,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='96' versionName='0.73.0'" in info
+          assert "package: name='br.com.onda.musica' versionCode='98' versionName='0.74.0'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -95,7 +95,7 @@ jobs:
               assert b'MIT License' in z.read('assets/radio-cities-license.txt')
               dex=b''.join(z.read(p) for p in z.namelist() if p.endswith('.dex'))
               assert b'PdfTestTtsService;' not in dex
-              for cls in [b'AutomationActivity;',b'LocalAutomation;',b'RadioData;',b'PdfSpeech;',b'PdfSpeechText;',b'LionBrand;',b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
+              for cls in [b'NowPlayingInfo;',b'RadioTrackMetadata;',b'LyricTranslation;',b'LocalLyricTranslator;',b'UpdateDownloadPolicy;',b'AutomationActivity;',b'LocalAutomation;',b'RadioData;',b'PdfSpeech;',b'PdfSpeechText;',b'LionBrand;',b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
@@ -107,11 +107,13 @@ jobs:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(version='0.73.0',versionCode=96,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(version='0.74.0',versionCode=98,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
           report['updateManifestSha256']=hashlib.sha256(encoded).hexdigest()
+          report['legacyApkSizeCompatible']=apk.stat().st_size<=64*1024*1024
+          report['oldUpdaterManualInstallationRequired']=not report['legacyApkSizeCompatible']
           Path('verify/apk-verified.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
           PY
@@ -121,7 +123,7 @@ jobs:
           from pathlib import Path
           import hashlib,json,os
           apks=list(Path('verify').rglob('*.apk'));assert len(apks)==1
-          data=apks[0].read_bytes();assert len(data)<=64*1024*1024
+          data=apks[0].read_bytes();assert len(data)<=256*1024*1024
           parts=[]
           for index,start in enumerate(range(0,len(data),24*1024*1024),1):
               chunk=data[start:start+24*1024*1024]
@@ -150,3 +152,8 @@ jobs:
           path: verify/part-3.bin
           compression-level: 0
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Verify-Part-4
+          path: verify/part-4.bin
+          compression-level: 0
