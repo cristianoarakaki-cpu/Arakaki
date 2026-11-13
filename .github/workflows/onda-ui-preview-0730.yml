@@ -1,0 +1,51 @@
+name: Onda - Previa visual 0730
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-ui-preview-0730.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  player:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: ui
+          github-token: ${{ github.token }}
+          run-id: '43442596275'
+      - name: Mostrar captura do tocador ja validado nativamente
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          files=list(Path('ui').rglob('automation-color-player.png'));assert len(files)==1
+          data=base64.b64encode(files[0].read_bytes()).decode()
+          print('EARLY_PLAYER_BEGIN')
+          for i in range(0,len(data),4096):print(data[i:i+4096])
+          print('EARLY_PLAYER_END')
+          PY
+  central:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: ui
+          github-token: ${{ github.token }}
+          run-id: '43442596275'
+      - name: Mostrar captura da central ja validada nativamente
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          files=list(Path('ui').rglob('automation-central.png'));assert len(files)==1
+          data=base64.b64encode(files[0].read_bytes()).decode()
+          print('EARLY_CENTRAL_BEGIN')
+          for i in range(0,len(data),4096):print(data[i:i+4096])
+          print('EARLY_CENTRAL_END')
+          PY
