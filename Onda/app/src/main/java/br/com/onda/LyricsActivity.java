@@ -1,6 +1,8 @@
 package br.com.onda;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import com.google.mlkit.nl.translate.TranslateLanguage;
 import android.content.ComponentName;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -23,7 +25,11 @@ public class LyricsActivity extends Activity {
     private Future<?> request;
     private TextView heading, status;
     private EditText track, artist;
-    private Button play;
+    private Button play,translate;
+    private LyricsRepository.Result originalLyrics;
+    private final List<String> originalRows=new ArrayList<>();
+    private final List<TextView> translationLabels=new ArrayList<>();
+    private LocalLyricTranslator translator;private LyricTranslation translationJob;private int translationGeneration;
     private LinearLayout linesView;
     private ScrollView scroll;
     private final List<TextView> labels = new ArrayList<>();
@@ -64,28 +70,29 @@ public class LyricsActivity extends Activity {
         track = new EditText(this);track.setSingleLine(true);track.setTextColor(Color.WHITE);track.setHintTextColor(Ui.MUTED);track.setHint("Nome da música");track.setContentDescription("Nome da música para buscar letra");Ui.input(track);LinearLayout searchFields=new LinearLayout(this);LinearLayout.LayoutParams trackParams=new LinearLayout.LayoutParams(0,dp(52),1);trackParams.rightMargin=dp(8);searchFields.addView(track,trackParams);root.addView(searchFields);
         artist = new EditText(this);artist.setSingleLine(true);artist.setTextColor(Color.WHITE);artist.setHintTextColor(Ui.MUTED);artist.setHint("Artista");artist.setContentDescription("Artista para buscar letra");Ui.input(artist);searchFields.addView(artist,new LinearLayout.LayoutParams(0,dp(52),1));
         Button search=button("Buscar letra",v->load());LinearLayout.LayoutParams searchParams=new LinearLayout.LayoutParams(-1,dp(48));searchParams.topMargin=dp(8);root.addView(search,searchParams);
+        translate=button("Traduzir letra",v->translationOptions());translate.setContentDescription("Traduzir letra no celular");translate.setEnabled(false);root.addView(translate,new LinearLayout.LayoutParams(-1,dp(48)));
         scroll = new ScrollView(this);linesView = column();scroll.addView(linesView);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         scroll.setOnTouchListener((v,e)->{manualUntil=SystemClock.uptimeMillis()+5000;lastScrolled=-1;if(e.getActionMasked()==android.view.MotionEvent.ACTION_UP||e.getActionMasked()==android.view.MotionEvent.ACTION_CANCEL)restartTick();return false;});
         play = button("Reproduzir",v->{if(player!=null&&player.getMediaItemCount()>0){if(player.isPlaying())player.pause();else player.play();}});Ui.primary(play);root.addView(play);
         root.addView(text("Letras: LRCLIB • título e artista são enviados para buscar.\nA disponibilidade e a sincronização variam por música.",11,Ui.MUTED));
-        connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).buildAsync();
+        connection = new MediaController.Builder(this,new SessionToken(this,new ComponentName(this,PlaybackService.class))).setListener(new MediaController.Listener(){@Override public void onExtrasChanged(MediaController controller,Bundle extras){restartTick();}}).buildAsync();
         connection.addListener(()->{if(isDestroyed())return;try{player=connection.get();player.addListener(new Player.Listener(){@Override public void onEvents(Player p,Player.Events events){if(events.size()!=1||!events.contains(Player.EVENT_VOLUME_CHANGED))restartTick();}});if(screenStarted)followSong();restartTick();}catch(Exception e){status.setText("Não foi possível conectar. Volte e tente novamente.");}},handler::post);
     }
     private void restartTick(){handler.removeCallbacks(tick);if(screenStarted)handler.post(tick);}
     @Override protected void onStart(){super.onStart();screenStarted=true;restartTick();}
-    @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(tick);super.onStop();}
+    @Override protected void onStop(){if(translator!=null||translationJob!=null)status.setText("Tradução interrompida ao sair da tela. Toque em Traduzir letra para retomar.");cancelTranslation();screenStarted=false;handler.removeCallbacks(tick);super.onStop();}
     private void followSong(){
         MediaItem item=player.getCurrentMediaItem();
-        String key=item==null?"":item.mediaId+"\n"+item.mediaMetadata.title+"\n"+item.mediaMetadata.artist;
+        TrackIdentity identity=item==null?null:NowPlayingInfo.read(player);String currentTitle=item==null?"":identity.title.isEmpty()?String.valueOf(item.mediaMetadata.title):identity.title;String currentArtist=identity==null?"":identity.artist;String key=item==null?"":item.mediaId+"\n"+currentTitle+"\n"+currentArtist;
         if(item==null){if(!songKey.isEmpty()||generation==0){songKey="";generation++;clear();status.setText("Volte à biblioteca e escolha uma música.");}return;}
         if(!key.equals(songKey)){
             songKey=key;durationKnown=player.getDuration()>0;
-            heading.setText(item.mediaMetadata.title);track.setText(item.mediaMetadata.title);
-            String name=String.valueOf(item.mediaMetadata.artist);artist.setText(name.equals("Artista desconhecido")||name.equals("null")?"":name);
+            heading.setText(currentTitle);track.setText(currentTitle);
+            String name=currentArtist;artist.setText(name.equals("Artista desconhecido")||name.equals("null")?"":name);
             load();
         }else if(!durationKnown&&player.getDuration()>0){durationKnown=true;load();}
     }
-    private void clear(){lines=Collections.emptyList();labels.clear();linesView.removeAllViews();highlighted=-1;lastScrolled=-1;manualUntil=0;scroll.scrollTo(0,0);}
+    private void clear(){cancelTranslation();originalLyrics=null;originalRows.clear();translationLabels.clear();translate.setEnabled(false);lines=Collections.emptyList();labels.clear();linesView.removeAllViews();highlighted=-1;lastScrolled=-1;manualUntil=0;scroll.scrollTo(0,0);}
     private void load(){
         int id=++generation;if(request!=null)request.cancel(true);clear();
         String title=track.getText().toString().trim(), author=artist.getText().toString().trim();
@@ -103,7 +110,7 @@ public class LyricsActivity extends Activity {
         restartTick();
         if(result==null){status.setText("Letra não encontrada. Confira título e artista e tente novamente.");return;}
         if(result.instrumental){status.setText("Esta faixa está marcada como instrumental, sem letra.");return;}
-        lines=Lrc.parse(result.synced);
+        originalLyrics=result;lines=Lrc.parse(result.synced);translate.setEnabled(!lines.isEmpty()||!result.plain.trim().isEmpty());
         if(!lines.isEmpty()){
             status.setText("Letra sincronizada • toque em um verso para ir até ele");
             for(Lrc.Line line:lines){TextView label=text(line.text.isEmpty()?"♪":line.text,23,Ui.MUTED);label.setPadding(0,dp(14),0,dp(14));label.setOnClickListener(v->{if(player!=null)player.seekTo(line.ms);manualUntil=0;});linesView.addView(label);labels.add(label);}
@@ -113,10 +120,38 @@ public class LyricsActivity extends Activity {
             TextView plain=text(result.plain,22,Color.WHITE);plain.setLineSpacing(dp(10),1);linesView.addView(plain);
         }else status.setText("Letra não encontrada. Confira título e artista.");
     }
+    private void cancelTranslation(){translationGeneration++;if(translationJob!=null){translationJob.cancel();translationJob=null;}if(translator!=null){translator.close();translator=null;}}
+    private void translationOptions(){
+        if(originalLyrics==null)return;
+        List<String> codes=new ArrayList<>(TranslateLanguage.getAllLanguages());Locale display=new Locale("pt","BR");codes.sort(Comparator.comparing(code->new Locale(code).getDisplayLanguage(display)));
+        String[] names=new String[codes.size()];for(int i=0;i<codes.size();i++)names[i]=new Locale(codes.get(i)).getDisplayLanguage(display);
+        LinearLayout content=column();content.setPadding(dp(20),dp(8),dp(20),dp(8));content.addView(text("Tradução automática no celular, sem cobrança por uso. Na primeira vez, baixa modelos de aproximadamente 30 MB por idioma. A letra precisa estar disponível; não transcreve o áudio cantado. Pode conter erros.",13,Ui.MUTED));
+        content.addView(text("Idioma da letra original",14,Ui.TEXT));Spinner source=new Spinner(this);source.setAdapter(Ui.spinnerLabels(this,names));Ui.spinner(source);source.setSelection(Math.max(0,codes.indexOf(getPreferences(0).getString("translate_source","en"))));content.addView(source);
+        content.addView(text("Traduzir para",14,Ui.TEXT));Spinner target=new Spinner(this);target.setAdapter(Ui.spinnerLabels(this,names));Ui.spinner(target);target.setSelection(Math.max(0,codes.indexOf(getPreferences(0).getString("translate_target","pt"))));content.addView(target);
+        ScrollView settings=new ScrollView(this);settings.addView(content);
+        new AlertDialog.Builder(this).setTitle("Traduzir letra").setView(settings).setPositiveButton("Usar Wi-Fi",(d,w)->beginTranslation(codes.get(source.getSelectedItemPosition()),codes.get(target.getSelectedItemPosition()),true)).setNeutralButton("Usar dados móveis",(d,w)->beginTranslation(codes.get(source.getSelectedItemPosition()),codes.get(target.getSelectedItemPosition()),false)).setNegativeButton("Cancelar",null).show();
+    }
+    private void beginTranslation(String source,String target,boolean wifi){
+        if(originalLyrics==null)return;if(source.equals(target)){status.setText("Escolha idiomas diferentes para traduzir.");return;}
+        cancelTranslation();final int token=translationGeneration;getPreferences(0).edit().putString("translate_source",source).putString("translate_target",target).apply();originalRows.clear();translationLabels.clear();
+        if(!lines.isEmpty()){for(int i=0;i<lines.size();i++){originalRows.add(lines.get(i).text);translationLabels.add(labels.get(i));labels.get(i).setText(lines.get(i).text.isEmpty()?"♪":lines.get(i).text);}}
+        else{linesView.removeAllViews();for(String row:originalLyrics.plain.split("\\r?\\n",-1)){originalRows.add(row);TextView label=text(row,22,Ui.TEXT);linesView.addView(label);translationLabels.add(label);}}
+        status.setText(wifi?"Preparando idiomas • download inicial por Wi-Fi. A música continua tocando.":"Preparando idiomas • pode usar dados móveis. A música continua tocando.");
+        try{translator=new LocalLyricTranslator(source,target);translator.prepare(wifi,()->{
+            if(isDestroyed()||token!=translationGeneration||!screenStarted)return;status.setText("Traduzindo no celular • Google ML Kit • a música continua tocando");
+            int active=player==null?-1:Lrc.active(lines,player.getCurrentPosition());
+            translationJob=new LyricTranslation(originalRows,active,translator,new LyricTranslation.Listener(){
+                public void row(int index,String value){if(isDestroyed()||token!=translationGeneration)return;translationLabels.get(index).setText(originalRows.get(index)+"\n"+value);}
+                public void complete(){if(isDestroyed()||token!=translationGeneration)return;status.setText(lines.isEmpty()?"Tradução automática • Google ML Kit • sem sincronização na letra original":"Original e tradução sincronizados • tradução automática: Google ML Kit");if(translator!=null){translator.close();translator=null;}translationJob=null;restartTick();}
+                public void failure(Exception error){translationFailed(token);}
+            });translationJob.start();
+        },error->translationFailed(token));}catch(Exception error){translationFailed(token);}
+    }
+    private void translationFailed(int token){if(isDestroyed()||token!=translationGeneration)return;cancelTranslation();status.setText("Não foi possível preparar a tradução. Confira a conexão para baixar os idiomas e tente novamente. A letra original foi mantida.");}
     private void style(TextView v,boolean current){v.setTextColor(current?Ui.CYAN:Ui.MUTED);v.setTypeface(null,current?Typeface.BOLD:Typeface.NORMAL);}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private TextView text(String s,int size,int color){TextView t=Ui.text(this,s,size,color);t.setPadding(0,dp(6),0,dp(6));if(size>=24)Ui.bold(t);return t;}
     private Button button(String s,View.OnClickListener l){return Ui.button(this,s,l);}
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
-    @Override public void onDestroy(){generation++;if(request!=null)request.cancel(true);network.shutdownNow();handler.removeCallbacksAndMessages(null);if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
+    @Override public void onDestroy(){cancelTranslation();generation++;if(request!=null)request.cancel(true);network.shutdownNow();handler.removeCallbacksAndMessages(null);if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

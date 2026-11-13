@@ -29,11 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Informações da música no tocador e nas rádios
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Música identificada e tradução local das letras
 
 Toque no título da música no tocador ou no quadro da emissora em Rádios para abrir “Que música é esta?”. Mostra título, artista/intérprete, compositor e álbum quando disponíveis, com opção de copiar. A biblioteca também consulta o compositor informado pelo Android. Dados ausentes aparecem como “Não informado”.
 
 O tocador acompanha os metadados recebidos durante a transmissão da rádio e mostra artista e música quando a emissora os envia. Nome, favoritos e endereço da emissora permanecem preservados. A identificação não grava áudio, não acessa microfone, não faz consultas externas e não adiciona tarefas de monitoramento. Trata-se de metadados, sem reconhecimento acústico; não identifica músicas quando o arquivo ou a emissora não fornecem informações. Compositor e intérprete são campos diferentes.
+
+Tradução local de letras pelo Google ML Kit, sem API paga ou cobrança por uso. Em Letra da música → Traduzir letra, escolha o idioma original e o destino. A primeira utilização baixa modelos de aproximadamente 30 MB por idioma; Wi-Fi é o padrão oferecido, e dados móveis só são usados se o usuário escolher essa opção. A tradução processa cada verso uma vez e reutiliza refrões repetidos, com prioridade para o verso atual. Mantém o original visível, os tempos e o controle de reprodução. Modelos baixados permitem tradução offline. Traduções automáticas podem conter erros. Se a letra não tem tempos, a tradução também não inventa sincronização. Não transcreve o canto quando a letra original não está disponível.
 
 Mantém a Central inteligente gratuita, os temas futuristas, economia de dados das rádios e todos os recursos existentes. Mesmo pacote e certificado; instale sobre a versão anterior sem desinstalar.
 
