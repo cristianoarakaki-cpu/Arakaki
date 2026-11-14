@@ -1,0 +1,193 @@
+name: Onda - Verificar download publico 0750
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-public-proof-0750.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Conferir aprovacao de todos os testes da origem
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for ONDA_CHECK in $(seq 1 110); do
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/43553310243 > /tmp/source-run.json
+            ONDA_STATUS=$(python -c "import json; print(json.load(open('/tmp/source-run.json'))['status'])")
+            if [ "$ONDA_STATUS" = completed ]; then break; fi
+            sleep 45
+          done
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/source-run.json'))
+          assert r['head_sha']=='07289006c963330ef6dd70214eca09adceddbc86' and r['run_attempt']==1 and r['conclusion']=='success'
+          PY
+      - name: Conferir aprovação do verificador do APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43553433445 > /tmp/apk-run.json
+          python -c "import json; r=json.load(open('/tmp/apk-run.json')); assert r['head_sha']=='62cd5c0addb2337d0a82433b3b4ecd34b8547e40' and r['run_attempt']==1 and r['conclusion']=='success'"
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Verify-Part-1
+          path: verifier-proof
+          github-token: ${{ github.token }}
+          run-id: '43553433445'
+      - name: Baixar APK publico e conferir SHA256 ZIP e manifesto
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, hashlib, urllib.request, zipfile, os
+          from pathlib import Path
+          from datetime import datetime, timezone
+          
+          root = Path('/tmp/onda-public-proof')
+          root.mkdir(exist_ok=True)
+          proof = json.loads(next(Path('verifier-proof').rglob('apk-verified.json')).read_text())
+          assert proof['version']=='0.75.0' and proof['versionCode']==99 and proof['sourceAttempt']==1
+          assert proof['certificate']=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
+          prefix = 'https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/onda-v0.75.0/'
+          def open_url(url):
+              return urllib.request.urlopen(urllib.request.Request(url, headers=dict({'User-Agent':'Onda-Music-Android'}, **({'Authorization':'Bearer '+os.environ['GH_TOKEN']} if url.startswith('https://api.github.com/') else {}))), timeout=45)
+          def read_url(url):
+              with open_url(url) as response:
+                  assert response.status == 200
+                  return response.read(1048576)
+          release = json.loads(read_url('https://api.github.com/repos/cristianoarakaki-cpu/Arakaki/releases/tags/onda-v0.75.0'))
+          assert not release['draft'] and not release['prerelease']
+          assets = {a['name']:a for a in release['assets']}
+          assert set(assets) == {'Whisper.cpp-Fontes.zip','LAME-Fontes.zip','NewPipeExtractor-Fontes.zip','Onda-Fontes.zip','Onda-Musica.apk','onda-update.json','SHA256SUMS.txt'}
+          assert assets['Onda-Musica.apk']['size'] == proof['bytes']
+          if assets['Onda-Musica.apk'].get('digest'):
+              assert assets['Onda-Musica.apk']['digest'] == 'sha256:'+proof['sha256']
+          manifest_bytes = read_url(prefix+'onda-update.json')
+          assert len(manifest_bytes) == proof['updateManifestBytes']
+          assert hashlib.sha256(manifest_bytes).hexdigest() == proof['updateManifestSha256']
+          manifest = json.loads(manifest_bytes)
+          assert manifest['versionCode']==99 and manifest['versionName']=='0.75.0'
+          assert manifest['packageName']=='br.com.onda.musica'
+          assert manifest['apkUrl']==prefix+'Onda-Musica.apk'
+          assert manifest['sha256']==proof['sha256']
+          apk = root/'Onda-0.75.0.apk'
+          temporary = apk.with_suffix('.part')
+          digest = hashlib.sha256()
+          with open_url(manifest['apkUrl']) as response, temporary.open('wb') as output:
+              assert response.status==200
+              while True:
+                  chunk=response.read(1048576)
+                  if not chunk: break
+                  output.write(chunk)
+                  digest.update(chunk)
+          assert temporary.stat().st_size==proof['bytes']
+          assert digest.hexdigest()==proof['sha256']
+          with zipfile.ZipFile(temporary) as archive:
+              assert archive.testzip() is None
+              assert 'AndroidManifest.xml' in archive.namelist()
+          temporary.replace(apk)
+          sums=read_url(prefix+'SHA256SUMS.txt').decode()
+          assert proof['sha256'] in sums and 'Onda-Musica.apk' in sums
+          proof.update(release='onda-v0.75.0',draft=False,prerelease=False,assets=sorted(assets),publishedApkMatches=True,publishedManifestMatches=True,publicDownloadVerified=True,localApk=str(apk),verifiedAt=datetime.now(timezone.utc).isoformat())
+          (root/'v750-published-proof.json').write_text(json.dumps(proof,indent=2))
+          print(json.dumps({k:proof[k] for k in ['release','bytes','sha256','publishedApkMatches','publishedManifestMatches','publicDownloadVerified','localApk']},indent=2))
+          
+          print("PUBLIC_PROOF_JSON="+json.dumps(proof))
+          PY
+      - name: Conferir listagem da atualização e manifesto publicado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import urllib.request,json,os
+          PREFIX='https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/'
+          def text(url):
+              request=urllib.request.Request(url,headers=dict({'User-Agent':'Onda-Music-Android','Accept':'application/json, application/octet-stream'}, **({'Authorization':'Bearer '+os.environ['GH_TOKEN']} if url.startswith('https://api.github.com/') else {})))
+              with urllib.request.urlopen(request,timeout=25) as r:
+                  data=r.read(1048577)
+                  assert r.status==200
+                  assert len(data)<=1048576,('Resposta inválida no atualizador antigo',len(data))
+                  return data
+          data=text('https://api.github.com/repos/cristianoarakaki-cpu/Arakaki/releases?per_page=20')
+          releases=json.loads(data);best=None;count=0
+          for release in releases:
+              if release['draft'] or release['prerelease'] or not release['tag_name'].startswith('onda-v'):continue
+              for asset in release.get('assets',[]):
+                  if asset['name']!='onda-update.json':continue
+                  url=asset['browser_download_url'];assert url.startswith(PREFIX)
+                  update=json.loads(text(url));count+=1
+                  assert update['packageName']=='br.com.onda.musica'
+                  assert update['apkUrl'].startswith(PREFIX)
+                  assert len(update['sha256'])==64
+                  if best is None or update['versionCode']>best['versionCode']:best=update
+          assert best['versionCode']==99 and best['versionName']=='0.75.0',best
+          assert best['sha256']==json.loads(next(__import__('pathlib').Path('verifier-proof').rglob('apk-verified.json')).read_text())['sha256']
+          print(json.dumps({'responseBytes':len(data),'listingSizeLimit':1048576,'legacyApkSizeCompatible':False,'oldUpdaterManualInstallationRequired':True,'manifestsChecked':count,'update':best},indent=2))
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: ui-proof
+          github-token: ${{ github.token }}
+          run-id: '43553310243'
+      - name: Conferir a interface colorida e economia de rádio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64,json
+          image=list(Path('ui-proof').rglob('automation-color-player.png'))
+          assert len(image)==1
+          encoded=base64.b64encode(image[0].read_bytes()).decode()
+          print('PLAYER_IMAGE_BEGIN')
+          for index in range(0,len(encoded),4096):print(encoded[index:index+4096])
+          print('PLAYER_IMAGE_END')
+          for name in ['live-translation.json','live-precision.json','on-device-translation.json','lion-brand-tests.json','touch-motion-tests.json','photo-video-tests.json','radio-playback.json','screen-layout-review-normal.json','screen-layout-review-compact.json']:
+              files=list(Path('ui-proof').rglob(name))
+              assert len(files)==1
+              data=json.loads(files[0].read_text())
+              if name=='on-device-translation.json':assert data['realModelDownloaded'] and data['source']=='en' and data['target']=='pt' and 'bom dia' in data['actualOutput'].lower()
+              if name=='live-translation.json':assert data['actualOriginal'] and data['actualTranslation'] and data['playbackPreserved'] and not data['lyricsCatalogueUsed'] and not data['microphoneUsed']
+              if name=='live-precision.json':assert 'lamb' in data['actualOriginal'].lower()
+              if name=='radio-playback.json':assert data['radioEconomyAdaptiveCap']==64000 and data['lowestRadioBitratePreferred'] and data['localAudioQualityRestored']
+              if name.startswith('screen-layout'):assert 'AutomationActivity' in data['screens'] and 'LyricsActivity' in data['screens'] and 'LiveLyricsActivity' in data['screens'] and not data['clippedNativeText']
+              print(name+'='+json.dumps(data))
+          PY
+  layout-preview:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Visual-Preview
+          path: ui-proof
+          github-token: ${{ github.token }}
+          run-id: '43553310243'
+      - name: Conferir captura real da biblioteca em tela compacta
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          images=list(Path('ui-proof').rglob('library-compact.png'))
+          assert len(images)==1
+          encoded=base64.b64encode(images[0].read_bytes()).decode()
+          print('LIBRARY_COMPACT_IMAGE_BEGIN')
+          for index in range(0,len(encoded),4096):print(encoded[index:index+4096])
+          print('LIBRARY_COMPACT_IMAGE_END')
+          PY
+      - name: Capturas reais da tradução e da tela compacta
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          for name in ['live-translation.png','audit-LiveLyricsActivity-compact.png']:
+              images=list(Path('ui-proof').rglob(name));assert len(images)==1, (name,images)
+              encoded=base64.b64encode(images[0].read_bytes()).decode()
+              print('LIVE_IMAGE_BEGIN '+name)
+              for index in range(0,len(encoded),4096):print(encoded[index:index+4096])
+              print('LIVE_IMAGE_END '+name)
+          PY
