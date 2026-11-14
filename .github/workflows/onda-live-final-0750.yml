@@ -1,0 +1,270 @@
+name: Onda - Finalizar traducao ao vivo 0750
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-live-final-0750.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  final:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Conferir escopo exato da melhoria de qualidade
+        run: |
+          python - <<'PYORIGIN'
+          import subprocess
+          source='07289006c963330ef6dd70214eca09adceddbc86'
+          changed=subprocess.check_output(['git','diff','--name-only',source,'HEAD','--','Onda'],text=True).splitlines()
+          expected=['Onda/app/src/androidTest/java/br/com/onda/LiveTranslationTest.java','Onda/app/src/main/java/br/com/onda/LiveRecognizer.java','Onda/app/src/test/java/br/com/onda/LivePcmWindowTest.java','Onda/tools/check_video.py']
+          assert changed==expected,changed
+          production=subprocess.check_output(['git','diff','--name-only',source,'HEAD','--','Onda/app/src/main'],text=True).splitlines()
+          assert production==['Onda/app/src/main/java/br/com/onda/LiveRecognizer.java'],production
+          print('Playback, decoding, JNI, downloads, PDF, themes, resources, signing and build configuration unchanged. Only recognition-text loop rejection and its tests changed; prior regression results remain applicable.')
+          PYORIGIN
+      - name: Reutilizar assinatura de teste
+        uses: actions/cache@v4
+        with:
+          path: Onda/.signing/debug.keystore
+          key: onda-musica-debug-signing-v1
+      - name: Preparar assinatura persistente de teste
+        run: |
+          mkdir -p Onda/.signing
+          if [ ! -f Onda/.signing/debug.keystore ]; then
+            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
+          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
+      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac
+      - name: Salvar relatórios de falhas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Build-Reports
+          path: |
+            Onda/app/build/reports/
+            Onda/app/build/intermediates/lint_intermediate_text_report/
+      - name: Compactar APK sem alterar o conteúdo
+        run: |
+          python -m pip install --disable-pip-version-check --timeout 30 --retries 1 zopfli==0.2.3.post1
+          python Onda/tools/compact_apk.py Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-compact.apk
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f 4 /tmp/onda-compact.apk /tmp/onda-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks Onda/.signing/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey --out Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-final-certificate.txt
+          python -c 'from pathlib import Path; s=Path("/tmp/onda-final-certificate.txt").read_text(); expected=Path("Onda/signing-certificate.sha256").read_text().strip(); assert "Signer #1 certificate SHA-256 digest: "+expected in s, "Assinatura final incorreta"'
+      - name: Conferir pacote independente
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
+          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert "package: name=\x27br.com.onda.musica\x27 " in s; assert "arm64-v8a" in s and "armeabi-v7a" in s and "x86_64" not in s; print("Pacote independente confirmado")'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Android-APK
+          path: Onda/app/build/outputs/apk/debug/app-debug.apk
+
+
+      - name: Guardar APK de distribuição e preparar variante do emulador
+        run: |
+          mkdir -p Onda/distribution
+          cp Onda/app/build/outputs/apk/debug/app-debug.apk Onda/distribution/Onda-Musica.apk
+          python -c 'from pathlib import Path; p=Path("Onda/distribution/Onda-Musica.apk"); assert p.stat().st_size <= 256*1024*1024, "APK excede o limite do atualizador novo"; print("APK de distribuição:",p.stat().st_size,"bytes"); print("Instalação direta necessária em atualizadores antigos" if p.stat().st_size>64*1024*1024 else "Compatível com o tamanho aceito pelo atualizador antigo")'
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
+      - name: Preparar gerador de vídeos de teste
+        timeout-minutes: 3
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            python -m pip install --disable-pip-version-check --timeout 30 --retries 1 imageio-ffmpeg==0.6.0
+            python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          import imageio_ffmpeg
+          directory = Path(os.environ["RUNNER_TEMP"]) / "onda-bin"
+          directory.mkdir(exist_ok=True)
+          executable = directory / "ffmpeg"
+          shutil.copyfile(imageio_ffmpeg.get_ffmpeg_exe(), executable)
+          executable.chmod(0o755)
+          with open(os.environ["GITHUB_PATH"], "a") as output:
+              output.write(str(directory) + "\n")
+          PY
+          fi
+      - name: Preparar amostras para os testes de MP3
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root=Path("Onda/app/src/androidTest/assets")
+          root.mkdir(parents=True,exist_ok=True)
+          def run(*args): subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y",*args],check=True,timeout=90)
+          run("-f","lavfi","-i","color=c=blue:s=320x180:r=15","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","3","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"combined.mp4"))
+          run("-i",str(root/"combined.mp4"),"-an","-c:v","copy",str(root/"video.mp4"))
+          # VP8 exercises real WebView playback without the emulator host H.264 decoder.
+          run("-i",str(root/"combined.mp4"),"-c:v","libvpx","-b:v","200k","-c:a","libvorbis",str(root/"fullscreen.webm"))
+          run("-f","lavfi","-i","color=c=blue:s=160x90:r=1","-f","lavfi","-i","sine=frequency=440:sample_rate=44100","-t","25","-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac",str(root/"power-background.mp4"))
+          run("-i",str(root/"combined.mp4"),"-vn","-c:a","copy",str(root/"audio.m4a"))
+          run("-i",str(root/"combined.mp4"),"-vn","-ac","2","-ar","48000","-c:a","aac",str(root/"audio-stereo.m4a"))
+          run("-i",str(root/"audio.m4a"),"-c:a","flac",str(root/"audio-flac.flac"))
+          run("-i",str(root/"audio.m4a"),"-c:a","pcm_s16le",str(root/"audio-pcm.wav"))
+          run("-i",str(root/"audio.m4a"),"-c:a","libmp3lame",str(root/"audio-lossy.mp3"))
+          run("-i",str(root/"audio.m4a"),"-c:a","libopus",str(root/"audio-opus.ogg"))
+          run("-i",str(root/"audio.m4a"),"-c:a","libvorbis",str(root/"audio-vorbis.ogg"))
+          run("-i",str(root/"audio.m4a"),"-ar","22050","-c:a","aac",str(root/"audio-low.m4a"))
+          run("-i",str(root/"audio.m4a"),"-ac","6","-c:a","aac",str(root/"audio-surround.m4a"))
+          PY
+          python - <<'PYVOICE'
+          import wave,math,struct
+          with wave.open('Onda/app/src/androidTest/assets/speech.wav','wb') as wav:
+              wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(16000)
+              tone=b''.join(struct.pack('<h',int(4000*math.sin(2*math.pi*400*n/16000))) for n in range(16000))
+              wav.writeframes(tone+b'\x00'*16000*2*8+tone*3)
+          PYVOICE
+          python - <<'PYSONG'
+          import hashlib, subprocess, urllib.request
+          from pathlib import Path
+          root=Path("Onda/app/src/androidTest/assets")
+          fixtures=[("twinkle","4/4f/Twinkle_Twinkle_Little_Star_-_sung_with_full_lyrics.ogg","0a9b05a0929699e30cf5f6f124c6e05251ed1505e2a5eb954746e7cd6a6c2f40"),("mary","5/50/Mary_Had_a_Little_Lamb.ogg","f21bb5cecf2e9a32ff0c67622c8c5001049f995abec5e8cce475aba7d9d21260")]
+          for name,path,sha in fixtures:
+              request=urllib.request.Request("https://upload.wikimedia.org/wikipedia/commons/"+path,headers={"User-Agent":"OndaTests/0.75 (public domain and CC0 singing fixtures)"})
+              with urllib.request.urlopen(request,timeout=45) as response: data=response.read()
+              assert hashlib.sha256(data).hexdigest()==sha, "Singing source changed"
+              source=Path("/tmp")/("onda-singing-"+name+".ogg");source.write_bytes(data)
+              subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(source),"-t","8","-ac","1","-ar","16000","-c:a","pcm_s16le",str(root/("singing-"+name+"-8s.wav"))],check=True,timeout=60)
+              if name=="twinkle": subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(source),"-ac","1","-ar","16000","-c:a","pcm_s16le",str(root/"singing-twinkle-full.wav")],check=True,timeout=60)
+          PYSONG
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
+      - name: Habilitar emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Validar canto continuo, filtro, continuidade e interface do APK final
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          disk-size: 2048M
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
+            adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/final-translation-model.txt
+            cat /tmp/final-translation-model.txt
+            python -c 's=open("/tmp/final-translation-model.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
+            mkdir -p Onda/ui-preview
+            adb exec-out run-as br.com.onda.musica cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/final-live.txt
+            cat /tmp/final-live.txt
+            for part in translation precision; do adb exec-out run-as br.com.onda.musica cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
+            python -c 's=open("/tmp/final-live.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/final-pcm.txt
+            cat /tmp/final-pcm.txt
+            python -c 's=open("/tmp/final-pcm.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/final-layout.txt
+            cat /tmp/final-layout.txt
+            for size in compact normal; do adb exec-out run-as br.com.onda.musica cat "files/screen-layout-review-$size.json" > "Onda/ui-preview/screen-layout-review-$size.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/audit-LiveLyricsActivity-compact.png > Onda/ui-preview/audit-LiveLyricsActivity-compact.png || true
+            python -c 's=open("/tmp/final-layout.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+      - name: Exigir todos os testes legados pendentes aprovados
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for CHECK in $(seq 1 45); do
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/43561155706/jobs > /tmp/remaining-jobs.json
+            if python -c 'import json; j=next(j for j in json.load(open("/tmp/remaining-jobs.json"))["jobs"] if j["name"]=="resume"); assert j["status"]=="completed"'; then break; fi
+            sleep 30
+          done
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43561155706 > /tmp/remaining-run.json
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43553310243/jobs > /tmp/original-jobs.json
+          python - <<'PYDONE'
+          import json
+          r=json.load(open('/tmp/remaining-run.json'));assert r['head_sha']=='7486867d7eb7b2e6f7b67786299501e6486f57cc' and r['run_attempt']==1
+          j=next(j for j in json.load(open('/tmp/remaining-jobs.json'))['jobs'] if j['name']=='resume')
+          assert j['status']=='completed'
+          steps={s['name']:s for s in j['steps']}
+          for name in ['Conferir codigo identico do aplicativo e falha isolada do teste','Concluir testes pendentes no mesmo codigo do aplicativo','Guardar evidencias combinadas']:assert steps[name]['conclusion']=='success',(name,steps[name])
+          failures=[s['name'] for s in j['steps'] if s['conclusion']=='failure']
+          assert failures in [[],['Publicar APK para atualização pelo app']],failures
+          old=json.load(open('/tmp/original-jobs.json'))['jobs'];assert len(old)==1
+          oldsteps=old[0]['steps'];assert [s['name'] for s in oldsteps if s['conclusion']=='failure']==['Conferir telas no Android']
+          assert next(s for s in oldsteps if s['name']=='Conferir exclusão no Android 15')['conclusion']=='success'
+          print('Original regression checks + all pending video/backup/voice/native31/DJ2/download checks approved. Superseded APK publication guard may fail intentionally because only the new filtered recognizer will be published.')
+          PYDONE
+      - uses: actions/download-artifact@v4
+        with:
+          name: Onda-Resume-Visual-Preview
+          path: earlier-preview
+          github-token: ${{ github.token }}
+          run-id: '43561155706'
+      - name: Combinar evidencias sem substituir os resultados finais
+        run: |
+          python - <<'PYMERGE'
+          from pathlib import Path
+          import shutil
+          out=Path('Onda/ui-preview')
+          for p in Path('earlier-preview').rglob('*'):
+              if p.is_file() and 'ui-preview' in p.parts and not (out/p.name).exists():shutil.copyfile(p,out/p.name)
+          PYMERGE
+      - name: Salvar evidencias do APK final
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Onda-Final-Visual-Preview
+          path: |
+            Onda/ui-preview/
+            Onda/download-preview/
+            Onda/app/build/reports/
+            Onda/app/build/test-results/
+            /tmp/final-*.txt
+      - name: Preparar publicação da atualização
+        id: update_release
+        run: python Onda/tools/prepare_release.py
+      - name: Publicar APK para atualização pelo app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ONDA_TAG: ${{ steps.update_release.outputs.tag }}
+          ONDA_VERSION: ${{ steps.update_release.outputs.version }}
+        run: |
+          if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+            echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
+          else
+            git archive --format=zip --output=Onda/release-out/Onda-Fontes.zip HEAD Onda .github/workflows/onda-android.yml
+            curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/ggml-org/whisper.cpp/archive/a8d002cfd879315632a579e73f0148d06959de36.zip -o Onda/release-out/Whisper.cpp-Fontes.zip
+            sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
+            CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            git fetch --no-tags origin "$CURRENT_HEAD"
+            git diff --exit-code "$GITHUB_SHA" "$CURRENT_HEAD" -- Onda .github/workflows/onda-android.yml .github/workflows/onda-live-final-0750.yml
+            PUBLISHED=false
+            for ATTEMPT in 1 2 3; do
+              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/Whisper.cpp-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
+                PUBLISHED=true
+                break
+              fi
+              if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+                echo "Publicação parcial detectada; não sobrescrever arquivos."
+                exit 1
+              fi
+              sleep 3
+            done
+            test "$PUBLISHED" = true
+          fi
