@@ -11,6 +11,14 @@ final class LiveRecognizer implements LiveAudioTap.Receiver,AutoCloseable {
  @Override public void reset(){generation.incrementAndGet();waiting.clear();WhisperEngine e=engine;if(e!=null)e.cancel();}
  @Override public void failed(Throwable error){close();listener.error(error);}
  private void work(File model,String language,int threads){try(WhisperEngine loaded=new WhisperEngine(model)){engine=loaded;if(closed)return;listener.ready();while(!closed){Window item=waiting.take();if(item.epoch!=generation.get())continue;String text="";long start=System.nanoTime();if(LivePcmWindow.audible(item.pcm))text=loaded.recognize(item.pcm,language,threads);if(!closed&&item.epoch==generation.get())listener.text(recognizable(text)?text:"",item.end*1000/LivePcmWindow.RATE,(System.nanoTime()-start)/1000000,item.epoch);}}catch(InterruptedException ignored){Thread.currentThread().interrupt();}catch(Exception|LinkageError|OutOfMemoryError error){if(!closed){closed=true;if(LiveAudioTap.receiver==this)LiveAudioTap.receiver=null;listener.error(error);}}finally{engine=null;}}
- static boolean recognizable(String text){return text!=null&&text.replaceAll("[^\\p{L}]","").length()>=3&&!text.trim().matches("(?is)[\\[(].*[\\])]");}
+ static boolean recognizable(String text){
+  if(text==null||text.replaceAll("[^\\p{L}]","").length()<3||text.trim().matches("(?is)[\\[(].*[\\])]"))return false;
+  // Reject decoder loops observed on clipped singing, rather than translating
+  // invented repetitions. Ordinary repeated words and refrains remain valid.
+  String[] words=text.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}\\s]"," ").trim().split("\\s+");
+  for(int period=1;period<=Math.min(6,words.length/8);period++){int run=period;for(int i=period;i<words.length;i++){run=words[i].equals(words[i-period])?run+1:period;if(run>=period*8)return false;}}
+  return true;
+ }
+
  @Override public void close(){closed=true;if(LiveAudioTap.receiver==this)LiveAudioTap.receiver=null;reset();worker.interrupt();}
 }

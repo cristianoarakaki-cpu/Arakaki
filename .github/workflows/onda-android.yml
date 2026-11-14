@@ -152,6 +152,7 @@ jobs:
               assert hashlib.sha256(data).hexdigest()==sha, "Singing source changed"
               source=Path("/tmp")/("onda-singing-"+name+".ogg");source.write_bytes(data)
               subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(source),"-t","8","-ac","1","-ar","16000","-c:a","pcm_s16le",str(root/("singing-"+name+"-8s.wav"))],check=True,timeout=60)
+              if name=="twinkle": subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(source),"-ac","1","-ar","16000","-c:a","pcm_s16le",str(root/"singing-twinkle-full.wav")],check=True,timeout=60)
           PYSONG
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
       - name: Liberar espaço do servidor para os emuladores
