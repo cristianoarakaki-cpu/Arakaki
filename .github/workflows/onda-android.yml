@@ -222,6 +222,18 @@ jobs:
             python Onda/tools/check_upgrade.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
+            adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-on-device-translation-tests.txt
+            cat /tmp/onda-on-device-translation-tests.txt
+            python -c 's=open("/tmp/onda-on-device-translation-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-live-translation-tests.txt
+            cat /tmp/onda-live-translation-tests.txt
+            for part in translation precision; do adb exec-out run-as br.com.onda.musica cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
+            python -c 's=open("/tmp/onda-live-translation-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
+
+            adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.AutomationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-automation-tests.txt
             cat /tmp/onda-automation-tests.txt
             python -c 's=open("/tmp/onda-automation-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
@@ -432,18 +444,6 @@ jobs:
             cat /tmp/onda-menu-panel-tests.txt
             python -c 's=open("/tmp/onda-menu-panel-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-on-device-translation-tests.txt
-            cat /tmp/onda-on-device-translation-tests.txt
-            python -c 's=open("/tmp/onda-on-device-translation-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-live-translation-tests.txt
-            cat /tmp/onda-live-translation-tests.txt
-            for part in translation precision; do adb exec-out run-as br.com.onda.musica cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
-            python -c 's=open("/tmp/onda-live-translation-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
-
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.NowPlayingInfoTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-track-identity-tests.txt
             cat /tmp/onda-track-identity-tests.txt

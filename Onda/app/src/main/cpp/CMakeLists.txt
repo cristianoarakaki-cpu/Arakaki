@@ -30,6 +30,13 @@ set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(whisper URL https://github.com/ggml-org/whisper.cpp/archive/a8d002cfd879315632a579e73f0148d06959de36.tar.gz URL_HASH SHA256=7b17da903114ed45d82f48c030e3be6a5a8a279f884b2f733706dbb4e832fb6b)
 FetchContent_MakeAvailable(whisper)
+# Distribution uses the existing signed debug variant; inference must still be
+# optimized, instead of spending battery in NDK Debug/-O0 kernels.
+foreach(onda_live_target whisper ggml-base ggml-cpu ggml)
+ if(TARGET ${onda_live_target})
+  target_compile_options(${onda_live_target} PRIVATE -O3)
+ endif()
+endforeach()
 add_library(onda_whisper SHARED whisper_jni.cpp)
 target_include_directories(onda_whisper PRIVATE "${whisper_SOURCE_DIR}/include" "${whisper_SOURCE_DIR}/ggml/include")
 target_compile_options(onda_whisper PRIVATE -fvisibility=hidden)
