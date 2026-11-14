@@ -6,22 +6,16 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  actions: write
+  actions: read
 env:
-  SOURCE_RUN: '43543831308'
-  SOURCE_SHA: 'c64dd6b7d6514b4f2558f8936750e1362708bcc5'
+  SOURCE_RUN: '43553310243'
+  SOURCE_SHA: '07289006c963330ef6dd70214eca09adceddbc86'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - name: Encerrar compilações substituídas, preservando a origem atual
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api -X POST repos/$GITHUB_REPOSITORY/actions/runs/43543525132/cancel || true
-          gh api -X POST repos/$GITHUB_REPOSITORY/actions/runs/43543709017/cancel || true
       - name: Conferir origem do artefato
         env:
           GH_TOKEN: ${{ github.token }}
