@@ -52,7 +52,7 @@ jobs:
         run: |
           gh api repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN > /tmp/previous-run.json
           gh api repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs > /tmp/previous-jobs.json
-          gh api repos/$GITHUB_REPOSITORY/actions/jobs/132320428238/logs > /tmp/previous-job.log
+          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/132320428238/logs > /tmp/previous-job.log
           python - <<'PYCHECK'
           import json,os,re,subprocess
           r=json.load(open('/tmp/previous-run.json'));assert r['head_sha']==os.environ['SOURCE_SHA'] and r['run_attempt']==1 and r['conclusion']=='failure'
@@ -257,5 +257,3 @@ jobs:
             done
             test "$PUBLISHED" = true
           fi
-
-# Resume the interrupted validation without rebuilding or replacing the signed ARM APK.
