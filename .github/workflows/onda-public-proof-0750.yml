@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - name: Conferir aprovacao de todos os testes da origem
+      - name: Conferir conclusao dos testes retomados no mesmo aplicativo
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for ONDA_CHECK in $(seq 1 110); do
-            gh api repos/$GITHUB_REPOSITORY/actions/runs/43553310243 > /tmp/source-run.json
+            gh api repos/$GITHUB_REPOSITORY/actions/runs/43561155706 > /tmp/source-run.json
             ONDA_STATUS=$(python -c "import json; print(json.load(open('/tmp/source-run.json'))['status'])")
             if [ "$ONDA_STATUS" = completed ]; then break; fi
             sleep 45
@@ -24,8 +24,10 @@ jobs:
           python - <<'PY'
           import json
           r=json.load(open('/tmp/source-run.json'))
-          assert r['head_sha']=='07289006c963330ef6dd70214eca09adceddbc86' and r['run_attempt']==1 and r['conclusion']=='success'
+          assert r['head_sha']=='7486867d7eb7b2e6f7b67786299501e6486f57cc' and r['run_attempt']==1 and r['conclusion']=='success'
           PY
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43553310243 > /tmp/original-run.json
+          python -c "import json; r=json.load(open('/tmp/original-run.json')); assert r['head_sha']=='07289006c963330ef6dd70214eca09adceddbc86' and r['run_attempt']==1 and r['conclusion']=='failure'"
       - name: Conferir aprovação do verificador do APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -92,7 +94,7 @@ jobs:
           temporary.replace(apk)
           sums=read_url(prefix+'SHA256SUMS.txt').decode()
           assert proof['sha256'] in sums and 'Onda-Musica.apk' in sums
-          proof.update(release='onda-v0.75.0',draft=False,prerelease=False,assets=sorted(assets),publishedApkMatches=True,publishedManifestMatches=True,publicDownloadVerified=True,localApk=str(apk),verifiedAt=datetime.now(timezone.utc).isoformat())
+          proof.update(applicationSourceSha='07289006c963330ef6dd70214eca09adceddbc86',validationResumed=True,continuationRun=43561155706,release='onda-v0.75.0',draft=False,prerelease=False,assets=sorted(assets),publishedApkMatches=True,publishedManifestMatches=True,publicDownloadVerified=True,localApk=str(apk),verifiedAt=datetime.now(timezone.utc).isoformat())
           (root/'v750-published-proof.json').write_text(json.dumps(proof,indent=2))
           print(json.dumps({k:proof[k] for k in ['release','bytes','sha256','publishedApkMatches','publishedManifestMatches','publicDownloadVerified','localApk']},indent=2))
           
@@ -130,10 +132,10 @@ jobs:
           PY
       - uses: actions/download-artifact@v4
         with:
-          name: Onda-Visual-Preview
+          name: Onda-Resume-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43553310243'
+          run-id: '43561155706'
       - name: Conferir a interface colorida e economia de rádio
         run: |
           python - <<'PY'
@@ -163,10 +165,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Onda-Visual-Preview
+          name: Onda-Resume-Visual-Preview
           path: ui-proof
           github-token: ${{ github.token }}
-          run-id: '43553310243'
+          run-id: '43561155706'
       - name: Conferir captura real da biblioteca em tela compacta
         run: |
           python - <<'PY'
