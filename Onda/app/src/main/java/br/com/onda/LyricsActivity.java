@@ -64,7 +64,7 @@ public class LyricsActivity extends Activity {
         LinearLayout root = column(); Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(dp(20),dp(12)+i.getSystemWindowInsetTop(),dp(20),dp(12)+i.getSystemWindowInsetBottom());return i;});
         setContentView(root);
-        Button back=button("‹ Biblioteca",v->finish());Ui.ghost(back);back.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);root.addView(back);root.addView(Ui.eyebrow(this,"SINTA CADA VERSO"));
+        Button back=button("‹ Biblioteca",v->finish());Ui.ghost(back);back.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);LinearLayout top=new LinearLayout(this);top.addView(back,new LinearLayout.LayoutParams(0,-2,1));Button live=button("Ao vivo",v->startActivity(new android.content.Intent(this,LiveLyricsActivity.class)));live.setContentDescription("Reconhecer e traduzir o canto ao vivo");top.addView(live,new LinearLayout.LayoutParams(dp(96),-2));root.addView(top);root.addView(Ui.eyebrow(this,"SINTA CADA VERSO"));
         heading = text("Letra da música", 27, Ui.TEXT);heading.setMaxLines(2); root.addView(heading);
         status = text("Conectando ao tocador…", 13, Ui.MUTED); root.addView(status);
         track = new EditText(this);track.setSingleLine(true);track.setTextColor(Color.WHITE);track.setHintTextColor(Ui.MUTED);track.setHint("Nome da música");track.setContentDescription("Nome da música para buscar letra");Ui.input(track);LinearLayout searchFields=new LinearLayout(this);LinearLayout.LayoutParams trackParams=new LinearLayout.LayoutParams(0,dp(52),1);trackParams.rightMargin=dp(8);searchFields.addView(track,trackParams);root.addView(searchFields);

@@ -68,6 +68,7 @@
         <activity android:name=".ImageSearchActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".RadioActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OnlineActivity" android:exported="false" />
+        <activity android:name=".LiveLyricsActivity" android:exported="false" />
         <activity android:name=".LyricsActivity" android:exported="false" />
         <service android:name=".PlaybackService" android:foregroundServiceType="mediaPlayback" android:exported="true">
             <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>

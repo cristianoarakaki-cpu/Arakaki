@@ -1,0 +1,6 @@
+Reconhecimento de canto ao vivo (experimental)
+Whisper.cpp v1.7.6, ggml authors, MIT; source revision a8d002cfd879315632a579e73f0148d06959de36.
+https://github.com/ggml-org/whisper.cpp/tree/a8d002cfd879315632a579e73f0148d06959de36
+Unmodified upstream source is fetched at build time; Onda's JNI adapter and PCM capture are in the application source archive. Upstream archive is attached to the release as Whisper.cpp-Fontes.zip. License: WHISPER-CPP-LICENSE.txt.
+Optional multilingual Whisper model weights originate from OpenAI Whisper (MIT, copyright 2022 OpenAI), converted/quantized by ggerganov/whisper.cpp. Model revision 5359861c739e955e79d9a303bcbc70fb988958b1 at https://huggingface.co/ggerganov/whisper.cpp . Weights are not bundled; downloaded only on explicit user request and verified by SHA-256. License: WHISPER-MODEL-LICENSE.txt.
+Audio recognition stays on device. Downloads contact Hugging Face; translation uses Google ML Kit language model downloads followed by local translation. No microphone is opened. No paid API or per-use charge. Actual accuracy, latency and battery consumption vary by recording and device. This is not an acoustic music identification service.

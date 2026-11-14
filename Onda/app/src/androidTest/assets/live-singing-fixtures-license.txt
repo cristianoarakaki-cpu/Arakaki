@@ -1,0 +1,7 @@
+https://commons.wikimedia.org/wiki/File:Mary_Had_a_Little_Lamb.ogg
+{"Artist": "User:Celestianpower", "LicenseShortName": "Public domain", "LicenseUrl": "", "Credit": "My voice, text from the article, tune from memory. Composed 1830 so I see no copyright problems."}
+Changed: first8seconds, resampled16kHz monoPCM for automated ASR tests.
+
+https://commons.wikimedia.org/wiki/File:Twinkle_Twinkle_Little_Star_-_sung_with_full_lyrics.ogg
+{"Artist": "Dcoetzee", "LicenseShortName": "CC0", "LicenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en", "Credit": "An online tool to find songs by searching with short fragments of song lyrics."}
+Changed: first8seconds, resampled16kHz monoPCM for automated ASR tests.

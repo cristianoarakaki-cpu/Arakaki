@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -141,6 +141,18 @@ jobs:
               tone=b''.join(struct.pack('<h',int(4000*math.sin(2*math.pi*400*n/16000))) for n in range(16000))
               wav.writeframes(tone+b'\x00'*16000*2*8+tone*3)
           PYVOICE
+          python - <<'PYSONG'
+          import hashlib, subprocess, urllib.request
+          from pathlib import Path
+          root=Path("Onda/app/src/androidTest/assets")
+          fixtures=[("twinkle","4/4f/Twinkle_Twinkle_Little_Star_-_sung_with_full_lyrics.ogg","0a9b05a0929699e30cf5f6f124c6e05251ed1505e2a5eb954746e7cd6a6c2f40"),("mary","5/50/Mary_Had_a_Little_Lamb.ogg","f21bb5cecf2e9a32ff0c67622c8c5001049f995abec5e8cce475aba7d9d21260")]
+          for name,path,sha in fixtures:
+              request=urllib.request.Request("https://upload.wikimedia.org/wikipedia/commons/"+path,headers={"User-Agent":"OndaTests/0.75 (public domain and CC0 singing fixtures)"})
+              with urllib.request.urlopen(request,timeout=45) as response: data=response.read()
+              assert hashlib.sha256(data).hexdigest()==sha, "Singing source changed"
+              source=Path("/tmp")/("onda-singing-"+name+".ogg");source.write_bytes(data)
+              subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(source),"-t","8","-ac","1","-ar","16000","-c:a","pcm_s16le",str(root/("singing-"+name+"-8s.wav"))],check=True,timeout=60)
+          PYSONG
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
       - name: Liberar espaço do servidor para os emuladores
         run: |
@@ -426,6 +438,13 @@ jobs:
             python -c 's=open("/tmp/onda-on-device-translation-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
             adb exec-out run-as br.com.onda.musica cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
             adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-live-translation-tests.txt
+            cat /tmp/onda-live-translation-tests.txt
+            for part in translation precision; do adb exec-out run-as br.com.onda.musica cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
+            adb exec-out run-as br.com.onda.musica cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
+            python -c 's=open("/tmp/onda-live-translation-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
+
+            adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.NowPlayingInfoTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-track-identity-tests.txt
             cat /tmp/onda-track-identity-tests.txt
             python -c 's=open("/tmp/onda-track-identity-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
@@ -475,7 +494,7 @@ jobs:
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.PdfLuminanceTest,br.com.onda.OnDeviceTranslationTest,br.com.onda.NowPlayingInfoTest,br.com.onda.AutomationTest,br.com.onda.PdfSpeechTest,br.com.onda.LionBrandTest,br.com.onda.PhotoVideoTest,br.com.onda.TouchMotionTest,br.com.onda.ShortcutLayoutTest,br.com.onda.PlayerClarityTest,br.com.onda.ChapterRepeatTest,br.com.onda.VoiceScreensTest,br.com.onda.AudioEvolutionTest,br.com.onda.YouTubeAudioTest,br.com.onda.AudioChapterTest,br.com.onda.RadioCityUiTest,br.com.onda.ScreenLayoutReviewTest,br.com.onda.VideoPipTest,br.com.onda.ImageMessagesTest,br.com.onda.RadioPlaybackTest,br.com.onda.MenuPanelTest,br.com.onda.YouTubeBackTest,br.com.onda.YouTubeFullscreenTest,br.com.onda.PowerEfficiencyTest,br.com.onda.VideoShareFlowTest,br.com.onda.ShareShortcutsTest,br.com.onda.YoutubeRecoveryTest,br.com.onda.ShareMediaTest,br.com.onda.FastConversionTest,br.com.onda.YouTubeFavoritesTest,br.com.onda.DeleteMediaTest,br.com.onda.CodecEvolutionTest,br.com.onda.LightweightTest,br.com.onda.AutoDestinationTest,br.com.onda.DownloadExpansionTest,br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.LiveTranslationTest,br.com.onda.PdfLuminanceTest,br.com.onda.OnDeviceTranslationTest,br.com.onda.NowPlayingInfoTest,br.com.onda.AutomationTest,br.com.onda.PdfSpeechTest,br.com.onda.LionBrandTest,br.com.onda.PhotoVideoTest,br.com.onda.TouchMotionTest,br.com.onda.ShortcutLayoutTest,br.com.onda.PlayerClarityTest,br.com.onda.ChapterRepeatTest,br.com.onda.VoiceScreensTest,br.com.onda.AudioEvolutionTest,br.com.onda.YouTubeAudioTest,br.com.onda.AudioChapterTest,br.com.onda.RadioCityUiTest,br.com.onda.ScreenLayoutReviewTest,br.com.onda.VideoPipTest,br.com.onda.ImageMessagesTest,br.com.onda.RadioPlaybackTest,br.com.onda.MenuPanelTest,br.com.onda.YouTubeBackTest,br.com.onda.YouTubeFullscreenTest,br.com.onda.PowerEfficiencyTest,br.com.onda.VideoShareFlowTest,br.com.onda.ShareShortcutsTest,br.com.onda.YoutubeRecoveryTest,br.com.onda.ShareMediaTest,br.com.onda.FastConversionTest,br.com.onda.YouTubeFavoritesTest,br.com.onda.DeleteMediaTest,br.com.onda.CodecEvolutionTest,br.com.onda.LightweightTest,br.com.onda.AutoDestinationTest,br.com.onda.DownloadExpansionTest,br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (31 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
@@ -492,6 +511,7 @@ jobs:
           path: |
             Onda/ui-preview/
             Onda/download-preview/
+            /tmp/onda-live-translation-tests.txt
             /tmp/onda-native-tests.txt
             /tmp/onda-shelf-tests.txt
             /tmp/onda-speech-tests.txt
@@ -551,6 +571,7 @@ jobs:
             git archive --format=zip --output=Onda/release-out/Onda-Fontes.zip HEAD Onda .github/workflows/onda-android.yml
             curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
             curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/ggml-org/whisper.cpp/archive/a8d002cfd879315632a579e73f0148d06959de36.zip -o Onda/release-out/Whisper.cpp-Fontes.zip
             sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
             CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
             if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
@@ -566,7 +587,7 @@ jobs:
             fi
             PUBLISHED=false
             for ATTEMPT in 1 2 3; do
-              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
+              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/Whisper.cpp-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
                 PUBLISHED=true
                 break
               fi

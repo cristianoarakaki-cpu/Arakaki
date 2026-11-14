@@ -19,11 +19,12 @@ final class SpeechProcessor extends BaseAudioProcessor {
    int aligned=input.remaining()/bytes*bytes;
    if(aligned>0){int limit=input.limit();input.limit(input.position()+aligned);output.put(input);input.limit(limit);}
    if(input.hasRemaining()){partialBytes=input.remaining();input.get(partial,0,partialBytes);}
-   bypassBytes+=output.position();output.flip();return;
+   bypassBytes+=output.position();output.flip();deliver(output);return;
   }
   long done=0,quietDone=0,leveled=0;
   while(input.hasRemaining()){int copy=Math.min(bytes-partialBytes,input.remaining());input.get(partial,partialBytes,copy);partialBytes+=copy;if(partialBytes<bytes)break;for(int c=0;c<channels;c++)frame[c]=(short)((partial[c*2]&255)|(partial[c*2+1]<<8));dsp.process(frame,requested);quiet.process(frame,quietRequested);level.process(frame,levelingRequested);for(short sample:frame)output.putShort(sample);partialBytes=0;if(requested)done++;if(quietRequested>0)quietDone++;if(levelingRequested)leveled++;}
-  processedFrames+=done;quietFrames+=quietDone;levelFrames+=leveled;levelGainDb=level.gainDb();output.flip();
+  processedFrames+=done;quietFrames+=quietDone;levelFrames+=leveled;levelGainDb=level.gainDb();output.flip();deliver(output);
  }
+ private void deliver(ByteBuffer output){LiveAudioTap.Receiver target=LiveAudioTap.receiver;if(target!=null)try{target.pcm(output.asReadOnlyBuffer(),rate,channels);}catch(RuntimeException|OutOfMemoryError error){if(LiveAudioTap.receiver==target)LiveAudioTap.receiver=null;try{target.failed(error);}catch(RuntimeException ignored){}}}
  @Override protected void onQueueEndOfStream(){if(partialBytes>0){ByteBuffer tail=replaceOutputBuffer(partialBytes);tail.put(partial,0,partialBytes).flip();partialBytes=0;}}
 }
