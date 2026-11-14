@@ -24,7 +24,9 @@ public class LiveLyricsActivity extends Activity {
  private void attach(){if(!requested||!ready||recognizer==null)return;boolean playing=visible&&player!=null&&player.isPlaying();if(playing&&!attached){recognizer.reset();LiveAudioTap.receiver=recognizer;attached=true;status.setText("Ouvindo o áudio do tocador… aguardando um trecho de 8 segundos.");}else if(!playing&&attached){if(LiveAudioTap.receiver==recognizer)LiveAudioTap.receiver=null;attached=false;recognizer.reset();caption++;status.setText("Reprodução pausada • reconhecimento aguardando.");}}
  private void failure(int id,Throwable error){if(id!=token||!visible)return;halt();String detail=error.getMessage();status.setText("Não foi possível iniciar o reconhecimento. "+(detail==null?"Tente um modelo mais leve ou libere memória.":detail)+" A música foi mantida.");}
  private void halt(){token++;caption++;requested=ready=attached=false;if(preparation!=null){preparation.cancel(true);preparation=null;}if(recognizer!=null){recognizer.close();recognizer=null;}if(translator!=null){translator.close();translator=null;}if(start!=null){start.setEnabled(true);stop.setEnabled(false);source.setEnabled(true);target.setEnabled(true);model.setEnabled(true);}}
- @Override protected void onStart(){super.onStart();visible=true;}
+ @Override protected void onResume(){super.onResume();visible=true;}
+ @Override protected void onPause(){visible=false;boolean was=requested;halt();if(was)status.setText("Reconhecimento encerrado ao sair da tela. Toque em Iniciar para usar novamente.");super.onPause();}
+ @Override public void finish(){halt();super.finish();}
  @Override protected void onStop(){visible=false;boolean was=requested;halt();if(was)status.setText("Reconhecimento encerrado ao sair da tela. Toque em Iniciar para usar novamente.");super.onStop();}
  @Override protected void onDestroy(){halt();if(options!=null)options.dismiss();setup.shutdownNow();main.removeCallbacksAndMessages(null);if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }
