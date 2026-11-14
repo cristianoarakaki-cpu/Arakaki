@@ -46,6 +46,23 @@ def tap(desc):shell('input','tap',*point(locate(desc)));time.sleep(.5)
 def tap_text(text):
     node=next(n for n in nodes() if n.attrib.get('text','').casefold()==text.casefold())
     shell('input','tap',*point(node));time.sleep(.5)
+def tap_scroll_text(label):
+    # A fixed number of swipes is unreliable on long sound forms. Scroll near
+    # the left edge, away from equalizer thumbs, and require a visible target.
+    for _ in range(12):
+        current=nodes()
+        target=next((n for n in current if n.attrib.get('text','').casefold()==label.casefold()),None)
+        if target is not None:
+            rect=[int(x) for x in re.findall(r'\d+',target.attrib['bounds'])]
+            if rect[2]>rect[0] and rect[3]-rect[1]>=40:
+                shell('input','tap',*point(target));time.sleep(.5);return
+        scroll=next((n for n in current if n.attrib.get('class')=='android.widget.ScrollView' and n.attrib.get('scrollable')=='true'),None)
+        assert scroll is not None, 'No scrollable form for '+label
+        left,top,right,bottom=[int(x) for x in re.findall(r'\d+',scroll.attrib['bounds'])]
+        x=left+min(36,max(10,(right-left)//12))
+        shell('input','swipe',x,top+int((bottom-top)*.82),x,top+int((bottom-top)*.18),350)
+        time.sleep(.35)
+    raise AssertionError('Scrollable control not reachable: '+label)
 def dialog_action(label):
     for _ in range(3):
         if any(n.attrib.get('text','').casefold()==label.casefold() for n in nodes()):break
@@ -256,8 +273,7 @@ voice('pause');paused_sound=sound_state()
 if paused_sound['equalizer']:assert paused_sound['eq_enabled'] is False
 menu_action('Menu da biblioteca','Estúdio de som')
 assert locate('Escolher preset de som').attrib.get('text')=='Preset: Rock','Sound preset was not persisted'
-for _ in range(2):shell('input','swipe',540,1500,540,500,250)
-tap_text('Restaurar som original');time.sleep(.5)
+tap_scroll_text('Restaurar som original');time.sleep(.5)
 assert sound_state()['enabled'] is False
 (OUTPUT/'sound-tests.json').write_text(json.dumps({'configured':sound,'playing':playing_sound,'paused':paused_sound,'reset':sound_state()},indent=2)+'\n')
 tap('Voltar')
@@ -278,8 +294,7 @@ headphone=sound_state();assert headphone['enabled'] is True and 0<headphone['hea
 if headphone['equalizer']:
  for frequency,level in zip(headphone['frequencies'],headphone['levels']):assert abs(level-expected_level(frequency,[1,-1,0,1,0]))<=2,'Headphone curve was not applied'
 capture('22-perfil-fones')
-for _ in range(2):shell('input','swipe',540,1500,540,500,250)
-tap_text('Restaurar som original');tap('Voltar');tap('Voltar dos fones')
+tap_scroll_text('Restaurar som original');tap('Voltar');tap('Voltar dos fones')
 (OUTPUT/'headphone-tests.json').write_text(json.dumps({'opensBluetoothSettings':True,'routingControl':True,'profile':headphone}))
 # Profiles UI: select an inactive category, name it and persist its own curve.
 menu_action('Menu da biblioteca','Estúdio de som')
