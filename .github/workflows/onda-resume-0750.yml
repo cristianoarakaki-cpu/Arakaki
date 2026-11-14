@@ -257,3 +257,5 @@ jobs:
             done
             test "$PUBLISHED" = true
           fi
+
+# Resume the interrupted validation without rebuilding or replacing the signed ARM APK.
