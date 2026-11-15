@@ -298,3 +298,5 @@ jobs:
             done
             test "$PUBLISHED" = true
           fi
+
+# Reuse the exact verified APK; only the theme-color test was updated.
