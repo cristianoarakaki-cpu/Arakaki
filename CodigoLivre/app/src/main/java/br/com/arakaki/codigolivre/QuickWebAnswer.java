@@ -10,6 +10,7 @@ final class QuickWebAnswer {
   return selected.length()>700?selected.substring(0,700)+" [trecho abreviado]":selected;
  }
  static String answer(String question,PublicPage page){
+  if(SearchRelevance.score(question,page.title+" "+page.text)<0)return null;
   return "RESPOSTA RÁPIDA DA INTERNET\n\nTrecho relevante da página lida, sem reformulação pela IA:\n\n“"+passage(question,page.text)+"”\n\nFonte: "+page.title+"\n"+page.url+"\n\nConfira o contexto na fonte. Este trecho pode não responder a todos os detalhes da pergunta. Desative ‘Resposta online rápida’ para pedir uma síntese mais detalhada ao modelo local.";
  }
  static boolean suitable(String task,String question,boolean hasAttachment){String q=WebQuery.normalized(question).trim();return !hasAttachment&&!task.equals("Criar programa")&&!task.equals("Corrigir código")&&!q.matches("^(crie|desenvolva|gere|programe)\\b.*");}

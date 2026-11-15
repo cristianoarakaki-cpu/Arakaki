@@ -1,0 +1,11 @@
+Validação do kit Android — ambiente Linux, JDK 17, SDK Android 35.
+
+compilar.sh: recursos aapt2, compilação Java, DEX com D8, alinhamento e assinatura concluídos.
+apksigner verify: passou.
+
+Aviso do javac: bootstrap class path not set in conjunction with -source 8.
+O script usa a plataforma Android no classpath do compilador. O exemplo simples passou; não garante compatibilidade de qualquer API Java com Android.
+
+Termux: existência dos pacotes aapt, openjdk-17, d8 e apksigner confirmada nos arquivos oficiais termux/termux-packages; d8/apksigner atuais dependem de openjdk-21. O projeto oficial termux/android-build-tools documenta aapt, aapt2 e zipalign.
+
+Não foram executados preparar.sh/compilar.sh no Termux/POCO, nem instalado APK no aparelho. Nenhuma chave privada de teste foi incluída no kit.

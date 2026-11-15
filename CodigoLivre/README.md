@@ -1,10 +1,10 @@
-# Código Livre IA — Android offline (0.8.0 experimental)
+# Código Livre IA — Android offline (0.9.0 experimental)
 
 Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. A IA continua offline. O APK possui permissão INTERNET para atualizações e, na 0.7.0, consulta opcional a fontes online. Com a consulta ativada, termos da pergunta são enviados ao buscador; os arquivos anexados continuam locais. Não há envio desses arquivos para uma IA em nuvem. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
 
 ## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.8.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+1. Instale `CodigoLivre-0.9.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
 2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e o serviço mantém a análise ativa ao trocar de tela. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
 3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
 4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Autorize as notificações para acompanhar a análise ao trocar de aplicativo ou bloquear a tela.
@@ -19,6 +19,17 @@ Downloads oficiais (internet apenas para obter os pesos):
 - [7B Instruct Q4_K_M — maior capacidade e consumo](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true)
 
 Não é necessário baixar os dois. Um modelo maior pode produzir melhores respostas em tarefas difíceis, mas quantidade de parâmetros não garante acerto. A escolha 3B inicial equilibra recursos e capacidade; o resultado real exige avaliação no celular. Esta versão não inclui o modelo no APK e não afirma ser a IA mais avançada disponível.
+
+## Corrigir último jogo e resultados sem relação (novo na 0.9.0)
+
+A pergunta **“último jogo do Flamengo”** não entrava na consulta esportiva anterior: o classificador reconhecia “joga” e referências ao próximo, mas não o caso literal “jogo” sem outra palavra reconhecida. A resposta rápida também aceitava qualquer passagem com alguma coincidência, mesmo sendo uma palavra temporal genérica. A imagem do Dicio reproduz essa falha de seleção.
+
+- **Último jogo/última partida/placar/resultado**: consulta resultados do Flamengo, exige estado de encerramento, seleciona a data passada mais recente e mostra o placar disponível junto de adversário, competição, data e fonte.
+- **Próximo jogo**: permanece separado, selecionando somente partidas futuras não encerradas. Jogos em andamento, adiados, cancelados ou abandonados não viram último resultado encerrado.
+- Placar ausente recebe aviso, sem preencher números presumidos. Datas sem segundos continuam aceitas. As fontes continuam limitadas a competições/temporada consultadas e futebol masculino do time ESPN 819; não há garantia de cobertura de todos os campeonatos/categorias.
+- Páginas genéricas passam por filtro de assunto. Palavras como último, próximo e hoje não bastam para tornar uma página relevante; nomes/tecnologias presentes na pergunta precisam aparecer na fonte. Entre as páginas aceitas, a de maior coincidência é preferida. Isso é um filtro lexical conservador, não validação semântica ou de veracidade: pode recusar páginas úteis e não garante eliminar toda irrelevância.
+- Sem partida encerrada confirmada, informa a falta de confirmação. O calendário sem dados estruturados suficientes não é apresentado como resposta esportiva por meio de um trecho genérico.
+- Testes reproduzem a pergunta exata e a rejeição da página sobre acento de último, incluindo uma consulta genérica sobre outro clube; também verificam placar, passado/futuro, jogo em andamento/cancelado e fonte sem placar. Não houve acesso ao vivo às fontes neste ambiente.
 
 ## Ler páginas e reduzir a espera (novo na 0.8.0)
 

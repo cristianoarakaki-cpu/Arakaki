@@ -48,7 +48,7 @@ final class PublicPage {
         if(value instanceof JSONArray){JSONArray a=(JSONArray)value;for(int i=0;i<a.length();i++)walk(a.get(i),url,matches,depth+1,nodes);return;}
         if(!(value instanceof JSONObject))return;JSONObject o=(JSONObject)value;
         if(o.has("competitions")&&o.has("date")){
-            for(LiveFeeds.Match m:OnlineResearch.parseMatches(("{\"events\":["+o+"]}").getBytes(StandardCharsets.UTF_8),""))matches.add(new LiveFeeds.Match(m.id,m.opponents,m.competition,m.when.toString(),url,m.timeValid));
+            for(LiveFeeds.Match m:OnlineResearch.parseMatches(("{\"events\":["+o+"]}").getBytes(StandardCharsets.UTF_8),""))matches.add(new LiveFeeds.Match(m.id,m.opponents,m.competition,m.when.toString(),url,m.timeValid,m.completed,m.score));
         }
         if(o.optString("@type").contains("SportsEvent")){
             String status=o.optString("eventStatus").toLowerCase(Locale.ROOT),home=name(o.opt("homeTeam")),away=name(o.opt("awayTeam"));String title=o.optString("name");

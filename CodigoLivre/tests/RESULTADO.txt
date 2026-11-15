@@ -223,7 +223,7 @@ OK 32 Feed não é contado como artigo lido
 OK 33 Extrai estado JSON do calendário sem executar JavaScript
 OK 34 Lê eventos do estado embutido ESPN
 OK 35 Quando a API não tem jogos, a página fornece resposta direta com data
-OK 36 Sem evento estruturado, envia conteúdo lido à IA, não só link
+OK 36 Sem evento confirmado, o calendário não vira resposta esportiva presumida
 OK 37 Consulta geral abre resultado e fornece conteúdo à resposta
 OK 38 Limita tentativas de páginas indisponíveis e mostra erro sem burlar acesso
 OK 39 Resposta rápida seleciona passagem relevante sem gerar fatos
@@ -232,3 +232,25 @@ OK 41 Consulta geral pode responder sem aguardar modelo local
 OK 42 Orçamento global encerra coleta mesmo com fonte travada
 OK 43 Duas páginas são coletadas em paralelo
 43 verificações de páginas/calendário passaram com dados simulados.
+OK 1 Pergunta de jogo passado reconhecida: último jogo do flamengo
+OK 2 Pergunta de jogo passado reconhecida: Qual foi a última partida do Flamengo?
+OK 3 Pergunta de jogo passado reconhecida: Flamengo jogou contra quem?
+OK 4 Pergunta de jogo passado reconhecida: Qual o placar do Flamengo?
+OK 5 Próximo jogo continua separado
+OK 6 Referência explícita a próximo não é confundida com passado
+OK 7 Pergunta sobre título não vira pergunta sobre jogo
+OK 8 Palavra último não torna dicionário relevante para Flamengo
+OK 9 Regressão da imagem: trecho do Dicio recusado
+OK 10 Fonte realmente relacionada à programação aceita
+OK 11 Palavra genérica criar não substitui o assunto Android
+OK 12 Último é o encerrado mais recente, não o próximo
+OK 13 Próximo ignora os encerrados
+OK 14 Placar preserva nomes e ordem dos participantes
+OK 15 Jogo em andamento não é marcado como encerrado
+OK 16 Jogo cancelado não vira último resultado
+OK 17 Placar ausente não é inventado
+OK 18 Pergunta exata produz resposta esportiva direta
+OK 19 Não busca a palavra último no buscador genérico
+OK 20 Sem resultado encerrado, não responde com partida futura
+OK 21 Outra consulta esportiva também recusa página de dicionário
+21 verificações de último jogo e relevância passaram com dados simulados.

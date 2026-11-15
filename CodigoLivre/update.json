@@ -1,9 +1,9 @@
 {
   "packageName": "br.com.arakaki.codigolivre",
-  "versionCode": 8,
-  "versionName": "0.8.0",
-  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_8_0/CodigoLivre-0.8.0-arm64.apk",
-  "sha256": "2b57812ca73934a6f2dde7951f3b8b109aa1a30128f84c8e61b7ec26903e5520",
+  "versionCode": 9,
+  "versionName": "0.9.0",
+  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_9_0/CodigoLivre-0.9.0-arm64.apk",
+  "sha256": "bd3b12cb2228ffd7ecc9210618d3db43332369a0aa1097be1c13c20c2b9daf88",
   "bytes": 7286708,
-  "notes": "Leitura de páginas públicas, resposta online rápida sem aguardar IA, consultas paralelas com orçamento de tempo e correção de datas do calendário do Flamengo."
+  "notes": "Correção de último jogo do Flamengo com partidas encerradas e placar; separação de jogos futuros e filtro de relevância contra páginas sem relação com a pergunta."
 }

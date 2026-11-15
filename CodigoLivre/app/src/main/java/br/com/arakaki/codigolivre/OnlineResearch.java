@@ -33,9 +33,9 @@ final class OnlineResearch {
     }
     private Result perform(String question,Consumer<String> progress)throws Exception {
         if(cancelled.getAsBoolean())throw new CancellationException("Consulta interrompida.");
-        WebQuery.Kind kind=WebQuery.kind(question);if(kind==WebQuery.Kind.FLAMENGO)return flamengo(progress);
+        WebQuery.Kind kind=WebQuery.kind(question);if(kind==WebQuery.Kind.FLAMENGO)return flamengo(progress,WebQuery.lastMatch(question));
         String stamp=ZonedDateTime.now(ZoneId.of("America/Sao_Paulo")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm 'Brasília'"));
-        StringBuilder output=new StringBuilder("CONSULTA ONLINE — "+stamp+" (relógio do aparelho)\n\n");int found=0,pagesRead=0,pagesTried=0;List<LiveFeeds.Item> candidates=new ArrayList<>();String quick=null;
+        StringBuilder output=new StringBuilder("CONSULTA ONLINE — "+stamp+" (relógio do aparelho)\n\n");int found=0,pagesRead=0,pagesTried=0;List<LiveFeeds.Item> candidates=new ArrayList<>();String quick=null;int bestRelevance=-1;
         List<String> urls=new ArrayList<>();List<String> groups=new ArrayList<>();String q=WebQuery.normalized(question);
         if(kind==WebQuery.Kind.NEWS){
             boolean brazil=q.contains("brasil"),world=q.contains("mundo")||q.contains("internaciona");
@@ -55,7 +55,7 @@ final class OnlineResearch {
             for(int i=0;i<pages.size();i++){
                 if(cancelled.getAsBoolean())throw new CancellationException("Consulta interrompida.");
                 progress.accept("Lendo página "+(i+1)+"/"+pages.size()+" em paralelo…");
-                try{PublicPage page=pages.get(i).get(remaining(),TimeUnit.MILLISECONDS);if(!page.restricted&&page.text.length()>=80){pagesRead++;output.append("CONTEÚDO DA PÁGINA LIDA: ").append(page.title).append("\n").append(page.text).append("\nFonte: ").append(page.url).append("\n\n");if(quick==null)quick=QuickWebAnswer.answer(question,page);}else output.append("Página restrita ou sem texto suficiente: ").append(candidates.get(i).link).append('\n');}
+                try{PublicPage page=pages.get(i).get(remaining(),TimeUnit.MILLISECONDS);if(!page.restricted&&page.text.length()>=80){int relevance=SearchRelevance.score(question,page.title+" "+page.text);if(kind==WebQuery.Kind.SEARCH&&relevance<0){output.append("Página descartada por não corresponder ao assunto da pergunta.\n");continue;}pagesRead++;output.append("CONTEÚDO DA PÁGINA LIDA: ").append(page.title).append("\n").append(page.text).append("\nFonte: ").append(page.url).append("\n\n");if(relevance>bestRelevance){bestRelevance=relevance;quick=QuickWebAnswer.answer(question,page);}}else output.append("Página restrita ou sem texto suficiente: ").append(candidates.get(i).link).append('\n');}
                 catch(Exception error){pages.get(i).cancel(true);output.append("Página não lida: ").append(candidates.get(i).link).append(" — ").append(error.getMessage()).append('\n');}
             }
         }finally{readers.shutdownNow();}
@@ -64,23 +64,23 @@ final class OnlineResearch {
         if(found==0)output.append("Não foi possível obter fontes para confirmar a informação atual. Nenhuma resposta atual foi inventada.\n");
         return new Result(output.toString(),kind==WebQuery.Kind.NEWS||found==0?output.toString():null,found>0,quick);
     }
-    private Result flamengo(Consumer<String> progress)throws Exception {
-        progress.accept("Consultando calendários do Flamengo…");int year=LocalDate.now(ZoneId.of("America/Sao_Paulo")).getYear();String[] leagues={"bra.1","bra.copa_do_brasil","conmebol.libertadores","conmebol.sudamericana"};
+    private Result flamengo(Consumer<String> progress,boolean last)throws Exception {
+        progress.accept(last?"Consultando resultados encerrados do Flamengo…":"Consultando calendários do Flamengo…");int year=LocalDate.now(ZoneId.of("America/Sao_Paulo")).getYear();String[] leagues={"bra.1","bra.copa_do_brasil","conmebol.libertadores","conmebol.sudamericana"};
         ExecutorService pool=Executors.newFixedThreadPool(4);List<Future<List<LiveFeeds.Match>>> jobs=new ArrayList<>();List<LiveFeeds.Match> matches=new ArrayList<>();int available=0;
         try{
-            for(String league:leagues)jobs.add(pool.submit(()->parseMatches(read("https://site.api.espn.com/apis/site/v2/sports/soccer/"+league+"/teams/819/schedule?fixture=true&season="+year),league)));
+            for(String league:leagues)jobs.add(pool.submit(()->parseMatches(read("https://site.api.espn.com/apis/site/v2/sports/soccer/"+league+"/teams/819/schedule?fixture="+(!last)+"&season="+year),league)));
             for(Future<List<LiveFeeds.Match>> job:jobs){if(cancelled.getAsBoolean())throw new CancellationException("Consulta interrompida.");try{matches.addAll(job.get(Math.min(remaining(),8000),TimeUnit.MILLISECONDS));available++;}catch(ExecutionException|TimeoutException e){job.cancel(true);}}
         }finally{pool.shutdownNow();}
-        LiveFeeds.Match next=LiveFeeds.earliest(matches,Instant.now());String pageState="",pageEvidence="",rawPageText="";
+        LiveFeeds.Match next=last?LiveFeeds.latest(matches,Instant.now()):LiveFeeds.earliest(matches,Instant.now());String pageState="",pageEvidence="",rawPageText="";
         if(next==null&&!cancelled.getAsBoolean()){
             String pageUrl="https://www.espn.com.br/futebol/time/calendario/_/id/819/flamengo";progress.accept("Abrindo e lendo o calendário do Flamengo…");
-            try{PublicPage page=PublicPage.read(read(pageUrl),pageUrl);rawPageText=page.text;matches.addAll(page.matches);next=LiveFeeds.earliest(matches,Instant.now());if(!page.restricted&&page.text.length()>=160)pageEvidence="Página de calendário efetivamente lida: "+page.title+"\n"+pageUrl+"\nConteúdo público (pode estar abreviado):\n"+page.text;pageState=page.restricted?"O calendário HTML estava restrito.":"O calendário HTML também foi aberto e examinado; somente datas estruturadas confirmadas foram utilizadas.";}
+            try{PublicPage page=PublicPage.read(read(pageUrl),pageUrl);rawPageText=page.text;matches.addAll(page.matches);next=last?LiveFeeds.latest(matches,Instant.now()):LiveFeeds.earliest(matches,Instant.now());if(!page.restricted&&page.text.length()>=160)pageEvidence="Página de calendário efetivamente lida: "+page.title+"\n"+pageUrl+"\nConteúdo público (pode estar abreviado):\n"+page.text;pageState=page.restricted?"O calendário HTML estava restrito.":"O calendário HTML também foi aberto e examinado; somente datas estruturadas confirmadas foram utilizadas.";}
             catch(Exception error){pageState="Não foi possível ler o calendário HTML: "+error.getMessage();}
         }
         String scope="Calendários consultados: Brasileirão, Copa do Brasil, Libertadores e Sul-Americana, temporada "+year+". Fontes disponíveis: "+available+"/4. Outras competições e a temporada seguinte podem não estar incluídas; datas podem mudar.\n";
-        String answer=next==null?"Não consegui confirmar o próximo jogo do Flamengo nas fontes consultadas.\n":"Próximo jogo encontrado nas fontes consultadas:\n\n"+LiveFeeds.describe(next)+"\n\n";
+        String answer=next==null?"Não consegui confirmar o "+(last?"último jogo encerrado":"próximo jogo")+" do Flamengo nas fontes consultadas.\n":(last?"Último jogo encerrado encontrado nas fontes consultadas:":"Próximo jogo encontrado nas fontes consultadas:")+"\n\n"+LiveFeeds.describe(next)+"\n\n";
         answer+=scope+pageState+"\n"+"\nCalendário para conferir: https://www.espn.com.br/futebol/time/calendario/_/id/819/flamengo\nSite do clube: https://www.flamengo.com.br/\nConsulta em "+ZonedDateTime.now(ZoneId.of("America/Sao_Paulo")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm 'Brasília'"))+" (relógio do aparelho).";
-        if(next==null&&!pageEvidence.isEmpty())return new Result(answer+"\n\n"+pageEvidence+"\nExtraia do texto adversário, competição, data e horário somente se confirmados. Caso contrário, explique o que faltou.",null,true,QuickWebAnswer.answer("próximo jogo do Flamengo",new PublicPage("Calendário do Flamengo",rawPageText,"https://www.espn.com.br/futebol/time/calendario/_/id/819/flamengo",false,Collections.emptyList())));
+        if(next==null&&!pageEvidence.isEmpty())return new Result(answer+"\n\n"+pageEvidence+"\nNão foi possível confirmar uma partida com dados estruturados. Não interprete um trecho de calendário como resultado confirmado.","Não consegui confirmar o "+(last?"último jogo encerrado":"próximo jogo")+". A página foi lida, mas os dados não foram suficientes.\n\n"+answer,true);
         return new Result(answer,answer,next!=null);
     }
     static String competition(String league){return switch(league){case "bra.1"->"Campeonato Brasileiro";case "bra.copa_do_brasil"->"Copa do Brasil";case "conmebol.libertadores"->"Copa Libertadores";case "conmebol.sudamericana"->"Copa Sul-Americana";default->league.isEmpty()?"Competição não informada na página":league;};}
@@ -89,9 +89,9 @@ final class OnlineResearch {
         if(events.length()>500)throw new IOException("Calendário excessivo.");
         for(int i=0;i<events.length();i++){
             JSONObject event=events.getJSONObject(i);JSONArray comps=event.optJSONArray("competitions");if(comps==null||comps.length()==0)continue;JSONObject comp=comps.getJSONObject(0);JSONArray opponents=comp.optJSONArray("competitors");if(opponents==null)continue;
-            boolean flamengo=false;List<String> names=new ArrayList<>();for(int k=0;k<opponents.length();k++){JSONObject team=opponents.getJSONObject(k).optJSONObject("team");if(team==null)continue;if("819".equals(team.optString("id")))flamengo=true;names.add(team.optString("displayName",team.optString("name","Time")));}if(!flamengo||names.size()!=2)continue;
-            JSONObject status=event.optJSONObject("status");if(status==null)status=comp.optJSONObject("status");if(status==null)continue;JSONObject type=status.optJSONObject("type");if(type==null||!"pre".equals(type.optString("state")))continue;String state=type.optString("name");if(state.contains("POSTPONED")||state.contains("CANCELED")||state.contains("CANCELLED")||state.contains("SUSPENDED"))continue;
-            String date=event.optString("date",comp.optString("date"));try{result.add(new LiveFeeds.Match(event.optString("id"),String.join(" x ",names),competition(league),date,"https://www.espn.com.br/futebol/time/calendario/_/id/819/flamengo",comp.optBoolean("timeValid",false)));}catch(Exception ignored){}
+            boolean flamengo=false;List<String> names=new ArrayList<>(),scores=new ArrayList<>();for(int k=0;k<opponents.length();k++){JSONObject team=opponents.getJSONObject(k).optJSONObject("team");if(team==null)continue;if("819".equals(team.optString("id")))flamengo=true;names.add(team.optString("displayName",team.optString("name","Time")));Object raw=opponents.getJSONObject(k).opt("score");scores.add(raw instanceof JSONObject?((JSONObject)raw).optString("displayValue",((JSONObject)raw).optString("value")):raw==null||raw==JSONObject.NULL?"":String.valueOf(raw));}if(!flamengo||names.size()!=2)continue;
+            JSONObject status=event.optJSONObject("status");if(status==null)status=comp.optJSONObject("status");if(status==null)continue;JSONObject type=status.optJSONObject("type");if(type==null)continue;String state=type.optString("name");boolean completed="post".equals(type.optString("state"))&&(type.optBoolean("completed")||state.matches(".*(FINAL|FULL_TIME|EXTRA_TIME|PENALTIES).*"));if(!completed&&!"pre".equals(type.optString("state")))continue;if(state.contains("POSTPONED")||state.contains("CANCELED")||state.contains("CANCELLED")||state.contains("SUSPENDED")||state.contains("ABANDONED"))continue;
+            String date=event.optString("date",comp.optString("date"));try{result.add(new LiveFeeds.Match(event.optString("id"),String.join(" x ",names),competition(league),date,"https://www.espn.com.br/futebol/time/calendario/_/id/819/flamengo",comp.optBoolean("timeValid",false),completed,scores.size()==2&&!scores.get(0).isEmpty()&&!scores.get(1).isEmpty()?names.get(0)+" "+scores.get(0)+" x "+scores.get(1)+" "+names.get(1):""));}catch(Exception ignored){}
         }return result;
     }
 }
