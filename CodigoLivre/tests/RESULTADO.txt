@@ -1,0 +1,16 @@
+OK 1 UTF-8 preservado
+OK 2 VBA Windows-1252
+OK 3 ZIP multiarquivo
+OK 4 ZIP traversal recusado
+OK 5 ZIP caminho Windows absoluto recusado
+OK 6 binário recusado
+OK 7 APK recusado
+OK 8 limite de tamanho
+OK 9 ZIP sem fonte recusado
+OK 10 entrada ignorada também limitada
+OK 11 limite de entradas
+OK 12 ZIP inclui relatório e dois blocos
+OK 13 exportação código Python
+OK 14 exportação código VBA
+OK 15 extensões permitidas
+15 testes passaram.
