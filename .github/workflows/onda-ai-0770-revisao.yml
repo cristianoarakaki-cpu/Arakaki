@@ -49,7 +49,7 @@ jobs:
           import json,subprocess,re
           r=json.load(open('/tmp/onda-ai-original-run.json'));assert r['head_sha']=='f25072434c508dc6b9cf1607a763c35aac22c1d4' and r['run_attempt']==1 and r['conclusion']=='failure'
           steps=json.load(open('/tmp/onda-ai-original-job.json'))['steps']
-          for name in ['Run gradle --no-daemon -p Onda -PondaNativeBundle=/tmp/onda-native-arm assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac','Conferir pacote independente','Compactar APK sem alterar o conteúdo']:
+          for name in ['Run gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac','Conferir pacote independente','Compactar APK sem alterar o conteúdo']:
               assert next(s for s in steps if s['name']==name)['conclusion']=='success',name
           log=open('/tmp/onda-ai-original-job.log',encoding='utf-8-sig').read();assert 'Tests run: 16,  Failures: 2' in log and 'São Paulo é a capital do Brasil' in log
           original='331d24b4008dd3b10217e5e1bc101c26d68c153c'
@@ -86,7 +86,7 @@ jobs:
           Path('/tmp/onda-native-reference.json').write_text(json.dumps(proof))
           print(json.dumps({'originalApkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'nativeLibraries':proof},indent=2))
           PYNATIVE
-      - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac
+      - run: gradle --no-daemon -p Onda -PondaNativeBundle=/tmp/onda-native-arm assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac
       - name: Salvar relatórios de falhas
         if: failure()
         uses: actions/upload-artifact@v4
