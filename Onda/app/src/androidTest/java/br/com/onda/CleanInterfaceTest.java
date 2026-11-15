@@ -1,5 +1,6 @@
 package br.com.onda;
 import android.app.*;import android.content.*;import android.net.Uri;import android.os.*;import android.view.*;import android.widget.*;import android.view.accessibility.AccessibilityNodeInfo;
+import androidx.media3.session.MediaController;
 import androidx.media3.common.*;import androidx.media3.session.*;import com.google.common.util.concurrent.ListenableFuture;
 import java.io.*;import java.nio.*;import java.util.*;import java.util.concurrent.*;
 import org.junit.Test;import static org.junit.Assert.*;import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
