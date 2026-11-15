@@ -1,0 +1,173 @@
+name: Onda - Validar visor de bateria 0761
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/onda-battery-resume-0761.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018 cmake;3.22.1'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Reutilizar assinatura de teste
+        uses: actions/cache@v4
+        with:
+          path: Onda/.signing/debug.keystore
+          key: onda-musica-debug-signing-v1
+      - name: Preparar assinatura persistente de teste
+        run: |
+          mkdir -p Onda/.signing
+          if [ ! -f Onda/.signing/debug.keystore ]; then
+            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
+          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
+      - name: Conferir origem e reutilizar o APK assinado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/actions/runs/43711060662 > /tmp/battery-source.json
+          python - <<'PYORIGIN'
+          import json,subprocess
+          r=json.load(open('/tmp/battery-source.json'));assert r['head_sha']=='bec4daac4985d5db6a5d620b168a7fa97473d281' and r['conclusion']=='failure' and r['run_attempt']==1
+          subprocess.run(['git','fetch','--no-tags','origin',r['head_sha']],check=True)
+          subprocess.run(['git','diff','--exit-code',r['head_sha'],'HEAD','--','Onda/app/src/main','Onda/app/build.gradle','Onda/tools','Onda/build.gradle','Onda/settings.gradle'],check=True)
+          PYORIGIN
+          gh api repos/$GITHUB_REPOSITORY/actions/jobs/132802484983 > /tmp/battery-source-job.json
+          python -c 'import json; steps=json.load(open("/tmp/battery-source-job.json"))["steps"]; assert next(s for s in steps if s["name"].startswith("Run gradle --no-daemon"))["conclusion"]=="success"; assert next(s for s in steps if s["name"]=="Conferir pacote independente")["conclusion"]=="success"'
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '14159914121'
+          path: original-apk
+          github-token: ${{ github.token }}
+          run-id: '43711060662'
+      - name: Guardar APK e compilar apenas o emulador
+        run: |
+          mkdir -p Onda/distribution
+          cp original-apk/app-debug.apk Onda/distribution/Onda-Musica.apk
+          gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
+      - name: Compilar testes do emulador
+        run: gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
+      - name: Habilitar emulador
+        run: sudo chmod 666 /dev/kvm
+      - name: Conferir bateria e todas as telas com fonte ampliada
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          script: |
+            adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
+            adb shell am instrument -w -e class br.com.onda.BatteryIndicatorTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-battery-tests.txt
+            cat /tmp/onda-battery-tests.txt
+            python -c 's=open("/tmp/onda-battery-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            mkdir -p Onda/ui-preview
+            adb exec-out run-as br.com.onda.musica cat files/battery-large.png > Onda/ui-preview/battery-large.png
+            adb shell am force-stop br.com.onda.musica
+            adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-screen-tests.txt
+            cat /tmp/onda-screen-tests.txt
+            python -c 's=open("/tmp/onda-screen-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
+            adb exec-out run-as br.com.onda.musica cat files/audit-MainActivity-compact.png > Onda/ui-preview/battery-library.png
+            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review-compact.json > Onda/ui-preview/battery-layout.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Onda-Battery-UI
+          path: |
+            Onda/ui-preview/
+            /tmp/onda-*-tests.txt
+      - name: Inspecionar APK real antes da publicacao
+        run: |
+          python - <<'PYVERIFY'
+          import zipfile,hashlib,json,subprocess,re,os
+          from pathlib import Path
+          a=Path('Onda/distribution/Onda-Musica.apk')
+          with zipfile.ZipFile(a) as z:assert z.testzip() is None;assert any(n.startswith('lib/arm64-v8a/') for n in z.namelist());assert any(n.startswith('lib/armeabi-v7a/') for n in z.namelist())
+          sdk=Path(os.environ['ANDROID_HOME'])/'build-tools/36.0.0'
+          info=subprocess.check_output([str(sdk/'aapt'),'dump','badging',str(a)],text=True)
+          assert "versionCode='101'" in info and "versionName='0.76.1'" in info and "name='br.com.onda.musica'" in info
+          cert=subprocess.check_output([str(sdk/'apksigner'),'verify','--print-certs',str(a)],text=True)
+          assert Path('Onda/signing-certificate.sha256').read_text().strip() in cert
+          proof=dict(version='0.76.1',bytes=a.stat().st_size,sha256=hashlib.sha256(a.read_bytes()).hexdigest(),signatureVerified=True,zipVerified=True)
+          print('BATTERY_APK_PROOF='+json.dumps(proof))
+          PYVERIFY
+      - name: Preparar publicação da atualização
+        id: update_release
+        run: python Onda/tools/prepare_release.py
+      - name: Publicar APK para atualização pelo app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ONDA_TAG: ${{ steps.update_release.outputs.tag }}
+          ONDA_VERSION: ${{ steps.update_release.outputs.version }}
+        run: |
+          if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+            echo "Esta versão já foi publicada. Para distribuir mudanças, incremente versionCode e versionName."
+          else
+            git archive --format=zip --output=Onda/release-out/Onda-Fontes.zip HEAD Onda .github/workflows/onda-android.yml
+            curl --fail --location --retry 2 https://github.com/TeamNewPipe/NewPipeExtractor/archive/refs/tags/v0.26.5.zip -o Onda/release-out/NewPipeExtractor-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/lameproject/lame/archive/1f5cc9487284d5950343aa5d4f70de433468070a.zip -o Onda/release-out/LAME-Fontes.zip
+            curl --fail --location --retry 2 https://github.com/ggml-org/whisper.cpp/archive/a8d002cfd879315632a579e73f0148d06959de36.zip -o Onda/release-out/Whisper.cpp-Fontes.zip
+            sha256sum Onda/release-out/Onda-Musica.apk > Onda/release-out/SHA256SUMS.txt
+            CURRENT_HEAD=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            if [ "$CURRENT_HEAD" != "$GITHUB_SHA" ]; then
+              BUILT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$GITHUB_SHA" --jq '.tree[] | select(.path == "Onda") | .sha')
+              CURRENT_ONDA=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$CURRENT_HEAD" --jq '.tree[] | select(.path == "Onda") | .sha')
+              BUILT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$GITHUB_SHA" --jq '.sha')
+              CURRENT_WORKFLOW=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/onda-android.yml?ref=$CURRENT_HEAD" --jq '.sha')
+              if [ -z "$BUILT_ONDA" ] || [ -z "$BUILT_WORKFLOW" ] || [ "$BUILT_ONDA" != "$CURRENT_ONDA" ] || [ "$BUILT_WORKFLOW" != "$CURRENT_WORKFLOW" ]; then
+                echo "Onda ou sua verificação mudou: a publicação aguarda o build atualizado."
+                exit 0
+              fi
+              echo "Somente outros projetos mudaram; o Onda publicado corresponde exatamente ao código testado."
+            fi
+            PUBLISHED=false
+            for ATTEMPT in 1 2 3; do
+              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/Whisper.cpp-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
+                PUBLISHED=true
+                break
+              fi
+              if gh release view "$ONDA_TAG" >/dev/null 2>&1; then
+                echo "Publicação parcial detectada; não sobrescrever arquivos."
+                exit 1
+              fi
+              sleep 3
+            done
+            test "$PUBLISHED" = true
+          fi
+      - name: Conferir download publico
+        run: |
+          python - <<'PYPUBLIC'
+          import urllib.request,hashlib,json,zipfile,io
+          from pathlib import Path
+          base='https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/onda-v0.76.1/'
+          def read(name):
+              with urllib.request.urlopen(urllib.request.Request(base+name,headers={'User-Agent':'Onda-Music-Android'}),timeout=90) as r:return r.read()
+          data=read('Onda-Musica.apk');expected=Path('Onda/distribution/Onda-Musica.apk').read_bytes();assert data==expected
+          manifest=json.loads(read('onda-update.json'));assert manifest['versionCode']==101 and manifest['sha256']==hashlib.sha256(data).hexdigest()
+          with zipfile.ZipFile(io.BytesIO(data)) as z:assert z.testzip() is None
+          print('BATTERY_PUBLIC_PROOF='+json.dumps(dict(version='0.76.1',bytes=len(data),sha256=manifest['sha256'],publicDownloadVerified=True)))
+          import base64
+          for name in ['battery-large.png','battery-library.png']:
+              encoded=base64.b64encode((Path('Onda/ui-preview')/name).read_bytes()).decode();print('BATTERY_IMAGE_BEGIN '+name)
+              for i in range(0,len(encoded),4096):print(encoded[i:i+4096])
+              print('BATTERY_IMAGE_END '+name)
+          PYPUBLIC
