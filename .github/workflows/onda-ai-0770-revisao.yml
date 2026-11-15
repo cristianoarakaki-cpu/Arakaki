@@ -44,7 +44,7 @@ jobs:
         run: |
           gh api repos/$GITHUB_REPOSITORY/actions/runs/43730502232 > /tmp/onda-ai-original-run.json
           gh api repos/$GITHUB_REPOSITORY/actions/jobs/132861653501 > /tmp/onda-ai-original-job.json
-          gh api --allow-escape-sequences repos/$GITHUB_REPOSITORY/actions/jobs/132861653501/logs > /tmp/onda-ai-original-job.log
+          gh api repos/$GITHUB_REPOSITORY/actions/jobs/132861653501/logs > /tmp/onda-ai-original-job.log
           python - <<'PYORIGINAL'
           import json,subprocess,re
           r=json.load(open('/tmp/onda-ai-original-run.json'));assert r['head_sha']=='f25072434c508dc6b9cf1607a763c35aac22c1d4' and r['run_attempt']==1 and r['conclusion']=='failure'
