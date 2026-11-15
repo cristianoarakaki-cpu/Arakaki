@@ -29,11 +29,13 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Exclusão direta na biblioteca
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Selecionar vários para excluir
 
-Ícone de lixeira em cada música, áudio e vídeo nas listas locais, ao lado de compartilhar. Abre a confirmação de exclusão com o nome do arquivo; o Android poderá pedir autorização adicional. A exclusão é permanente e afeta o arquivo do celular, sem opção de desfazer no Onda. Cancelar preserva o arquivo.
+Selecione várias músicas, áudios ou vídeos e confirme a exclusão em conjunto. Acesso em Menu → Selecionar vários para excluir, ou segure um arquivo e escolha Selecionar vários para excluir. Usa a lista filtrada atual, com caixas de seleção, quantidade selecionada e selecionar/desmarcar todos. Só os arquivos marcados são processados.
 
-O atalho usa o fluxo de exclusão existente. Após confirmar, atualiza a biblioteca, a fila e os favoritos. Compartilhamento, reprodução, favoritos, visor de bateria e temas continuam disponíveis. Botões com alvo de toque de 48dp e ícone estático desenhado nativamente, sem serviço ou monitoramento adicional.
+Confirmação com quantidade e nomes dos arquivos antes de excluir. A exclusão é permanente, sem opção de desfazer no Onda. O Android ou provedor poderá pedir autorização adicional por arquivo. Ao cancelar uma autorização, o processo para e mantém os arquivos restantes. Arquivos já excluídos são contabilizados e as listas, filas e favoritas são atualizadas. Nenhuma pasta é percorrida para exclusão.
+
+Lixeiras individuais, compartilhamento, bateria, temas e recursos anteriores mantidos. Processamento apenas durante a ação solicitada, sem serviço novo, consulta contínua ou acesso a todos os arquivos.
 
 Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
 
