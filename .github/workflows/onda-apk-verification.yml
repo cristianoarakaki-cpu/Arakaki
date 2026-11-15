@@ -8,8 +8,8 @@ permissions:
   contents: read
   actions: read
 env:
-  SOURCE_RUN: '43561942390'
-  SOURCE_SHA: 'f2e4431f3f8438831af2a64b7b5726114808901b'
+  SOURCE_RUN: '43698738825'
+  SOURCE_SHA: 'ce778ff30959035ce7f50d59bf5990857da6286f'
   SOURCE_ATTEMPT: '1'
 jobs:
   split:
@@ -73,7 +73,7 @@ jobs:
           fingerprint=re.search(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',cert).group(1).lower()
           assert fingerprint=='e383d28a3a2027acc70218617bed51c9871e1c2e748f0e5ce846480a5becb54e'
           info=Path('verify/apk-info.txt').read_text()
-          assert "package: name='br.com.onda.musica' versionCode='99' versionName='0.75.0'" in info
+          assert "package: name='br.com.onda.musica' versionCode='100' versionName='0.76.0'" in info
           manifest=Path('verify/apk-manifest.txt').read_text()
           youtube=next(part for part in manifest.split('E: activity') if 'YouTubeActivity' in part)
           assert any('supportsPictureInPicture' in line and '0x0' in line for line in youtube.splitlines())
@@ -104,6 +104,8 @@ jobs:
               assert b'PdfTestTtsService;' not in dex
               for cls in [b'LiveLyricsActivity;',b'LiveRecognizer;',b'LiveSpeechModels;',b'LivePcmWindow;',b'LiveAudioTap;',b'WhisperEngine;',b'NowPlayingInfo;',b'RadioTrackMetadata;',b'LyricTranslation;',b'LocalLyricTranslator;',b'UpdateDownloadPolicy;',b'AutomationActivity;',b'LocalAutomation;',b'RadioData;',b'PdfSpeech;',b'PdfSpeechText;',b'LionBrand;',b'PhotoVideo;',b'PhotoAudio;',b'PhotoCodecOutput;',b'TouchMotion;',b'TouchButton;',b'TiktokPhotos;',b'Ui$MenuButton;',b'RadioCity;',b'YouTubeActivity;',b'WebImages;',b'WebImageFiles;',b'ImageSearchActivity;',b'ImageSharing;',b'RadioActivity;',b'MessageCards;']:
                   assert cls in dex
+              assert b'clean_interface' in dex and b'Ui$Section;' in dex
+              assert b'CleanInterfaceTest;' not in dex
               assert b'analysisFailed' in dex and b'DownloadHistory;' in dex
               assert 'Desativar repetição do áudio do YouTube'.encode('utf-8') in dex
               assert 'Desativar repetição da faixa da coletânea'.encode('utf-8') in dex
@@ -114,7 +116,7 @@ jobs:
                   assert added in dex
               for removed in [b'YouTubePipControls;',b'IptvActivity;',b'IptvPlayerActivity;',b'IptvPlaylist;',b'IptvStore;',b'PlatformBrowserActivity;']:
                   assert removed not in dex
-          report=dict(experimentalLiveAudioRecognition=True,optionalAsrWeightsBundled=False,liveNativeBytes=live_native,version='0.75.0',versionCode=99,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
+          report=dict(cleanInterfaceAvailable=True,experimentalLiveAudioRecognition=True,optionalAsrWeightsBundled=False,liveNativeBytes=live_native,version='0.76.0',versionCode=100,sourceAttempt=int(os.environ['SOURCE_ATTEMPT']),bytes=apk.stat().st_size,sha256=hashlib.sha256(apk.read_bytes()).hexdigest(),certificate=fingerprint,abis=abis,zipIntegrity=True,youtubeAutomaticPictureInPicture=False,nativeYouTubeAudio=True,localVideoPictureInPicture=True,offlineBrazilCityCount=city_count,menuIconIndependentFromFont=True)
           update=dict(versionCode=report['versionCode'],versionName=report['version'],packageName='br.com.onda.musica',apkUrl=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/onda-v{report['version']}/Onda-Musica.apk",sha256=report['sha256'])
           encoded=(json.dumps(update,indent=2)+'\n').encode()
           report['updateManifestBytes']=len(encoded)
