@@ -1,13 +1,13 @@
-# Código Livre IA — Android offline (0.3.0 experimental)
+# Código Livre IA — Android offline (0.4.0 experimental)
 
 Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. O APK não solicita a permissão INTERNET. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
 
 ## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.3.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões 0.1.0 e 0.2.0 disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
-2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e mantenha o app em primeiro plano. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
+1. Instale `CodigoLivre-0.4.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões 0.1.0, 0.2.0 e 0.3.0 disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e o serviço mantém a análise ativa ao trocar de tela. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
 3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
-4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Mantenha a tela do app aberta durante a geração.
+4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Autorize as notificações para acompanhar a análise ao trocar de aplicativo ou bloquear a tela.
 5. Para dados, preencha **nome exato da aba/tabela**, **linha/registro inicial** e **quantidade de linhas** antes de abrir o arquivo. O nome vazio seleciona até 3 primeiras abas/tabelas. CSV não usa o filtro por nome. Confira a prévia e seus limites, escreva o que precisa avaliar e toque em **Processar no aparelho**.
 6. **Salvar resposta e códigos em ZIP** salva a resposta completa e blocos de código. Os arquivos importados permanecem inalterados. Esta versão não grava correções diretamente nas planilhas ou bancos nem compila APK/EXE.
 
@@ -19,6 +19,17 @@ Downloads oficiais (internet apenas para obter os pesos):
 - [7B Instruct Q4_K_M — maior capacidade e consumo](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true)
 
 Não é necessário baixar os dois. Um modelo maior pode produzir melhores respostas em tarefas difíceis, mas quantidade de parâmetros não garante acerto. A escolha 3B inicial equilibra recursos e capacidade; o resultado real exige avaliação no celular. Esta versão não inclui o modelo no APK e não afirma ser a IA mais avançada disponível.
+
+## Progresso e segundo plano (novo na 0.4.0)
+
+- Barra fixa no rodapé, indicador de atividade e tempo decorrido. Durante leitura, preparo ou uma resposta única, aparece uma animação. Em trabalhos divididos, o percentual corresponde às **partes finalizadas**, não ao tempo restante. Uma única parte pode ficar em 0% até terminar; o indicador de atividade continua animado.
+- Ao sair da tela, a análise continua em um serviço Android de primeiro plano com notificação. A notificação mostra a etapa, a cobertura e o botão **Interromper**. Tocar nela retorna à tela com a resposta em andamento, em vez de iniciar nova análise.
+- Permita **Notificações** quando solicitado. Se forem negadas, o serviço ainda pode executar, mas a notificação não será mostrada normalmente na gaveta. O Android pode mostrá-lo apenas nos aplicativos ativos.
+- No POCO/HyperOS, se o sistema ainda suspender a execução, procure **Configurações → Aplicativos → Código Livre IA → Bateria → Sem restrições** (o nome/caminho pode variar). Isso não impede encerramento forçado pelo usuário ou por falta de memória.
+- Acordar CPU enquanto o serviço está ativo evita suspensão durante inferência. Isso consome bateria e pode aquecer o aparelho; o botão Interromper continua disponível.
+- Resultado parcial é salvo no armazenamento privado aproximadamente a cada 3 segundos durante as atualizações, e ao terminar. Ao reabrir a tela, o app recupera a análise ativa ou o último resultado salvo.
+- Se o processo for encerrado pelo Android, pelo usuário, por reinício ou por falta de memória, não há retomada automática do cálculo. O último checkpoint disponível é recuperado com aviso de análise incompleta. A estrutura do serviço não garante execução ilimitada: no Android 15, serviços `dataSync` estão sujeitos à cota de tempo do sistema (até 6 horas em uma janela de 24 horas enquanto em segundo plano). Ao receber timeout, o app solicita interrupção e salva o resultado disponível.
+- O APK continua sem permissão de internet. As novas permissões são serviço de primeiro plano/dataSync, CPU ativa (`WAKE_LOCK`) e notificações. Nenhuma permissão de acesso amplo aos arquivos foi adicionada.
 
 ## Formatos e escopo real
 
@@ -48,7 +59,7 @@ O bloqueio de **30 mil caracteres foi removido**. O aplicativo conta os tokens c
 
 No modo **Automático**, cada resposta pode ocupar todo o contexto restante da etapa; a geração encerra quando o modelo indica fim, quando esse espaço acaba ou quando o usuário interrompe. No modo **Econômico**, cada resposta usa até 1024 tokens. Não existe saída infinita. A reserva de planejamento deixa pelo menos 2048 tokens para a resposta por etapa. A ampliação de 4K para até 8K pode consumir mais memória, especialmente no modelo 7B.
 
-Para textos extensos, o relatório preserva as respostas por parte, mostra os intervalos de caracteres e informa a quantidade concluída. Não faz fusão automática de correções nem garante que relações entre trechos foram revisadas. Um trecho pode começar ou terminar no meio de uma função. Pedidos grandes também podem ser distribuídos; o objetivo curto é repetido nos cabeçalhos, mas instruções extensas podem estar em partes diferentes. Falhas ou interrupções deixam a cobertura marcada como incompleta. Arquivos grandes podem exigir muitos minutos ou horas de processamento local. O botão **Interromper geração** também cancela o planejamento.
+Para textos extensos, o relatório preserva as respostas por parte, mostra os intervalos de caracteres e informa a quantidade concluída. Não faz fusão automática de correções nem garante que relações entre trechos foram revisadas. Um trecho pode começar ou terminar no meio de uma função. Pedidos grandes também podem ser distribuídos; o objetivo curto é repetido nos cabeçalhos, mas instruções extensas podem estar em partes diferentes. Falhas ou interrupções deixam a cobertura marcada como incompleta. Arquivos grandes podem exigir muitos minutos ou horas de processamento local. O botão **Interromper geração**, ou **Interromper** na notificação, também cancela o planejamento.
 
 
 Apenas a **última sessão** é preservada no armazenamento privado: pedido, código/prévia, resposta e opções de seleção. A resposta anterior não é automaticamente adicionada ao contexto de uma nova solicitação. Limpar sessão apaga o histórico local, preservando o modelo. Não há anúncios, telemetria ou criptografia adicional específica do app. Backup Android e transferência automática estão desabilitados. As cópias temporárias de SQLite são apagadas ao finalizar a leitura; uma interrupção abrupta do processo pode deixar uma cópia no cache privado, que pode ser removido nas configurações do Android.

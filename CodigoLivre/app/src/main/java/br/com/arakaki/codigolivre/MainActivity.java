@@ -17,13 +17,21 @@ import java.nio.file.*;
 import java.util.concurrent.*;
 
 public class MainActivity extends Activity {
-    private static final ExecutorService worker=Executors.newSingleThreadExecutor();
-    private LinearLayout root;
+    private static final ExecutorService worker=ModelRuntime.WORKER;
+    private LinearLayout root,processingPanel;
+    private ProgressBar processingBar,activityIndicator;
+    private TextView processingLabel;
+    private final Handler progressHandler=new Handler(Looper.getMainLooper());
+    private long processingStarted,processingFinished;
+    private String processingStage="";
+    private int completedParts,totalParts;
+    private final Runnable progressClock=new Runnable(){public void run(){if(!dead&&busy){refreshProgressLabel();progressHandler.postDelayed(this,1000);}}};
     private TextView status,answer,modelInfo;
     private EditText request,code,section,firstRow,rowCount;
     private Spinner action,budget;
     private Button modelButton,importButton,runButton,saveButton,stopButton,clearButton;
-    private boolean busy=false,ready=false,dead=false;
+    private boolean busy=false,ready=false,dead=false,analysisUI=false;
+    private final java.util.function.Consumer<AnalysisService.State> serviceObserver=s->ui(()->renderService(s));
     private String response="";
     private File model;
     private static final int MODEL=10,CODE=11,EXPORT=12;
@@ -34,8 +42,19 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(16,24,39));
         getWindow().setNavigationBarColor(Color.rgb(16,24,39));
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(16),dp(20),dp(28));root.setBackgroundColor(Color.rgb(16,24,39));scroll.addView(root);setContentView(scroll);
-        root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),dp(16)+insets.getSystemWindowInsetTop(),dp(20),dp(28)+insets.getSystemWindowInsetBottom());return insets;});
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(16),dp(20),dp(28));root.setBackgroundColor(Color.rgb(16,24,39));scroll.addView(root);
+        LinearLayout screen=new LinearLayout(this);screen.setOrientation(LinearLayout.VERTICAL);screen.setBackgroundColor(Color.rgb(16,24,39));
+        screen.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        processingPanel=new LinearLayout(this);processingPanel.setOrientation(LinearLayout.VERTICAL);processingPanel.setPadding(dp(20),dp(8),dp(20),dp(12));processingPanel.setBackground(card(Color.rgb(24,37,55)));
+        processingBar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);processingBar.setMax(100);processingBar.setProgressTintList(android.content.res.ColorStateList.valueOf(Color.rgb(94,234,212)));processingBar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.rgb(94,234,212)));
+        processingPanel.addView(processingBar,new LinearLayout.LayoutParams(-1,dp(12)));
+        processingLabel=new TextView(this);processingLabel.setTextColor(Color.WHITE);processingLabel.setTextSize(13);processingLabel.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        LinearLayout progressRow=new LinearLayout(this);progressRow.setGravity(Gravity.CENTER_VERTICAL);
+        activityIndicator=new ProgressBar(this,null,android.R.attr.progressBarStyleSmall);activityIndicator.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.rgb(94,234,212)));progressRow.addView(activityIndicator,new LinearLayout.LayoutParams(dp(24),dp(24)));
+        LinearLayout.LayoutParams labelParams=new LinearLayout.LayoutParams(0,-2,1);labelParams.leftMargin=dp(10);progressRow.addView(processingLabel,labelParams);processingPanel.addView(progressRow);
+        processingPanel.setVisibility(View.GONE);screen.addView(processingPanel,new LinearLayout.LayoutParams(-1,-2));setContentView(screen);
+        screen.setOnApplyWindowInsetsListener((v,insets)->{screen.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
+
         label("CÓDIGO LIVRE  /  IA LOCAL",12,Color.rgb(94,234,212));
         label("Seu laboratório de código e dados",27,Color.WHITE);
         label("Código · Planilhas · SQLite\nSem conta, sem mensalidade e sem enviar seus arquivos.",14,Color.rgb(180,195,215));
@@ -58,12 +77,13 @@ public class MainActivity extends Activity {
         budget=spinner(new String[]{"Automático · resposta longa","Econômico · resposta mais curta"});budget.setSelection(0);
         label("Arquivos extensos são analisados em partes automaticamente. Contexto local de até 8192 tokens por etapa; a duração aumenta com o tamanho do conteúdo.",12,Color.rgb(180,195,215));
         runButton=button("✦ Processar no aparelho",v->generate());runButton.setEnabled(false);
-        stopButton=button("■ Interromper geração",v->{NativeEngine.cancel();status.setText("Interrompendo…");});stopButton.setEnabled(false);
+        stopButton=button("■ Interromper geração",v->{AnalysisService.cancel(this);status.setText("Interrompendo…");processingStage="Interrompendo…";refreshProgressLabel();});stopButton.setEnabled(false);
         label("RESPOSTA",12,Color.rgb(94,234,212));
         answer=label("As respostas aparecerão aqui. Os arquivos originais não são alterados.",15,Color.WHITE);answer.setTextIsSelectable(true);answer.setTypeface(Typeface.MONOSPACE);answer.setPadding(dp(12),dp(12),dp(12),dp(12));answer.setBackground(card(Color.rgb(24,37,55)));
         saveButton=button("↓ Salvar resposta e códigos em ZIP",v->export());saveButton.setEnabled(false);
         clearButton=button("Limpar pedido e histórico local",v->new AlertDialog.Builder(this).setMessage("Apagar o pedido, o código e a última resposta deste app? O modelo será preservado.").setNegativeButton("Cancelar",null).setPositiveButton("Limpar",(d,w)->clear()).show());
-        restore();if(model.exists()) loadExisting();
+        restore();AnalysisService.State saved=AnalysisService.saved(this);if(saved!=null&&!saved.text.isEmpty()){response=saved.text;answer.setText(response);}
+        if(AnalysisService.running()){ready=model.exists();}else if(model.exists())loadExisting();
     }
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable card(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(12));return d;}
@@ -71,7 +91,9 @@ public class MainActivity extends Activity {
     private Button button(String s,View.OnClickListener click){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(15);b.setBackground(card(Color.rgb(31,66,88)));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(52));p.topMargin=dp(10);b.setLayoutParams(p);b.setOnClickListener(click);root.addView(b);return b;}
     private EditText input(String hint,int lines,boolean mono){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(Color.rgb(150,165,184));e.setTextColor(Color.WHITE);e.setTextSize(14);e.setGravity(Gravity.TOP);e.setMinLines(lines);e.setMaxLines(16);e.setPadding(dp(12),dp(12),dp(12),dp(12));e.setBackground(card(Color.rgb(24,37,55)));e.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);if(mono)e.setTypeface(Typeface.MONOSPACE);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(10);e.setLayoutParams(p);root.addView(e);return e;}
     private Spinner spinner(String[] options){Spinner s=new Spinner(this);ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,options){@Override public View getView(int pos,View v,android.view.ViewGroup parent){TextView t=(TextView)super.getView(pos,v,parent);t.setTextColor(Color.WHITE);t.setPadding(dp(8),dp(12),dp(8),dp(12));return t;}};a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);s.setAdapter(a);root.addView(s);return s;}
-    private void setBusy(boolean value,String message){busy=value;status.setText(message);modelButton.setEnabled(!value);importButton.setEnabled(!value);runButton.setEnabled(!value&&ready);clearButton.setEnabled(!value);saveButton.setEnabled(!value&&!response.isEmpty());code.setEnabled(!value);request.setEnabled(!value);action.setEnabled(!value);budget.setEnabled(!value);section.setEnabled(!value);firstRow.setEnabled(!value);rowCount.setEnabled(!value);stopButton.setEnabled(false);}
+    private void setBusy(boolean value,String message){boolean wasBusy=busy;busy=value;status.setText(message);
+        if(value){if(!wasBusy){processingStarted=SystemClock.elapsedRealtime();processingFinished=0;completedParts=0;totalParts=0;}processingStage=message;activityIndicator.setVisibility(View.VISIBLE);processingPanel.setVisibility(View.VISIBLE);processingBar.setIndeterminate(true);refreshProgressLabel();progressHandler.removeCallbacks(progressClock);progressHandler.postDelayed(progressClock,1000);}
+        else{progressHandler.removeCallbacks(progressClock);processingPanel.setVisibility(View.GONE);}modelButton.setEnabled(!value);importButton.setEnabled(!value);runButton.setEnabled(!value&&ready);clearButton.setEnabled(!value);saveButton.setEnabled(!value&&!response.isEmpty());code.setEnabled(!value);request.setEnabled(!value);action.setEnabled(!value);budget.setEnabled(!value);section.setEnabled(!value);firstRow.setEnabled(!value);rowCount.setEnabled(!value);stopButton.setEnabled(false);}
     private void ui(Runnable r){runOnUiThread(()->{if(!dead)r.run();});}
     private String fileName(Uri uri){String name="arquivo.txt";try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())name=c.isNull(0)?name:c.getString(0);}catch(Exception ignored){}return name;}
     private void pick(int what){if(busy)return;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,what);}
@@ -107,37 +129,41 @@ public class MainActivity extends Activity {
             ready=true;ui(()->{modelInfo.setText(modelDescription());setBusy(false,"Modelo pronto: "+name+" · processamento 100% local.");});
         }catch(Exception e){NativeEngine.unload();ready=false;throw new IOException(message(e)+" O modelo anterior no disco foi preservado; reabra o app para carregá-lo.",e);}finally{tmp.delete();}
     }
-    private void loadExisting(){setBusy(true,"Carregando o modelo local…");worker.execute(()->{try{NativeEngine.load(model.getAbsolutePath().getBytes(StandardCharsets.UTF_8));ready=true;ui(()->setBusy(false,"Modelo local pronto. Pode usar em modo avião."));}catch(Exception e){ready=false;ui(()->setBusy(false,"Modelo não carregado: "+message(e)));}});}
+    private void loadExisting(){setBusy(true,"Carregando o modelo local…");worker.execute(()->{try{NativeEngine.load(model.getAbsolutePath().getBytes(StandardCharsets.UTF_8));ready=true;ui(()->{setBusy(false,"Modelo local pronto. Pode usar em modo avião.");AnalysisService.State saved=AnalysisService.saved(this);if(saved!=null)renderService(saved);});}catch(Exception e){ready=false;ui(()->setBusy(false,"Modelo não carregado: "+message(e)));}});}
     private void generate(){
         if(busy||!ready)return;
         String instruction=request.getText().toString().trim(),source=code.getText().toString();
         if(instruction.isEmpty()&&source.trim().isEmpty()){status.setText("Descreva o pedido ou envie um código.");return;}
+        if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},501);
         String task=action.getSelectedItem().toString();int max=budget.getSelectedItemPosition()==0?0:1024;
-        persist();response="";answer.setText("");NativeEngine.resetCancel();setBusy(true,"Preparando conteúdo… Arquivos grandes serão divididos automaticamente.");stopButton.setEnabled(true);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        long start=System.currentTimeMillis();
-        worker.execute(()->{
-            try{
-                LargeAnalysis.Engine engine=new LargeAnalysis.Engine(){
-                    public int count(String prompt){return NativeEngine.count(SYSTEM.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8));}
-                    public int capacity(){return NativeEngine.capacity();}
-                    public boolean cancelled(){return NativeEngine.cancelled();}
-                    public String generate(String prompt,java.util.function.Consumer<String> partial){
-                        return new String(NativeEngine.generate(SYSTEM.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8),chunk->partial.accept(new String(chunk,StandardCharsets.UTF_8)),max,Math.min(4,Runtime.getRuntime().availableProcessors())),StandardCharsets.UTF_8);
-                    }
-                };
-                String text=LargeAnalysis.run(task,instruction,source,engine,(progress,partial)->ui(()->{status.setText(progress);answer.setText(partial);}));
-                boolean interrupted=NativeEngine.cancelled();
-                ui(()->{response=text;answer.setText(text);persist();finishWork((interrupted?"Interrompido":"Processamento finalizado")+" em "+((System.currentTimeMillis()-start)/1000)+" s. Confira a cobertura e os avisos da resposta.");});
-            }catch(Exception e){ui(()->{response=answer.getText().toString();if(!response.isEmpty()){response+="\n\n[Resposta incompleta: ocorreu uma falha durante a geração.]";answer.setText(response);}persist();finishWork("Falha: "+message(e));});}
-        });
+        persist();response="";answer.setText("");NativeEngine.resetCancel();analysisUI=true;
+        try{AnalysisService.start(getApplicationContext(),new AnalysisService.Job(task,instruction,source,SYSTEM,max));}
+        catch(RuntimeException e){analysisUI=false;status.setText("Não foi possível iniciar: "+message(e));}
     }
-    private void finishWork(String text){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);setBusy(false,text);}
+    private void renderService(AnalysisService.State s){
+        if(s==null)return;
+        response=s.text;answer.setText(s.text);
+        if(!s.running&&busy&&!analysisUI)return;
+        if(s.running){if(!busy)setBusy(true,s.status);analysisUI=true;ready=model.exists();stopButton.setEnabled(true);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);}
+        processingStarted=s.started;processingFinished=s.ended;processingStage=s.status;completedParts=s.completed;totalParts=s.total;status.setText(s.status);
+        if(s.running){processingPanel.setVisibility(View.VISIBLE);processingBar.setIndeterminate(s.total==0||(s.total==1&&s.completed==0));processingBar.setProgress(s.total==0?0:(int)(100L*s.completed/s.total));refreshProgressLabel();}
+        else{analysisUI=false;persist();finishWork(s.status);}
+    }
+    @Override protected void onStart(){super.onStart();AnalysisService.observe(serviceObserver);if(busy){progressHandler.removeCallbacks(progressClock);progressHandler.post(progressClock);}}
+    @Override protected void onStop(){AnalysisService.unobserve(serviceObserver);progressHandler.removeCallbacks(progressClock);super.onStop();}
+    private void refreshProgressLabel(){
+        long seconds=Math.max(0,((busy||processingFinished==0?SystemClock.elapsedRealtime():processingFinished)-processingStarted)/1000);
+        String elapsed=String.format(java.util.Locale.ROOT,"%d:%02d",seconds/60,seconds%60);
+        String coverage=totalParts>0?String.format(java.util.Locale.ROOT,"%d/%d partes finalizadas · %d%%",completedParts,totalParts,(int)(100L*completedParts/totalParts)):(busy?"Etapa em andamento":"Sem partes finalizadas");
+        processingLabel.setText(processingStage+"\n"+coverage+" · tempo decorrido "+elapsed+(busy&&totalParts>0?"\nO percentual conta partes finalizadas, não o tempo restante.":""));
+    }
+    private void finishWork(String text){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);setBusy(false,text);if(processingFinished==0)processingFinished=SystemClock.elapsedRealtime();processingStage=text;activityIndicator.setVisibility(View.GONE);processingPanel.setVisibility(View.VISIBLE);processingBar.setIndeterminate(false);processingBar.setProgress(totalParts==0?0:(int)(100L*completedParts/totalParts));refreshProgressLabel();}
     private void export(){if(response.isEmpty()||busy)return;startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/zip").putExtra(Intent.EXTRA_TITLE,"CodigoLivre-"+System.currentTimeMillis()+".zip"),EXPORT);}
     private void saveZip(Uri uri){final String text=response;setBusy(true,"Salvando ZIP…");worker.execute(()->{try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")){if(out==null)throw new IOException("Destino indisponível.");out.write(CodeFiles.exportZip(text));ui(()->setBusy(false,"ZIP salvo com a resposta completa e os blocos de código."));}catch(Exception e){ui(()->setBusy(false,"Falha ao salvar: "+message(e)));}});}
     private String message(Exception e){return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
     private void persist(){try{org.json.JSONObject j=new org.json.JSONObject();j.put("request",request.getText().toString());j.put("code",code.getText().toString());j.put("response",response);j.put("action",action.getSelectedItemPosition());j.put("responseStyleV3",budget.getSelectedItemPosition());j.put("section",section.getText().toString());j.put("firstRow",firstRow.getText().toString());j.put("rowCount",rowCount.getText().toString());File temp=new File(getFilesDir(),"sessao.tmp");try(FileOutputStream out=new FileOutputStream(temp)){out.write(j.toString().getBytes(StandardCharsets.UTF_8));out.getFD().sync();}Files.move(temp.toPath(),new File(getFilesDir(),"sessao.json").toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(Exception e){status.setText("Não foi possível salvar a sessão local: "+message(e));}}
     private void restore(){File f=new File(getFilesDir(),"sessao.json");if(!f.exists())return;try(InputStream in=new FileInputStream(f)){org.json.JSONObject j=new org.json.JSONObject(new String(CodeFiles.read(in,32*1024*1024),StandardCharsets.UTF_8));section.setText(j.optString("section"));firstRow.setText(j.optString("firstRow","1"));rowCount.setText(j.optString("rowCount","8"));request.setText(j.optString("request"));code.setText(j.optString("code"));response=j.optString("response");if(!response.isEmpty())answer.setText(response);action.setSelection(Math.max(0,Math.min(5,j.optInt("action"))));budget.setSelection(Math.max(0,Math.min(1,j.optInt("responseStyleV3",0))));saveButton.setEnabled(!response.isEmpty());}catch(Exception e){status.setText("Sessão anterior não pôde ser lida. Seus arquivos originais foram preservados.");}}
-    private void clear(){request.setText("");code.setText("");response="";answer.setText("");new File(getFilesDir(),"sessao.json").delete();new File(getFilesDir(),"sessao.tmp").delete();saveButton.setEnabled(false);status.setText("Sessão limpa. Modelo preservado.");}
+    private void clear(){AnalysisService.clear(this);processingPanel.setVisibility(View.GONE);request.setText("");code.setText("");response="";answer.setText("");new File(getFilesDir(),"sessao.json").delete();new File(getFilesDir(),"sessao.tmp").delete();saveButton.setEnabled(false);status.setText("Sessão limpa. Modelo preservado.");}
     private String modelDescription(){
         ActivityManager.MemoryInfo m=new ActivityManager.MemoryInfo();((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getMemoryInfo(m);
         String name=getSharedPreferences("modelo",MODE_PRIVATE).getString("nome","Modelo local");
@@ -155,6 +181,6 @@ public class MainActivity extends Activity {
         try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(ActivityNotFoundException e){status.setText("Não foi encontrado um navegador para abrir o download.");}
     }
     private void help(){new AlertDialog.Builder(this).setTitle("Código e dados — sem internet")
-        .setMessage("Importe um modelo GGUF Qwen2.5-Coder Instruct Q4_K_M (3B recomendado inicialmente; 7B opcional para mais capacidade). Depois, pode usar em modo avião. Reserve espaço para o download e a cópia privada.\n\nPlanilhas: XLSX/XLSM, CSV e TSV. Escolha aba/tabela, linha inicial e quantidade antes de importar. São enviadas amostras, não todo o arquivo. Fórmulas Excel são mostradas com o valor armazenado, sem recalcular; estilos de datas, macros, gráficos e imagens não são interpretados. Arquivos XLS antigos precisam ser salvos como XLSX.\n\nSQLite: cópia independente de até 32 MiB, aberta somente para leitura. Bancos em modo WAL são recusados para evitar leitura de dados incompletos sem os arquivos auxiliares. Exporte uma cópia com a ferramenta de origem. Não é uma auditoria de integridade global.\n\nAccess ACCDB/MDB: exporte tabelas em CSV, esquema em SQL e módulos BAS/CLS. PDF, imagens, ACCDB e bancos criptografados não são abertos diretamente.\n\nO bloqueio de 30 mil caracteres foi removido. Conteúdos longos são distribuídos em etapas de até 8192 tokens, com cobertura informada ao final. No modo Automático, a resposta usa o espaço restante de cada etapa e pode terminar por falta de contexto. A análise em partes não valida todas as relações entre trechos. As prévias de planilhas e bancos continuam amostrais. A IA pode errar, não executa programas, não recalcula fórmulas e não altera os arquivos de origem. Apenas a última sessão é salva. Mantenha o app aberto durante o cálculo.").setPositiveButton("Entendi",null).show();}
-    @Override protected void onDestroy(){dead=true;NativeEngine.cancel();worker.execute(NativeEngine::unload);super.onDestroy();}
+        .setMessage("Importe um modelo GGUF Qwen2.5-Coder Instruct Q4_K_M (3B recomendado inicialmente; 7B opcional para mais capacidade). Depois, pode usar em modo avião. Reserve espaço para o download e a cópia privada.\n\nPlanilhas: XLSX/XLSM, CSV e TSV. Escolha aba/tabela, linha inicial e quantidade antes de importar. São enviadas amostras, não todo o arquivo. Fórmulas Excel são mostradas com o valor armazenado, sem recalcular; estilos de datas, macros, gráficos e imagens não são interpretados. Arquivos XLS antigos precisam ser salvos como XLSX.\n\nSQLite: cópia independente de até 32 MiB, aberta somente para leitura. Bancos em modo WAL são recusados para evitar leitura de dados incompletos sem os arquivos auxiliares. Exporte uma cópia com a ferramenta de origem. Não é uma auditoria de integridade global.\n\nAccess ACCDB/MDB: exporte tabelas em CSV, esquema em SQL e módulos BAS/CLS. PDF, imagens, ACCDB e bancos criptografados não são abertos diretamente.\n\nO bloqueio de 30 mil caracteres foi removido. Conteúdos longos são distribuídos em etapas de até 8192 tokens, com cobertura informada ao final. No modo Automático, a resposta usa o espaço restante de cada etapa e pode terminar por falta de contexto. A análise em partes não valida todas as relações entre trechos. As prévias de planilhas e bancos continuam amostrais. A IA pode errar, não executa programas, não recalcula fórmulas e não altera os arquivos de origem. Apenas a última sessão é salva. Ao trocar de tela, a análise continua em serviço com notificação e progresso. Autorize notificações para acompanhar. O Android pode encerrar a execução em caso de falta de memória, limite de tempo ou encerramento forçado. Resultados parciais são salvos periodicamente, mas uma execução encerrada não é retomada automaticamente. Se necessário, permita atividade em segundo plano nas configurações de bateria do app no POCO.").setPositiveButton("Entendi",null).show();}
+    @Override protected void onDestroy(){dead=true;AnalysisService.unobserve(serviceObserver);progressHandler.removeCallbacks(progressClock);if(!AnalysisService.running())worker.execute(NativeEngine::unload);super.onDestroy();}
 }

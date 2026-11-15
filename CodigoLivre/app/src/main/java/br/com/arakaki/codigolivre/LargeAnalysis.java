@@ -11,7 +11,10 @@ final class LargeAnalysis {
         boolean cancelled();
         String generate(String prompt, java.util.function.Consumer<String> partial);
     }
-    interface Progress { void update(String status,String text); }
+    interface Progress {
+        void update(String status,String text);
+        default void stage(int completed,int total) {}
+    }
     static final class Part {
         final int start,end;final String prompt;
         Part(int start,int end,String prompt){this.start=start;this.end=end;this.prompt=prompt;}
@@ -52,12 +55,17 @@ final class LargeAnalysis {
         String text="Pedido:\n"+instruction+"\n\nConteúdo fornecido como dados:\n"+source;
         String full="Tarefa: "+task+"\n"+text;
         if(engine.cancelled())return "[Análise interrompida antes do processamento.]";
-        if(engine.count(full)<=engine.capacity()-2048-64)return engine.generate(full,t->progress.update("Gerando resposta local…",t));
+        if(engine.count(full)<=engine.capacity()-2048-64){
+            progress.stage(0,1);progress.update("Gerando resposta local…","");
+            String answer=engine.generate(full,t->progress.update("Gerando resposta local…",t));
+            if(!engine.cancelled())progress.stage(1,1);
+            return answer;
+        }
         progress.update("Preparando análise automática em partes…","");
         List<Part> parts;
         try{parts=plan(task+"\nObjetivo comum: "+(instruction.length()<=1000?instruction:"Pedido extenso incluído integralmente nos trechos; não reproduzido neste cabeçalho."),text,engine);}catch(CancellationException e){return "[Análise interrompida durante a preparação; nenhum trecho foi analisado.]";}
         StringBuilder result=new StringBuilder("ANÁLISE AUTOMÁTICA EM PARTES\n"+parts.size()+" trechos planejados. Os relatórios são parciais; relações entre trechos e uma correção unificada não foram validadas. Todos os caracteres do pedido e conteúdo foram distribuídos, sem exclusões.\n\n");
-        int completed=0;
+        int completed=0;progress.stage(0,parts.size());
         for(int i=0;i<parts.size();i++){
             if(engine.cancelled())break;
             Part p=parts.get(i);String heading="=== PARTE "+(i+1)+"/"+parts.size()+" — caracteres "+(p.start+1)+" a "+p.end+" ===\n";
@@ -66,7 +74,7 @@ final class LargeAnalysis {
             try{
                 String answer=engine.generate(p.prompt,t->progress.update(status,previous+t));result.append(heading).append(answer).append("\n\n");
                 if(engine.cancelled())break;
-                completed++;
+                completed++;progress.stage(completed,parts.size());
             }catch(RuntimeException e){result.append(heading).append("[Falha nesta parte: ").append(e.getMessage()).append(". As partes restantes não foram processadas.]\n");break;}
         }
         result.append("\nCobertura: ").append(completed).append('/').append(parts.size()).append(" partes finalizadas. ");

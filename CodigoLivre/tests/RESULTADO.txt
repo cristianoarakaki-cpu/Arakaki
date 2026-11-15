@@ -101,4 +101,22 @@ OK 32 Prompt real da chamada 7 cabe na etapa
 OK 33 Prompt real da chamada 8 cabe na etapa
 OK 34 Prompt real da chamada 9 cabe na etapa
 OK 35 Pedido longo no campo de instruções também é coberto
-Testes de análise em partes passaram: 35 verificações.
+OK 36 Prompt real da chamada 1 cabe na etapa
+OK 37 Etapa única informa início e conclusão reais
+OK 38 Prompt real da chamada 1 cabe na etapa
+OK 39 Prompt real da chamada 2 cabe na etapa
+OK 40 Prompt real da chamada 3 cabe na etapa
+OK 41 Prompt real da chamada 4 cabe na etapa
+OK 42 Prompt real da chamada 5 cabe na etapa
+OK 43 Prompt real da chamada 6 cabe na etapa
+OK 44 Prompt real da chamada 7 cabe na etapa
+OK 45 Prompt real da chamada 8 cabe na etapa
+OK 46 Prompt real da chamada 9 cabe na etapa
+OK 47 Progresso em partes é monotônico e chega a 100% ao concluir
+OK 48 Prompt real da chamada 1 cabe na etapa
+OK 49 Prompt real da chamada 2 cabe na etapa
+OK 50 Cancelamento não informa 100% indevidamente
+OK 51 Prompt real da chamada 1 cabe na etapa
+OK 52 Prompt real da chamada 2 cabe na etapa
+OK 53 Falha mantém percentual das partes realmente finalizadas
+Testes de análise em partes passaram: 53 verificações.
