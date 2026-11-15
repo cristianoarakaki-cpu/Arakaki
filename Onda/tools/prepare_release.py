@@ -31,7 +31,7 @@ manifest = {
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 (output / 'notes.md').write_text(f"""Onda Música {version_name} — Onda IA local e fotos próprias
 
-Nova tela Menu → Onda IA: perguntas e mensagens processadas no celular, sem conta ou API paga. Modelos opcionais: Leve (SmolLM2,105MB,menor precisão em português) e Equilibrado (Qwen2.5,491MB). Download verificável, retomada e Wi-Fi por padrão. Pedidos e respostas não são enviados para servidores. Memória e desempenho variam por aparelho; celulares simples mantêm tarefas e criações manuais mesmo sem executar um modelo. O Onda mantém Android8 ou superior, ARM32 e ARM64. Não há garantia de IA generativa completa em qualquer smartphone.
+Nova tela Menu → Onda IA: perguntas e mensagens processadas no celular, sem conta ou API paga. Modelos opcionais: Leve (SmolLM2,105MB,para mensagens criativas simples, sem recomendação para informações factuais) e Completo (Qwen2.5-1.5B,cerca de 1,1GB). Download verificável, retomada e Wi-Fi por padrão. Pedidos e respostas não são enviados para servidores. O modelo Completo exige 64 bits e memória suficiente. Memória e desempenho variam por aparelho; celulares simples mantêm tarefas e criações manuais mesmo sem executar um modelo. O Onda mantém Android8 ou superior, ARM32 e ARM64. Não há garantia de IA generativa completa em qualquer smartphone.
 
 Tarefas levam o pedido à Central inteligente para revisar e tocar em Executar. Respostas de IA não executam ações. O chat é experimental, pode errar e não consulta notícias em tempo real.
 

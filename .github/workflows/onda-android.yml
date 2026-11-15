@@ -228,7 +228,7 @@ jobs:
             python Onda/tools/install_ai_test_models.py
             adb shell am instrument -w -e class br.com.onda.LocalAiTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-local-ai-tests.txt
             cat /tmp/onda-local-ai-tests.txt
-            python -c 's=open("/tmp/onda-local-ai-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-local-ai-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
 
             adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-on-device-translation-tests.txt

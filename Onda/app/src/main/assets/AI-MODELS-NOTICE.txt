@@ -2,5 +2,5 @@ Onda IA: processamento local opcional, sem API paga. Runtime llama.cpp, commit5f
 
 Modelos opcionais baixados diretamente do Hugging Face, não incluídos no APK:
 SmolLM2-135M-Instruct: Hugging Face TB, Apache License2.0. Quantização GGUF: bartowski. https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct e https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF , revisão09816acd5d99df7be770d85ea30822623dab342c.
-Qwen2.5-0.5B-Instruct: Qwen Team / Alibaba Cloud, Apache License2.0. GGUF oficial https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF , revisão9217f5db79a29953eb74d5343926648285ec7e67.
+Qwen2.5-1.5B-Instruct: Qwen Team / Alibaba Cloud, Apache License2.0. GGUF oficial https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF , revisão91cad51170dc346986eccefdc2dd33a9da36ead9.
 Ambos são experimentais, podem produzir erros. Não são serviços hospedados nem garantem desempenho em todo hardware. Licença Apache2.0 completa também reproduzida no aviso PDFBOX-LICENSE deste aplicativo. Os pedidos não são enviados para servidores; fotos externas em provedores de nuvem podem depender do próprio provedor.
