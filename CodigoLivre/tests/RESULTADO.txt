@@ -120,3 +120,25 @@ OK 51 Prompt real da chamada 1 cabe na etapa
 OK 52 Prompt real da chamada 2 cabe na etapa
 OK 53 Falha mantém percentual das partes realmente finalizadas
 Testes de análise em partes passaram: 53 verificações.
+OK 1 Atualização apenas para versão superior
+OK 2 Digest correto aceito
+OK 3 Digest diferente recusado
+OK 4 URL não autorizada recusada
+OK 5 URL não autorizada recusada
+OK 6 URL não autorizada recusada
+OK 7 URL não autorizada recusada
+OK 8 URL não autorizada recusada
+OK 9 URL não autorizada recusada
+OK 10 URL não autorizada recusada
+OK 11 URL não autorizada recusada
+OK 12 SHA256 malformado recusado
+OK 13 APK excessivo recusado
+OK 14 Arquivo vazio recusado
+OK 15 Pacote diferente recusado
+OK 16 Ordem dos signatários não altera identidade
+OK 17 Assinatura diferente recusada
+OK 18 Assinatura ausente recusada
+OK 19 Modo geral e técnico separados
+OK 20 Modelos gerais e Coder têm links distintos
+OK 21 Modelo desconhecido recusado
+21 verificações de atualização/modos passaram.
