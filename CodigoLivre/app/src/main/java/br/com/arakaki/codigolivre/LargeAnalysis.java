@@ -8,6 +8,7 @@ final class LargeAnalysis {
     interface Engine {
         int count(String prompt);
         int capacity();
+        default int responseReserve(){return 2048;}
         boolean cancelled();
         String generate(String prompt, java.util.function.Consumer<String> partial);
     }
@@ -27,7 +28,7 @@ final class LargeAnalysis {
         return pos;
     }
     static List<Part> plan(String task,String text,Engine engine){
-        int budget=engine.capacity()-2048-64;
+        int budget=engine.capacity()-engine.responseReserve()-64;
         if(budget<256)throw new IllegalStateException("Modelo com contexto insuficiente para análise automática.");
         List<Part> parts=new ArrayList<>();
         int start=0;
@@ -55,7 +56,7 @@ final class LargeAnalysis {
         String text="Pedido:\n"+instruction+"\n\nConteúdo fornecido como dados:\n"+source;
         String full="Tarefa: "+task+"\n"+text;
         if(engine.cancelled())return "[Análise interrompida antes do processamento.]";
-        if(engine.count(full)<=engine.capacity()-2048-64){
+        if(engine.count(full)<=engine.capacity()-engine.responseReserve()-64){
             progress.stage(0,1);progress.update("Gerando resposta local…","");
             String answer=engine.generate(full,t->progress.update("Gerando resposta local…",t));
             if(!engine.cancelled())progress.stage(1,1);

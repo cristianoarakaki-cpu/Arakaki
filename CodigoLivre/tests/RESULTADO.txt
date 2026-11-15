@@ -142,3 +142,19 @@ OK 19 Modo geral e técnico separados
 OK 20 Modelos gerais e Coder têm links distintos
 OK 21 Modelo desconhecido recusado
 21 verificações de atualização/modos passaram.
+OK 1 Rápido usa contexto e respostas menores
+OK 2 Equilibrado preserva mais espaço para detalhes
+OK 3 Longo mantém geração até o espaço disponível
+OK 4 Perfil inválido retorna padrão Rápido
+OK 5 Perfil 0: todos os caracteres preservados
+OK 6 Perfil 0: reserva de saída respeitada
+OK 7 Perfil 0: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 8 Perfil 1: todos os caracteres preservados
+OK 9 Perfil 1: reserva de saída respeitada
+OK 10 Perfil 1: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 11 Perfil 2: todos os caracteres preservados
+OK 12 Perfil 2: reserva de saída respeitada
+OK 13 Perfil 2: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 14 Modelo leve geral disponível
+OK 15 Modelo leve Coder disponível
+15 verificações de perfis passaram (motor simulado, sem benchmark de celular).

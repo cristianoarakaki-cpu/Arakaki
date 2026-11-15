@@ -1,0 +1,89 @@
+/workspace/Arakaki/CodigoLivre/app/build.gradle:12: Warning: Missing x86_64 ABI support for ChromeOS [ChromeOsAbiSupport]
+        ndk { abiFilters 'arm64-v8a' }
+                         ~~~~~~~~~~~
+
+   Explanation for issues of type "ChromeOsAbiSupport":
+   To properly support ChromeOS, your Android application should have an x86
+   and/or x86_64 binary as part of the build configuration. To fix the issue,
+   ensure your files are properly optimized for ARM; the binary translator
+   will then ensure compatibility with x86. Alternatively, add an abiSplit for
+   x86 within your build.gradle file and create the required x86
+   dependencies.
+
+   https://developer.android.com/ndk/guides/abis
+
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:126: Warning: Consider also using StorageManager#getAllocatableBytes and allocateBytes which will consider clearable cached data [UsableSpace]
+            try(FileOutputStream out=new FileOutputStream(tmp)){out.write(magic);byte[] b=new byte[1024*1024];long total=4;int n;while((n=in.read(b))!=-1){if(Thread.currentThread().isInterrupted())throw new IOException("Importação cancelada.");total+=n;if(total>5L*1024*1024*1024)throw new IOException("Modelo maior que 5 GB. Escolha uma quantização menor.");if(getFilesDir().getUsableSpace()<n+64L*1024*1024)throw new IOException("Espaço insuficiente para copiar o modelo.");out.write(b,0,n);}out.getFD().sync();}
+                                                                                                                                                                                                                                                                                                                                                                                        ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UsableSpace":
+   When you need to allocate disk space for large files, consider using the
+   new allocateBytes(FileDescriptor, long) API, which will automatically clear
+   cached files belonging to other apps (as needed) to meet your request.
+
+   When deciding if the device has enough disk space to hold your new data,
+   call getAllocatableBytes(UUID) instead of using getUsableSpace(), since the
+   former will consider any cached data that the system is willing to clear on
+   your behalf.
+
+   Note that these methods require API level 26. If your app is running on
+   older devices, you will probably need to use both APIs, conditionally
+   switching on Build.VERSION.SDK_INT. Lint only looks in the same compilation
+   unit to see if you are already using both APIs, so if it warns even though
+   you are already using the new API, consider moving the calls to the same
+   file or suppressing the warning.
+
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/AppUpdates.java:33: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        Switch toggle=new Switch(activity);toggle.setPadding(32,24,32,24);toggle.setText("Verificar ao abrir (até uma vez por dia)");toggle.setTextColor(android.graphics.Color.WHITE);toggle.setChecked(prefs().getBoolean("automatic",false));toggle.setOnCheckedChangeListener((v,on)->prefs().edit().putBoolean("automatic",on).apply());
+                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:82: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        stopButton=button("■ Interromper geração",v->{AnalysisService.cancel(this);status.setText("Interrompendo…");processingStage="Interrompendo…";refreshProgressLabel();});stopButton.setEnabled(false);
+                                                                                                  ~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:108: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        catch(IllegalArgumentException e){status.setText("Confira os campos de prévia: linha inicial 1 a 100000 e quantidade 1 a 30.");return;}
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:138: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        if(instruction.isEmpty()&&source.trim().isEmpty()){status.setText("Descreva o pedido ou envie um código.");return;}
+                                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:143: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        catch(RuntimeException e){analysisUI=false;status.setText("Não foi possível iniciar: "+message(e));}
+                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:143: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        catch(RuntimeException e){analysisUI=false;status.setText("Não foi possível iniciar: "+message(e));}
+                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:161: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        processingLabel.setText(processingStage+"\n"+coverage+" · tempo decorrido "+elapsed+(busy&&totalParts>0?"\nO percentual conta partes finalizadas, não o tempo restante.":""));
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:161: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        processingLabel.setText(processingStage+"\n"+coverage+" · tempo decorrido "+elapsed+(busy&&totalParts>0?"\nO percentual conta partes finalizadas, não o tempo restante.":""));
+                                                              ~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:167: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+    private void persist(){try{org.json.JSONObject j=new org.json.JSONObject();j.put("request",request.getText().toString());j.put("code",code.getText().toString());j.put("response",response);j.put("action",action.getSelectedItemPosition());j.put("speedProfileV6",budget.getSelectedItemPosition());j.put("section",section.getText().toString());j.put("firstRow",firstRow.getText().toString());j.put("rowCount",rowCount.getText().toString());File temp=new File(getFilesDir(),"sessao.tmp");try(FileOutputStream out=new FileOutputStream(temp)){out.write(j.toString().getBytes(StandardCharsets.UTF_8));out.getFD().sync();}Files.move(temp.toPath(),new File(getFilesDir(),"sessao.json").toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(Exception e){status.setText("Não foi possível salvar a sessão local: "+message(e));}}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:167: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+    private void persist(){try{org.json.JSONObject j=new org.json.JSONObject();j.put("request",request.getText().toString());j.put("code",code.getText().toString());j.put("response",response);j.put("action",action.getSelectedItemPosition());j.put("speedProfileV6",budget.getSelectedItemPosition());j.put("section",section.getText().toString());j.put("firstRow",firstRow.getText().toString());j.put("rowCount",rowCount.getText().toString());File temp=new File(getFilesDir(),"sessao.tmp");try(FileOutputStream out=new FileOutputStream(temp)){out.write(j.toString().getBytes(StandardCharsets.UTF_8));out.getFD().sync();}Files.move(temp.toPath(),new File(getFilesDir(),"sessao.json").toPath(),StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE);}catch(Exception e){status.setText("Não foi possível salvar a sessão local: "+message(e));}}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:168: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+    private void restore(){File f=new File(getFilesDir(),"sessao.json");if(!f.exists())return;try(InputStream in=new FileInputStream(f)){org.json.JSONObject j=new org.json.JSONObject(new String(CodeFiles.read(in,32*1024*1024),StandardCharsets.UTF_8));section.setText(j.optString("section"));firstRow.setText(j.optString("firstRow","1"));rowCount.setText(j.optString("rowCount","8"));request.setText(j.optString("request"));code.setText(j.optString("code"));response=j.optString("response");if(!response.isEmpty())answer.setText(response);action.setSelection(Math.max(0,Math.min(6,j.optInt("action"))));budget.setSelection(Math.max(0,Math.min(2,j.optInt("speedProfileV6",0))));saveButton.setEnabled(!response.isEmpty());}catch(Exception e){status.setText("Sessão anterior não pôde ser lida. Seus arquivos originais foram preservados.");}}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:169: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+    private void clear(){AnalysisService.clear(this);processingPanel.setVisibility(View.GONE);request.setText("");code.setText("");response="";answer.setText("");new File(getFilesDir(),"sessao.json").delete();new File(getFilesDir(),"sessao.tmp").delete();saveButton.setEnabled(false);status.setText("Sessão limpa. Modelo preservado.");}
+                                                                                                                                                                                                                                                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/Arakaki/CodigoLivre/app/src/main/java/br/com/arakaki/codigolivre/MainActivity.java:181: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+                    .setPositiveButton("Abrir download",(dialog,w)->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(AssistantModes.modelUrl(coder,size))));}catch(ActivityNotFoundException e){status.setText("Navegador não encontrado.");}}).setNegativeButton("Cancelar",null).show();
+                                                                                                                                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetTextI18n":
+   When calling TextView#setText
+   * Never call Number#toString() to format numbers; it will not handle
+   fraction separators and locale-specific digits properly. Consider using
+   String#format with proper format specifications (%d or %f) instead.
+   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
+   text can not be properly translated to other languages. Consider using
+   Android resource strings instead.
+   * Do not build messages by concatenating text chunks. Such messages can not
+   be properly translated.
+
+   https://developer.android.com/guide/topics/resources/localization.html
+
+0 errors, 15 warnings

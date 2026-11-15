@@ -1,10 +1,10 @@
-# Código Livre IA — Android offline (0.5.0 experimental)
+# Código Livre IA — Android offline (0.6.0 experimental)
 
 Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. A IA continua offline. A partir da 0.5.0, o APK possui permissão INTERNET exclusivamente para consultar e baixar atualizações opcionais do GitHub; perguntas, arquivos e respostas não são enviados por esse recurso. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
 
 ## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.5.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+1. Instale `CodigoLivre-0.6.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
 2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e o serviço mantém a análise ativa ao trocar de tela. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
 3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
 4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Autorize as notificações para acompanhar a análise ao trocar de aplicativo ou bloquear a tela.
@@ -20,15 +20,29 @@ Downloads oficiais (internet apenas para obter os pesos):
 
 Não é necessário baixar os dois. Um modelo maior pode produzir melhores respostas em tarefas difíceis, mas quantidade de parâmetros não garante acerto. A escolha 3B inicial equilibra recursos e capacidade; o resultado real exige avaliação no celular. Esta versão não inclui o modelo no APK e não afirma ser a IA mais avançada disponível.
 
+## Desempenho no POCO F7 Pro (novo na 0.6.0)
+
+A imagem relatada pelo usuário mostrava um modelo 7B e quase sete minutos na primeira parte, antes de aparecer texto gerado. A versão anterior não mostrava o andamento do processamento inicial, apenas o número de partes concluídas. Isso não permite afirmar se todo o tempo era cálculo, memória ou outro gargalo no aparelho.
+
+- Novo padrão **Rápido**, com trechos menores e respostas objetivas. **Longo** permanece disponível para maior detalhamento.
+- O rodapé/notificação agora informa **leitura X/Y tokens** e a velocidade aproximada medida. Durante a resposta, mostra tokens gerados e tokens/s. O percentual geral continua contando partes concluídas, sem simular uma previsão de tempo restante.
+- Reutilização do contexto alocado entre partes da mesma análise, com limpeza do KV antes de cada nova parte. Ao terminar/interromper, a memória do contexto é liberada; os pesos do modelo ficam disponíveis como antes.
+- Prefill com batch de 512, microbatch de 256 e até 6 threads; geração usa até 4 threads. Compilação nativa RelWithDebInfo com `-O3`, mantendo ARMv8.2-A + dotprod, sem ativar instruções adicionais que possam faltar em outros aparelhos.
+- O relatório de cada etapa termina com estatísticas medidas de leitura e geração. A taxa de geração considera as transições após o primeiro token; isso é diagnóstico local aproximado, não benchmark comparável entre aparelhos.
+- Para velocidade, experimente **1,5B**; para equilibrar recursos e capacidade, **3B**. O **7B continua pesado para CPU de celular**, especialmente com arquivos extensos, e pode continuar lento nesta versão. Feche outros aplicativos e evite aquecimento. Esta entrega continua usando CPU, sem aceleração GPU/Vulkan.
+- Modelos leves Geral/Coder de 1,5B (~1,1 GB) foram incluídos no menu. É necessário baixar/importar outro GGUF para trocar de modelo; escolher Rápido não transforma o 7B em um modelo menor.
+
+Não medimos tempo/velocidade no POCO. Os testes cobrem políticas de divisão e compilação; o reuso de contexto e os callbacks JNI precisam de validação real com os pesos no aparelho. Não há promessa de redução por um fator específico nem de respostas instantâneas.
+
 ## Perguntas de assuntos gerais (novo na 0.5.0)
 
 Selecione **Conversar / assuntos gerais**, digite a pergunta e toque em Processar. Não é obrigatório anexar código ou arquivo. O modo ajuda com estudos, textos, planejamento, ciências, história, tecnologia e dúvidas cotidianas. Cada pedido é independente; a sessão anterior fica salva, mas não é automaticamente enviada como histórico ao modelo.
 
-O menu de modelos oferece **Geral 3B / Geral 7B** (Qwen2.5 Instruct), além dos Coder. Os modelos gerais são mais versáteis para perguntas variadas. Coder prioriza programação; o arquivo já importado continua aceito. A importação troca o único modelo local ativo, preservando os demais dados. A qualidade depende do modelo e precisa ser avaliada no aparelho; nenhum modelo garante respostas corretas para qualquer pergunta. Sem navegação na IA, não há notícias, preços, pesquisa online ou confirmação de fatos em tempo real.
+O menu de modelos oferece **Geral 1,5B / Geral 3B / Geral 7B** (Qwen2.5 Instruct), além dos Coder. Os modelos gerais são mais versáteis para perguntas variadas. Coder prioriza programação; o arquivo já importado continua aceito. A importação troca o único modelo local ativo, preservando os demais dados. A qualidade depende do modelo e precisa ser avaliada no aparelho; nenhum modelo garante respostas corretas para qualquer pergunta. Sem navegação na IA, não há notícias, preços, pesquisa online ou confirmação de fatos em tempo real.
 
 ## Atualizações no aplicativo (novo na 0.5.0)
 
-1. Instale a **0.5.0 manualmente uma vez**, por cima da anterior. As versões anteriores ainda não têm atualizador.
+1. Instale uma versão **0.5.0 ou superior manualmente uma vez**, por cima da anterior. As versões anteriores ainda não têm atualizador.
 2. Abra **Atualizações do aplicativo** e use **Verificar agora**. Se quiser, ative **Verificar ao abrir**: a consulta ocorre ao iniciar/retornar ao app, no máximo uma tentativa automática por dia. A opção vem desativada. Não há verificação agendada com o app fechado.
 3. Quando houver uma versão superior no canal público, toque em **Baixar**. Há uma barra própria de download. O app valida tamanho, SHA256, pacote, versão e assinatura do APK. O endereço deve ser HTTPS no repositório autorizado. Redirecionamentos não são seguidos pelo atualizador.
 4. Toque em **Instalar**. O Android pode pedir para autorizar instalações a partir do Código Livre IA e depois solicitar confirmação. Não existe instalação silenciosa. O instalador substitui o pacote, preservando modelo e dados quando assinatura e pacote correspondem. A instalação fica bloqueada enquanto houver operação em andamento.
@@ -75,7 +89,16 @@ A IA recebe somente o texto visível importado e o pedido. O prompt a orienta a 
 
 O bloqueio de **30 mil caracteres foi removido**. O aplicativo conta os tokens com o tokenizador do modelo e distribui pedidos extensos em etapas de até **8192 tokens**, respeitando a capacidade declarada pelo modelo. Não há uma cota total de tokens por análise definida pelo aplicativo. A memória, o tempo, a janela de contexto por etapa e os limites de importação continuam finitos.
 
-No modo **Automático**, cada resposta pode ocupar todo o contexto restante da etapa; a geração encerra quando o modelo indica fim, quando esse espaço acaba ou quando o usuário interrompe. No modo **Econômico**, cada resposta usa até 1024 tokens. Não existe saída infinita. A reserva de planejamento deixa pelo menos 2048 tokens para a resposta por etapa. A ampliação de 4K para até 8K pode consumir mais memória, especialmente no modelo 7B.
+Na 0.6.0, o padrão passa a ser o perfil **Rápido**. Não é um limite total de tamanho da análise: o texto continua sendo dividido com cobertura informada. Os perfis controlam o trabalho e a resposta de cada etapa:
+
+| Perfil | Contexto por etapa | Saída por etapa | Reserva de planejamento |
+| --- | --- | --- | --- |
+| Rápido | até 3072 tokens | até 768 tokens | 768 tokens |
+| Equilibrado | até 4096 tokens | até 1536 tokens | 1536 tokens |
+| Longo | até 8192 tokens | até o espaço restante | 2048 tokens |
+
+O perfil Longo mantém a opção de resposta automática extensa anterior. Respostas cortadas recebem aviso. O Rápido reduz o volume antes da primeira resposta e usa menos contexto, mas pode aumentar o número de partes e repetir mais cabeçalhos; **não há garantia de redução do tempo total**. A qualidade/detalhamento também dependem do perfil. A janela do modelo e a RAM continuam finitas.
+
 
 Para textos extensos, o relatório preserva as respostas por parte, mostra os intervalos de caracteres e informa a quantidade concluída. Não faz fusão automática de correções nem garante que relações entre trechos foram revisadas. Um trecho pode começar ou terminar no meio de uma função. Pedidos grandes também podem ser distribuídos; o objetivo curto é repetido nos cabeçalhos, mas instruções extensas podem estar em partes diferentes. Falhas ou interrupções deixam a cobertura marcada como incompleta. Arquivos grandes podem exigir muitos minutos ou horas de processamento local. O botão **Interromper geração**, ou **Interromper** na notificação, também cancela o planejamento.
 

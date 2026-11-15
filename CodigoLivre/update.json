@@ -1,9 +1,9 @@
 {
   "packageName": "br.com.arakaki.codigolivre",
-  "versionCode": 5,
-  "versionName": "0.5.0",
-  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_5_0/CodigoLivre-0.5.0-arm64.apk",
-  "sha256": "a4e09438e8ba676ff9414038a88cfb934d325ffe399ba95482811df570b40f78",
-  "bytes": 3677090,
-  "notes": "Modo de assuntos gerais, opções de modelos versáteis e atualizador opcional no aplicativo. Mantém análise em partes, barra de progresso e serviço local em segundo plano."
+  "versionCode": 6,
+  "versionName": "0.6.0",
+  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_6_0/CodigoLivre-0.6.0-arm64.apk",
+  "sha256": "12ea8471db014889ff68aa84b266e0c4f9ecd9f63d6c7358674f5866ac8efa94",
+  "bytes": 3914738,
+  "notes": "Perfis Rápido/Equilibrado/Longo, progresso da leitura em tokens, diagnóstico de velocidade e reuso do contexto entre partes. Opções de modelos leves de 1,5B."
 }

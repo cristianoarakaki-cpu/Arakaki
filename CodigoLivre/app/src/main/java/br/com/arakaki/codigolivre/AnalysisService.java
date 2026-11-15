@@ -24,8 +24,8 @@ public final class AnalysisService extends Service {
     private long lastNotice,lastSave;
     private boolean launched;
     static final class Job {
-        final String task,instruction,source,system;final int limit;
-        Job(String task,String instruction,String source,String system,int limit){this.task=task;this.instruction=instruction;this.source=source;this.system=system;this.limit=limit;}
+        final String task,instruction,source,system;final int limit,profile;
+        Job(String task,String instruction,String source,String system,int profile){this.task=task;this.instruction=instruction;this.source=source;this.system=system;this.profile=profile;this.limit=SpeedProfile.of(profile).output;}
     }
     static final class State {
         final boolean running;final String status,text;final int completed,total;final long started,ended;
@@ -72,12 +72,20 @@ public final class AnalysisService extends Service {
     }
     private void run(Job job,int startId){
         try{
-            checkpoint(true);
+            checkpoint(true);SpeedProfile profile=SpeedProfile.of(job.profile);NativeEngine.configure(profile.context);
             LargeAnalysis.Engine engine=new LargeAnalysis.Engine(){
                 public int count(String prompt){return NativeEngine.count(job.system.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8));}
                 public int capacity(){return NativeEngine.capacity();}
+                public int responseReserve(){return profile.reserve;}
                 public boolean cancelled(){return NativeEngine.cancelled();}
-                public String generate(String prompt,Consumer<String> partial){return new String(NativeEngine.generate(job.system.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8),b->partial.accept(new String(b,StandardCharsets.UTF_8)),job.limit,Math.min(4,Runtime.getRuntime().availableProcessors())),StandardCharsets.UTF_8);}
+                public String generate(String prompt,Consumer<String> partial){return new String(NativeEngine.generate(job.system.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8),new NativeEngine.Callback(){
+                    public void onText(byte[] text){partial.accept(new String(text,StandardCharsets.UTF_8));}
+                    public void onProgress(String phase,int done,int total,float rate){
+                        State s=state;String step=phase.equals("reading")?String.format(java.util.Locale.ROOT,"Lendo entrada: %d/%d tokens · %.1f tok/s",done,total,rate):phase.equals("generating")?String.format(java.util.Locale.ROOT,"Gerando resposta: %d tokens · %.1f tok/s",done,rate):"Preparando memória do modelo…";
+                        String prefix=profile.name+(s.total>0?" · parte "+Math.min(s.completed+1,s.total)+"/"+s.total:"");
+                        publish(new State(true,prefix+"\n"+step,s.text,s.completed,s.total,s.started));notice(false);
+                    }
+                },job.limit,Math.min(4,Runtime.getRuntime().availableProcessors())),StandardCharsets.UTF_8);}
             };
             String answer=LargeAnalysis.run(job.task,job.instruction,job.source,engine,new LargeAnalysis.Progress(){
                 public void update(String status,String text){State s=state;publish(new State(true,status,text,s.completed,s.total,s.started));checkpoint(false);notice(false);}
@@ -85,7 +93,7 @@ public final class AnalysisService extends Service {
             });
             State s=state;publish(new State(false,NativeEngine.cancelled()?"Análise interrompida. Confira a cobertura.":"Processamento finalizado. Confira a cobertura e os avisos.",answer,s.completed,s.total,s.started));
         }catch(Exception e){State s=state;publish(new State(false,"Falha: "+e.getMessage(),s.text+"\n\n[ANÁLISE INCOMPLETA: ocorreu uma falha.]",s.completed,s.total,s.started));}
-        finally{checkpoint(true);notice(true);stopForeground(STOP_FOREGROUND_DETACH);stopSelfResult(startId);active=false;}
+        finally{NativeEngine.releaseContext();checkpoint(true);notice(true);stopForeground(STOP_FOREGROUND_DETACH);stopSelfResult(startId);active=false;}
     }
     private synchronized void checkpoint(boolean force){
         long now=SystemClock.elapsedRealtime();if(!force&&now-lastSave<3000)return;lastSave=now;State s=state;if(s==null)return;

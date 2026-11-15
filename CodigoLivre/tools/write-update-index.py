@@ -18,7 +18,7 @@ index={
  'url':'https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/'+relative,
  'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
  'bytes':apk.stat().st_size,
- 'notes':'Modo de assuntos gerais, opções de modelos versáteis e atualizador opcional no aplicativo. Mantém análise em partes, barra de progresso e serviço local em segundo plano.'
+ 'notes':'Perfis Rápido/Equilibrado/Longo, progresso da leitura em tokens, diagnóstico de velocidade e reuso do contexto entre partes. Opções de modelos leves de 1,5B.'
 }
 (app/'update.json').write_text(json.dumps(index,ensure_ascii=False,indent=2)+'\n')
 print('Índice atualizado:',app/'update.json')
