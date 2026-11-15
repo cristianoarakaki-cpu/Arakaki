@@ -6,5 +6,8 @@ final class NativeEngine {
     static native void unload();
     static native void resetCancel();
     static native void cancel();
+    static native boolean cancelled();
+    static native int capacity();
+    static native int count(byte[] system, byte[] request);
     static native byte[] generate(byte[] system, byte[] request, Callback callback, int limit, int threads);
 }

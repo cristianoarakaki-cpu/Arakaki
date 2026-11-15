@@ -66,3 +66,39 @@ OK 18 Arquivo não SQLite recusado
 OK 19 Cabeçalho truncado recusado
 OK 20 Bancos com mais de 200 tabelas recusados
 20 testes SQLite passaram (JDBC Linux; adaptador Android requer teste no aparelho).
+OK 1 Prompt real da chamada 1 cabe na etapa
+OK 2 Conteúdo pequeno segue em chamada única
+OK 3 Pedido acima de 30 mil caracteres é dividido automaticamente
+OK 4 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 5 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 6 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 7 Prompt real da chamada 1 cabe na etapa
+OK 8 Prompt real da chamada 2 cabe na etapa
+OK 9 Prompt real da chamada 3 cabe na etapa
+OK 10 Prompt real da chamada 4 cabe na etapa
+OK 11 Prompt real da chamada 5 cabe na etapa
+OK 12 Prompt real da chamada 6 cabe na etapa
+OK 13 Prompt real da chamada 7 cabe na etapa
+OK 14 Prompt real da chamada 8 cabe na etapa
+OK 15 Prompt real da chamada 9 cabe na etapa
+OK 16 Relatórios parciais e conclusão com escopo explícito
+OK 17 Respostas inicial e final preservadas
+OK 18 Progresso informado por parte
+OK 19 Prompt real da chamada 1 cabe na etapa
+OK 20 Prompt real da chamada 2 cabe na etapa
+OK 21 Interrupção mantém resultados e marca cobertura incompleta
+OK 22 Interrupção durante planejamento
+OK 23 Prompt real da chamada 1 cabe na etapa
+OK 24 Prompt real da chamada 2 cabe na etapa
+OK 25 Falha não descarta resultados nem declara análise completa
+OK 26 Prompt real da chamada 1 cabe na etapa
+OK 27 Prompt real da chamada 2 cabe na etapa
+OK 28 Prompt real da chamada 3 cabe na etapa
+OK 29 Prompt real da chamada 4 cabe na etapa
+OK 30 Prompt real da chamada 5 cabe na etapa
+OK 31 Prompt real da chamada 6 cabe na etapa
+OK 32 Prompt real da chamada 7 cabe na etapa
+OK 33 Prompt real da chamada 8 cabe na etapa
+OK 34 Prompt real da chamada 9 cabe na etapa
+OK 35 Pedido longo no campo de instruções também é coberto
+Testes de análise em partes passaram: 35 verificações.

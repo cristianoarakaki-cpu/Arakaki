@@ -1,0 +1,104 @@
+OK 1 UTF-8 preservado
+OK 2 VBA Windows-1252
+OK 3 ZIP multiarquivo
+OK 4 ZIP traversal recusado
+OK 5 ZIP caminho Windows absoluto recusado
+OK 6 binário recusado
+OK 7 APK recusado
+OK 8 limite de tamanho
+OK 9 ZIP sem fonte recusado
+OK 10 entrada ignorada também limitada
+OK 11 limite de entradas
+OK 12 ZIP inclui relatório e dois blocos
+OK 13 exportação código Python
+OK 14 exportação código VBA
+OK 15 extensões permitidas
+15 testes passaram.
+OK 1 CSV brasileiro: separador e contagem de registros lógicos
+OK 2 CSV: aspas escapadas e quebras dentro de campo
+OK 3 CSV: seleção por faixa sem inferir cabeçalho
+OK 4 TSV detectado
+OK 5 CSV irregular: estatística verificada
+OK 6 CSV: aspas abertas recusadas
+OK 7 CSV malformado após aspas recusado
+OK 8 CSV vazio
+OK 9 CSV: faixa inexistente informada
+OK 10 Campos longos sinalizados
+OK 11 Faixa inicial inválida recusada
+OK 12 Amostra acima de 30 recusada
+OK 13 XLSX: relações e nomes das abas
+OK 14 XLSX: strings compartilhadas, inline e rich text
+OK 15 XLSX: contagens reais, incluindo células fora da amostra
+OK 16 XLSX: fórmula e cache sem simular recálculo
+OK 17 Datas numéricas não são reinterpretadas incorretamente
+OK 18 XLSX: erros e colunas omitidas explícitos
+OK 19 Fórmula compartilhada sem expressão não é escondida
+OK 20 XLSX: filtro exato de aba e linha
+OK 21 XLSX: faixa inexistente sinalizada
+OK 22 XLSX: aba inexistente recusada
+OK 23 XLSX: DTD e entidades externas recusados
+OK 24 XLSX: XML inválido recusado
+OK 25 XLSX: referência externa recusada
+OK 26 XLSX: traversal recusado
+OK 27 XLSX: parte descompactada excessiva recusada
+OK 28 XLSX: índice de string inválido recusado
+OK 29 Prévia limitada com aviso explícito
+OK 30 Formatos suportados e limites explícitos
+30 testes de dados passaram.
+OK 1 Cabeçalho SQLite independente aceito
+OK 2 Contagem real e esquema de tabela
+OK 3 Amostra ordenada pela chave primária
+OK 4 NULL e BLOB explícitos
+OK 5 Verificação estrutural SQLite executada
+OK 6 Restrições e DDL na prévia
+OK 7 Paginação e limite por célula
+OK 8 Ordenação numérica da PK preservada apesar de prévia textual
+OK 9 Nome com aspas citado corretamente
+OK 10 WITHOUT ROWID e PK composta
+OK 11 Limite de 3 tabelas, views fora da análise
+OK 12 Tabela vazia
+OK 13 Tabela inexistente recusada
+OK 14 Texto de filtro não vira SQL executável
+OK 15 Driver de teste realmente aberto somente leitura
+OK 16 Hash do banco original preservado após todas as consultas
+OK 17 Banco WAL sem auxiliares recusado
+OK 18 Arquivo não SQLite recusado
+OK 19 Cabeçalho truncado recusado
+OK 20 Bancos com mais de 200 tabelas recusados
+20 testes SQLite passaram (JDBC Linux; adaptador Android requer teste no aparelho).
+OK 1 Prompt real da chamada 1 cabe na etapa
+OK 2 Conteúdo pequeno segue em chamada única
+OK 3 Pedido acima de 30 mil caracteres é dividido automaticamente
+OK 4 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 5 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 6 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 7 Prompt real da chamada 1 cabe na etapa
+OK 8 Prompt real da chamada 2 cabe na etapa
+OK 9 Prompt real da chamada 3 cabe na etapa
+OK 10 Prompt real da chamada 4 cabe na etapa
+OK 11 Prompt real da chamada 5 cabe na etapa
+OK 12 Prompt real da chamada 6 cabe na etapa
+OK 13 Prompt real da chamada 7 cabe na etapa
+OK 14 Prompt real da chamada 8 cabe na etapa
+OK 15 Prompt real da chamada 9 cabe na etapa
+OK 16 Relatórios parciais e conclusão com escopo explícito
+OK 17 Respostas inicial e final preservadas
+OK 18 Progresso informado por parte
+OK 19 Prompt real da chamada 1 cabe na etapa
+OK 20 Prompt real da chamada 2 cabe na etapa
+OK 21 Interrupção mantém resultados e marca cobertura incompleta
+OK 22 Interrupção durante planejamento
+OK 23 Prompt real da chamada 1 cabe na etapa
+OK 24 Prompt real da chamada 2 cabe na etapa
+OK 25 Falha não descarta resultados nem declara análise completa
+OK 26 Prompt real da chamada 1 cabe na etapa
+OK 27 Prompt real da chamada 2 cabe na etapa
+OK 28 Prompt real da chamada 3 cabe na etapa
+OK 29 Prompt real da chamada 4 cabe na etapa
+OK 30 Prompt real da chamada 5 cabe na etapa
+OK 31 Prompt real da chamada 6 cabe na etapa
+OK 32 Prompt real da chamada 7 cabe na etapa
+OK 33 Prompt real da chamada 8 cabe na etapa
+OK 34 Prompt real da chamada 9 cabe na etapa
+OK 35 Pedido longo no campo de instruções também é coberto
+Testes de análise em partes passaram: 35 verificações.

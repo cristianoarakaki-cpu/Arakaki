@@ -7,7 +7,7 @@ import java.util.regex.*;
 import java.util.zip.*;
 
 final class CodeFiles {
-    static final int MAX_BYTES=256*1024;
+    static final int MAX_BYTES=8*1024*1024;
     static final Set<String> EXT=new HashSet<>(Arrays.asList("java","kt","kts","py","js","ts","tsx","jsx","html","htm","css","scss","json","xml","yaml","yml","md","txt","bas","cls","vbs","vb","sql","ps1","bat","cmd","c","h","cpp","hpp","cs","go","rs","dart","php","rb","sh","swift","r","lua","toml","gradle","properties","csv","tsv"));
     static boolean source(String name) {
         String n=name.toLowerCase(Locale.ROOT); int p=n.lastIndexOf('.');

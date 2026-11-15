@@ -21,6 +21,19 @@ jbyteArray array(JNIEnv * env, const std::string & s) {
     if (out) env->SetByteArrayRegion(out, 0, s.size(), reinterpret_cast<const jbyte *>(s.data()));
     return out;
 }
+int capacity() { return model ? std::min(8192,static_cast<int>(llama_model_n_ctx_train(model))) : 0; }
+std::string format(const std::string & system,const std::string & request) {
+    if(!model) throw std::runtime_error("Carregue um modelo primeiro.");
+    llama_chat_message messages[]={{"system",system.c_str()},{"user",request.c_str()}};
+    const char * tmpl=llama_model_chat_template(model,nullptr);
+    int n=llama_chat_apply_template(tmpl,messages,2,true,nullptr,0);
+    if(n<=0)throw std::runtime_error("Template do modelo não suportado.");
+    std::vector<char> buffer(n+1);
+    int written=llama_chat_apply_template(tmpl,messages,2,true,buffer.data(),buffer.size());
+    if(written<=0||written>=static_cast<int>(buffer.size()))throw std::runtime_error("Falha ao preparar a solicitação.");
+    return std::string(buffer.data(),written);
+}
+
 }
 extern "C" JNIEXPORT void JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_resetCancel(JNIEnv *, jclass) { stopped=false; }
 extern "C" JNIEXPORT void JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_cancel(JNIEnv *, jclass) { stopped=true; }
@@ -40,21 +53,15 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_br_com_arakaki_codigolivre_NativeEn
         JNIEnv * env, jclass, jbyteArray sys, jbyteArray user, jobject callback, jint limit, jint threads) {
     try {
         if (!model) throw std::runtime_error("Importe e carregue um modelo GGUF primeiro.");
-        std::string system=bytes(env,sys), request=bytes(env,user);
-        llama_chat_message messages[]={{"system",system.c_str()},{"user",request.c_str()}};
-        const char * tmpl=llama_model_chat_template(model,nullptr);
-        int n=llama_chat_apply_template(tmpl,messages,2,true,nullptr,0);
-        if (n<=0) throw std::runtime_error("Template do modelo não suportado. Use Qwen2.5-Coder Instruct GGUF.");
-        std::vector<char> formatted(n+1);
-        n=llama_chat_apply_template(tmpl,messages,2,true,formatted.data(),formatted.size());
-        if (n<=0 || n>=static_cast<int>(formatted.size())) throw std::runtime_error("Falha ao preparar a solicitação.");
+        std::string formatted=format(bytes(env,sys),bytes(env,user));
         const auto * vocab=llama_model_get_vocab(model);
-        int count=-llama_tokenize(vocab,formatted.data(),n,nullptr,0,true,true);
-        limit=std::clamp(static_cast<int>(limit),128,1536);
-        if (count<=0 || count+limit>4096) throw std::runtime_error("Código excede o contexto de 4096 tokens. Envie uma função ou arquivo menor; nenhum trecho foi descartado silenciosamente.");
+        int count=-llama_tokenize(vocab,formatted.data(),formatted.size(),nullptr,0,true,true);
+        int available=capacity()-count-1;
+        if(count<=0||available<1)throw std::runtime_error("Trecho acima do contexto do modelo; a análise automática precisa dividi-lo novamente.");
+        limit=limit<=0?available:std::min(static_cast<int>(limit),available);
         std::vector<llama_token> tokens(count);
-        if (llama_tokenize(vocab,formatted.data(),n,tokens.data(),count,true,true)!=count) throw std::runtime_error("Falha na tokenização.");
-        auto cp=llama_context_default_params(); cp.n_ctx=4096; cp.n_batch=256; cp.n_ubatch=128;
+        if (llama_tokenize(vocab,formatted.data(),formatted.size(),tokens.data(),count,true,true)!=count) throw std::runtime_error("Falha na tokenização.");
+        auto cp=llama_context_default_params(); cp.n_ctx=capacity(); cp.n_batch=256; cp.n_ubatch=128;
         cp.n_threads=std::clamp(static_cast<int>(threads),1,8); cp.n_threads_batch=cp.n_threads;
         cp.abort_callback=abort_eval; cp.abort_callback_data=nullptr;
         std::unique_ptr<llama_context,decltype(&llama_free)> ctx(llama_init_from_model(model,cp),llama_free);
@@ -84,7 +91,14 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_br_com_arakaki_codigolivre_NativeEn
             if(llama_decode(ctx.get(),batch)!=0 && !stopped) throw std::runtime_error("Falha durante a geração.");
         }
         if(stopped) output+="\n\n[Resposta interrompida pelo usuário; pode estar incompleta.]";
-        else if(!complete) output+="\n\n[Limite de geração atingido; a resposta pode estar incompleta.]";
+        else if(!complete) output+=limit==available?"\n\n[Contexto desta resposta esgotado; este trecho pode precisar de continuação.]":"\n\n[Resposta encerrada pelo modo Econômico; pode estar incompleta. Use Automático para mais espaço.]";
         return array(env,output);
     } catch(const std::exception & e) { fail(env,e.what()); return nullptr; }
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_cancelled(JNIEnv *,jclass){return stopped.load();}
+extern "C" JNIEXPORT jint JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_capacity(JNIEnv *,jclass){return capacity();}
+extern "C" JNIEXPORT jint JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_count(JNIEnv * env,jclass,jbyteArray sys,jbyteArray user){
+    try{auto p=format(bytes(env,sys),bytes(env,user));return -llama_tokenize(llama_model_get_vocab(model),p.data(),p.size(),nullptr,0,true,true);}
+    catch(const std::exception & e){fail(env,e.what());return 0;}
 }
