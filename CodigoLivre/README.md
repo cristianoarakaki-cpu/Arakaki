@@ -1,10 +1,10 @@
-# Código Livre IA — Android offline (0.6.0 experimental)
+# Código Livre IA — Android offline (0.7.0 experimental)
 
-Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. A IA continua offline. A partir da 0.5.0, o APK possui permissão INTERNET exclusivamente para consultar e baixar atualizações opcionais do GitHub; perguntas, arquivos e respostas não são enviados por esse recurso. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
+Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. A IA continua offline. O APK possui permissão INTERNET para atualizações e, na 0.7.0, consulta opcional a fontes online. Com a consulta ativada, termos da pergunta são enviados ao buscador; os arquivos anexados continuam locais. Não há envio desses arquivos para uma IA em nuvem. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
 
 ## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.6.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+1. Instale `CodigoLivre-0.7.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
 2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e o serviço mantém a análise ativa ao trocar de tela. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
 3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
 4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Autorize as notificações para acompanhar a análise ao trocar de aplicativo ou bloquear a tela.
@@ -19,6 +19,32 @@ Downloads oficiais (internet apenas para obter os pesos):
 - [7B Instruct Q4_K_M — maior capacidade e consumo](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true)
 
 Não é necessário baixar os dois. Um modelo maior pode produzir melhores respostas em tarefas difíceis, mas quantidade de parâmetros não garante acerto. A escolha 3B inicial equilibra recursos e capacidade; o resultado real exige avaliação no celular. Esta versão não inclui o modelo no APK e não afirma ser a IA mais avançada disponível.
+
+## Notícias, jogos e programação com fontes online (novo na 0.7.0)
+
+A opção **Consultar fontes online para melhorar a resposta** vem ativada nesta entrega, conforme solicitado. Pode ser desativada para usar apenas o modelo local. Os anexos não são enviados: o app usa termos derivados do campo da pergunta, com até 240 caracteres. Pedidos que parecem conter código, ou são muito extensos, viram uma busca genérica por documentação/linguagens detectadas, em vez de enviar esse código como consulta literal. Isso é uma heurística, não um filtro garantido de dados pessoais digitados na pergunta.
+
+- **“Últimas notícias no Brasil e no mundo”**: consulta feeds públicos do Google News por Brasil e Mundo, exibindo até 6 manchetes de cada, veículo, data retornada e link. A resposta é direta, sem esperar o modelo 7B resumir. A ordem editorial do agregador não garante que sejam as publicações mais recentes de toda a imprensa. Não há leitura integral das matérias.
+- **“Quando será o próximo jogo do Flamengo?”**: consulta os calendários públicos ESPN para Brasileirão, Copa do Brasil, Libertadores e Sul-Americana, na temporada do ano informado pelo relógio do aparelho. Filtra o time 819, partidas futuras e não adiadas/canceladas, escolhendo a menor data entre os resultados disponíveis. O texto diz **próximo jogo encontrado nas fontes consultadas**, informa as competições cobertas, o fuso de Brasília e um link para conferir. Não cobre necessariamente amistosos, Supercopa, Mundial, outras competições ou o ano seguinte. Se não conseguir confirmar, não inventa uma data.
+- **Dúvidas de programação e outras perguntas**: usa resultados/trechos públicos da busca RSS do Bing como evidências para o modelo local, acrescentando os links à resposta. Não é navegação integral em toda a documentação nem execução dos exemplos. Páginas podem estar desatualizadas e a IA ainda pode interpretar mal um trecho; confira as fontes e a versão da tecnologia.
+- Notícias e calendário podem ser apresentados sem modelo carregado. Para sintetizar respostas e criar código, é necessário um modelo local; sem ele, a busca exibe apenas as fontes encontradas.
+- Falhas de rede ou informações ausentes são mostradas no texto. Perguntas de informação atual sem confirmação não são respondidas como se o conhecimento antigo do modelo fosse atual. Consultas comuns podem usar o modelo local com aviso de indisponibilidade das fontes.
+- Conexões HTTPS limitadas a `news.google.com`, `www.bing.com` e `site.api.espn.com`, sem chave paga. Apenas redirecionamentos para essas fontes autorizadas são aceitos. Os provedores podem alterar os endpoints, bloquear requisições ou não retornar dados. Cancelamento de uma requisição em leitura pode aguardar o timeout de rede.
+
+**Validação limitada:** este ambiente bloqueou conexões aos provedores externos pelo proxy (HTTP CONNECT 403). Os testes dos leitores de RSS, seleção de partidas, termos de busca, falhas e cancelamento usam fontes simuladas. Não houve confirmação de funcionamento ao vivo desses endpoints nesta entrega; será necessário testar no smartphone. O app mostra indisponibilidade em vez de preencher dados não confirmados.
+
+## Preparar ferramentas e gerar um APK no smartphone (novo na 0.7.0)
+
+O botão **Preparar criação de APK no celular** abre os links oficiais do Termux e exporta `CodigoLivre-Android-Kit.zip`. Ele contém `preparar.sh`, `compilar.sh`, LEIA-ME e um projeto Java de exemplo. O Android exige confirmação para instalar Termux e APKs: o Código Livre não instala esses programas silenciosamente nem acessa seu aparelho remotamente.
+
+1. Instale o Termux oficial pelo link do assistente e exporte o kit em Downloads.
+2. No Termux, siga LEIA-ME: instale unzip, execute `termux-setup-storage` e conceda o acesso solicitado pelo Android.
+3. O botão **Copiar preparação**, após exportar, facilita colar os comandos no Termux. O preparador instala OpenJDK 21, aapt/aapt2, D8, apksigner e utilitários pelos repositórios do Termux. Antes do SDK, pede aceitação dos termos oficiais do Google e valida o download da plataforma Android 35 por SHA256. Reserve pelo menos 2 GB livres e internet para os downloads iniciais.
+4. Execute `compilar.sh` para gerar `projeto/saida/MeuApp.apk` e use `termux-open` para pedir a instalação. A chave de assinatura é gerada e preservada no armazenamento privado do Termux; não é a chave do assistente. Guarde backup seguro dessa chave e senha se quiser atualizar seus próprios apps.
+
+**Escopo do kit:** apps Java simples com recursos Android; sem Gradle, Kotlin/Compose, bibliotecas externas ou NDK/C++. Não compila qualquer projeto Android nem o próprio Código Livre IA. O código deve usar APIs disponíveis na versão Android de destino; não use APIs de Java desktop. A IA pode ajudar a editar o exemplo, mas esta versão não converte automaticamente uma conversa em um projeto completo compilável.
+
+O script do exemplo foi testado em Linux com JDK 17 e ferramentas SDK 35: compilação Java, recursos, DEX, alinhamento, assinatura e verificação concluíram com sucesso. Os pacotes oficiais Termux foram conferidos no repositório de origem, mas a instalação e a execução ARM64 no POCO ainda não foram testadas. Nenhuma ferramenta foi instalada no seu celular por esta entrega.
 
 ## Desempenho no POCO F7 Pro (novo na 0.6.0)
 
@@ -38,7 +64,7 @@ Não medimos tempo/velocidade no POCO. Os testes cobrem políticas de divisão e
 
 Selecione **Conversar / assuntos gerais**, digite a pergunta e toque em Processar. Não é obrigatório anexar código ou arquivo. O modo ajuda com estudos, textos, planejamento, ciências, história, tecnologia e dúvidas cotidianas. Cada pedido é independente; a sessão anterior fica salva, mas não é automaticamente enviada como histórico ao modelo.
 
-O menu de modelos oferece **Geral 1,5B / Geral 3B / Geral 7B** (Qwen2.5 Instruct), além dos Coder. Os modelos gerais são mais versáteis para perguntas variadas. Coder prioriza programação; o arquivo já importado continua aceito. A importação troca o único modelo local ativo, preservando os demais dados. A qualidade depende do modelo e precisa ser avaliada no aparelho; nenhum modelo garante respostas corretas para qualquer pergunta. Sem navegação na IA, não há notícias, preços, pesquisa online ou confirmação de fatos em tempo real.
+O menu de modelos oferece **Geral 1,5B / Geral 3B / Geral 7B** (Qwen2.5 Instruct), além dos Coder. Os modelos gerais são mais versáteis para perguntas variadas. Coder prioriza programação; o arquivo já importado continua aceito. A importação troca o único modelo local ativo, preservando os demais dados. A qualidade depende do modelo e precisa ser avaliada no aparelho; nenhum modelo garante respostas corretas para qualquer pergunta. O modelo isolado não tem dados atuais. A opção online acrescenta fontes às respostas, sem garantir que todos os assuntos tenham cobertura ou confirmação.
 
 ## Atualizações no aplicativo (novo na 0.5.0)
 
@@ -48,7 +74,7 @@ O menu de modelos oferece **Geral 1,5B / Geral 3B / Geral 7B** (Qwen2.5 Instruct
 4. Toque em **Instalar**. O Android pode pedir para autorizar instalações a partir do Código Livre IA e depois solicitar confirmação. Não existe instalação silenciosa. O instalador substitui o pacote, preservando modelo e dados quando assinatura e pacote correspondem. A instalação fica bloqueada enquanto houver operação em andamento.
 5. O APK baixado/verificado fica privado até instalar ou ser substituído. **Instalar baixada** aparece no menu se houver atualização disponível já obtida. Se sair da tela e o Android destruir a atividade durante o download, ele pode ser interrompido; nesse caso, tente baixar novamente.
 
-A rede é usada somente para GET do índice público e do APK no GitHub; não há conta, chave de API ou envio de conteúdo do usuário. Desativar a verificação automática e não usar Verificar agora mantém a IA funcionando sem precisar de rede. A permissão INTERNET, por ser normal no Android, não apresenta diálogo próprio. REQUEST_INSTALL_PACKAGES não dispensa a autorização de origem nem a confirmação do instalador. Isso não atualiza os pesos GGUF automaticamente.
+O atualizador usa GET do índice público e do APK no GitHub; não envia perguntas ou arquivos. A consulta online, separadamente, envia termos da pergunta ao buscador. Para ficar inteiramente offline, desative Consultar fontes online e a verificação automática de versões e não use Verificar agora. A permissão INTERNET, por ser normal no Android, não apresenta diálogo próprio. REQUEST_INSTALL_PACKAGES não dispensa a autorização de origem nem a confirmação do instalador. Isso não atualiza os pesos GGUF automaticamente.
 
 Para publicar versões futuras, copie o APK assinado para `entregas/`, mantenha a mesma chave, incremente versionCode/versionName e execute `python tools/write-update-index.py /caminho/do/APK`. Confira `update.json` e publique índice e APK no mesmo commit do canal `entrega/codigo-livre-android-offline`. O índice precisa ser mantido nas próximas entregas. Não publique a chave privada de assinatura. Esta versão experimental ainda usa a assinatura de teste já utilizada anteriormente.
 
@@ -107,7 +133,7 @@ Apenas a **última sessão** é preservada no armazenamento privado: pedido, có
 
 ## Compilar e testar
 
-JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. As ferramentas e os testes exigem internet durante a preparação. A inferência continua offline; o atualizador é o único componente de rede do app.
+JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. As ferramentas e os testes exigem internet durante a preparação. A inferência continua local; atualizador e consulta online usam a rede conforme as opções escolhidas.
 
 ```sh
 bash tools/prepare-engine.sh

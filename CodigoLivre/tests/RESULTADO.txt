@@ -158,3 +158,33 @@ OK 13 Perfil 2: ampliar contexto não aumenta quantidade de etapas no caso de te
 OK 14 Modelo leve geral disponível
 OK 15 Modelo leve Coder disponível
 15 verificações de perfis passaram (motor simulado, sem benchmark de celular).
+OK 1 Notícias atuais detectadas
+OK 2 Próximo jogo detectado
+OK 3 Programação usa pesquisa geral
+OK 4 Notícia do clube não é confundida com calendário
+OK 5 Pergunta natural vira termos de busca
+OK 6 Código não é enviado como consulta literal
+OK 7 Pedido extenso gera termos genéricos
+OK 8 Pergunta de informação atual reconhecida
+OK 9 HTTP não seguro recusado
+OK 10 Fonte não autorizada recusada
+OK 11 Credencial em URL recusada
+OK 12 RSS preserva título e veículo
+OK 13 HTML dos trechos vira texto
+OK 14 Horário RSS convertido para Brasília
+OK 15 RSS com entidades recusado
+OK 16 Link não HTTPS descartado
+OK 17 Notícias consultam Brasil e Mundo sem geração local
+OK 18 Resposta direta mantém origem
+OK 19 Busca de programação fornece evidências para IA
+OK 20 Falha de rede não inventa notícia
+OK 21 Cancelamento antes da rede respeitado
+OK 22 Calendário ignora outro time e partida adiada
+OK 23 Menor data futura e competição traduzida
+OK 24 Jogos passados não são apresentados como próximos
+OK 25 Jogo inclui fuso e fonte
+OK 26 Resposta de jogo informa limites das competições consultadas
+OK 27 Calendário vazio não vira data inventada
+OK 28 Comando do kit preserva aspas para caminhos com espaços
+OK 29 Consulta genérica de anexo evita rede desnecessária
+29 verificações online/kit passaram com fontes simuladas, sem rede externa.

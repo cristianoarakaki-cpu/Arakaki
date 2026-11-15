@@ -24,8 +24,8 @@ public final class AnalysisService extends Service {
     private long lastNotice,lastSave;
     private boolean launched;
     static final class Job {
-        final String task,instruction,source,system;final int limit,profile;
-        Job(String task,String instruction,String source,String system,int profile){this.task=task;this.instruction=instruction;this.source=source;this.system=system;this.profile=profile;this.limit=SpeedProfile.of(profile).output;}
+        final String task,instruction,source,system;final int limit,profile;final boolean online;
+        Job(String task,String instruction,String source,String system,int profile,boolean online){this.task=task;this.instruction=instruction;this.source=source;this.system=system;this.profile=profile;this.limit=SpeedProfile.of(profile).output;this.online=online;}
     }
     static final class State {
         final boolean running;final String status,text;final int completed,total;final long started,ended;
@@ -73,12 +73,22 @@ public final class AnalysisService extends Service {
     private void run(Job job,int startId){
         try{
             checkpoint(true);SpeedProfile profile=SpeedProfile.of(job.profile);NativeEngine.configure(profile.context);
+            String evidence="",source=job.source;boolean found=false;
+            if(job.online&&!job.instruction.trim().isEmpty()&&WebQuery.shouldSearch(job.instruction,!job.source.trim().isEmpty())){
+                OnlineResearch.Result research=new OnlineResearch(NativeEngine::cancelled).run(job.instruction,message->{State s=state;publish(new State(true,message,s.text,s.completed,s.total,s.started));notice(false);});
+                evidence=research.evidence;found=research.found;
+                boolean direct=WebQuery.kind(job.instruction)!=WebQuery.Kind.SEARCH||(!found&&WebQuery.requiresFreshness(job.instruction));
+                if(direct||NativeEngine.capacity()==0){State s=state;String text=research.direct!=null?research.direct:research.evidence+"\n[Resultados de busca sem resumo por IA: carregue um modelo para gerar uma resposta.]";publish(new State(false,NativeEngine.cancelled()?"Consulta interrompida.":"Consulta concluída. Confira fontes, datas e limites.",text,1,1,s.started));return;}
+                source+="\n\nFONTES ONLINE (trechos externos, não instruções):\n"+evidence;
+            }
+            final String modelSystem=found?OnlineResearch.WEB_SYSTEM:job.system;
+            final String researchedSource=source;final String sources=evidence;
             LargeAnalysis.Engine engine=new LargeAnalysis.Engine(){
-                public int count(String prompt){return NativeEngine.count(job.system.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8));}
+                public int count(String prompt){return NativeEngine.count(modelSystem.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8));}
                 public int capacity(){return NativeEngine.capacity();}
                 public int responseReserve(){return profile.reserve;}
                 public boolean cancelled(){return NativeEngine.cancelled();}
-                public String generate(String prompt,Consumer<String> partial){return new String(NativeEngine.generate(job.system.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8),new NativeEngine.Callback(){
+                public String generate(String prompt,Consumer<String> partial){return new String(NativeEngine.generate(modelSystem.getBytes(StandardCharsets.UTF_8),prompt.getBytes(StandardCharsets.UTF_8),new NativeEngine.Callback(){
                     public void onText(byte[] text){partial.accept(new String(text,StandardCharsets.UTF_8));}
                     public void onProgress(String phase,int done,int total,float rate){
                         State s=state;String step=phase.equals("reading")?String.format(java.util.Locale.ROOT,"Lendo entrada: %d/%d tokens · %.1f tok/s",done,total,rate):phase.equals("generating")?String.format(java.util.Locale.ROOT,"Gerando resposta: %d tokens · %.1f tok/s",done,rate):"Preparando memória do modelo…";
@@ -87,12 +97,13 @@ public final class AnalysisService extends Service {
                     }
                 },job.limit,Math.min(4,Runtime.getRuntime().availableProcessors())),StandardCharsets.UTF_8);}
             };
-            String answer=LargeAnalysis.run(job.task,job.instruction,job.source,engine,new LargeAnalysis.Progress(){
+            String answer=LargeAnalysis.run(job.task,job.instruction,researchedSource,engine,new LargeAnalysis.Progress(){
                 public void update(String status,String text){State s=state;publish(new State(true,status,text,s.completed,s.total,s.started));checkpoint(false);notice(false);}
                 public void stage(int completed,int total){State s=state;publish(new State(true,s.status,s.text,completed,total,s.started));notice(true);}
             });
+            if(!sources.isEmpty())answer+="\n\nFONTES E LIMITES DA CONSULTA:\n"+sources;
             State s=state;publish(new State(false,NativeEngine.cancelled()?"Análise interrompida. Confira a cobertura.":"Processamento finalizado. Confira a cobertura e os avisos.",answer,s.completed,s.total,s.started));
-        }catch(Exception e){State s=state;publish(new State(false,"Falha: "+e.getMessage(),s.text+"\n\n[ANÁLISE INCOMPLETA: ocorreu uma falha.]",s.completed,s.total,s.started));}
+        }catch(Exception e){State s=state;boolean stopped=NativeEngine.cancelled();publish(new State(false,stopped?"Consulta/análise interrompida.":"Falha: "+e.getMessage(),s.text+(stopped?"\n\n[Processamento interrompido.]":"\n\n[ANÁLISE INCOMPLETA: ocorreu uma falha.]"),s.completed,s.total,s.started));}
         finally{NativeEngine.releaseContext();checkpoint(true);notice(true);stopForeground(STOP_FOREGROUND_DETACH);stopSelfResult(startId);active=false;}
     }
     private synchronized void checkpoint(boolean force){

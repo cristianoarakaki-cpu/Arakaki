@@ -24,6 +24,8 @@ jobs:
       - name: Testar importação e exportação
         working-directory: CodigoLivre
         run: bash tools/test-core.sh
+      - name: Empacotar kit Android
+        run: python CodigoLivre/tools/package-android-kit.py
       - name: Compilar e verificar
         run: gradle --no-daemon -p CodigoLivre assembleRelease lintRelease
       - uses: actions/upload-artifact@v4

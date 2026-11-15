@@ -1,0 +1,27 @@
+KIT DE COMPILAÇÃO LOCAL — CÓDIGO LIVRE IA
+
+O Código Livre não consegue instalar programas silenciosamente no seu celular. O Android pede confirmação para instalar Termux e APKs. As ferramentas precisam ser preparadas uma vez com internet. Depois, o exemplo pode ser compilado localmente sem baixar dependências.
+
+1. Instale Termux de uma fonte oficial: https://github.com/termux/termux-app/releases ou https://f-droid.org/packages/com.termux/
+   Escolha a versão Android ARM64 compatível com seu aparelho. Não misture versões/plugins assinados por fontes diferentes.
+2. Exporte este ZIP pelo Código Livre e salve em Downloads com o nome CodigoLivre-Android-Kit.zip.
+3. No Termux, execute:
+   pkg install unzip
+   termux-setup-storage
+   Autorize o acesso ao armazenamento quando o Android solicitar.
+4. Depois de conceder o acesso, execute:
+   mkdir -p "$HOME/CodigoLivreAndroid"
+   unzip -n "$HOME/storage/downloads/CodigoLivre-Android-Kit.zip" -d "$HOME/CodigoLivreAndroid"
+   bash "$HOME/CodigoLivreAndroid/preparar.sh"
+5. O preparador instala os pacotes oficiais Termux e pede aceitação dos termos do SDK antes de baixar a plataforma Android 35 do Google, com verificação SHA256.
+6. Compile:
+   bash "$HOME/CodigoLivreAndroid/compilar.sh" "$HOME/CodigoLivreAndroid/projeto"
+7. Para abrir o instalador:
+   termux-open "$HOME/CodigoLivreAndroid/projeto/saida/MeuApp.apk"
+   O Android pode pedir autorização para instalar a partir do Termux. Confirme a instalação se quiser testar o exemplo.
+
+Escopo: exemplo Java simples com recursos Android e ferramentas nativas ARM64 do Termux, sem Gradle, Kotlin/Compose, bibliotecas externas ou código C/C++. Não compila automaticamente qualquer projeto Android nem o próprio Código Livre IA, que usa Gradle/NDK. A IA pode ajudar a editar os arquivos Java e XML deste exemplo. Mantenha o package do código e o manifesto compatíveis. Outros aplicativos exigirão adaptação e testes.
+
+Não é necessário root. Reserve pelo menos 2 GB livres e aguarde os downloads das ferramentas. A disponibilidade dos pacotes depende dos repositórios do Termux. Não foi validado no POCO nesta entrega.
+
+As chaves ficam em $HOME/.local/share/codigolivre-android/chave.keystore e chave.senha, privados no Termux. Preserve cópia segura para poder atualizar seus próprios aplicativos. Não envie esses arquivos à IA nem os publique. O exemplo usa um pacote diferente do Código Livre IA e não substitui o assistente.

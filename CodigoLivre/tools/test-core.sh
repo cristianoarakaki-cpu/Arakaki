@@ -11,9 +11,10 @@ fetch() {
 fetch org/xerial/sqlite-jdbc/3.46.1.0/sqlite-jdbc-3.46.1.0.jar sqlite-jdbc.jar
 fetch org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar slf4j-api.jar
 fetch org/slf4j/slf4j-nop/2.0.16/slf4j-nop-2.0.16.jar slf4j-nop.jar
-javac -d build/core-tests \
- app/src/main/java/br/com/arakaki/codigolivre/{CodeFiles,DataFiles,SqliteSummary,LargeAnalysis,UpdatePolicy,AssistantModes,SpeedProfile}.java \
- tests/{CodeFilesTest,DataFilesTest,SqliteSummaryTest,LargeAnalysisTest,UpdatePolicyTest,SpeedProfileTest}.java
-for suite in CodeFilesTest DataFilesTest SqliteSummaryTest LargeAnalysisTest UpdatePolicyTest SpeedProfileTest; do
+fetch org/json/json/20240303/json-20240303.jar json.jar
+javac -cp 'build/test-libs/*' -d build/core-tests \
+ app/src/main/java/br/com/arakaki/codigolivre/{CodeFiles,DataFiles,SqliteSummary,LargeAnalysis,UpdatePolicy,AssistantModes,SpeedProfile,WebQuery,LiveFeeds,OnlineResearch,AndroidKit}.java \
+ tests/{CodeFilesTest,DataFilesTest,SqliteSummaryTest,LargeAnalysisTest,UpdatePolicyTest,SpeedProfileTest,OnlineResearchTest}.java
+for suite in CodeFilesTest DataFilesTest SqliteSummaryTest LargeAnalysisTest UpdatePolicyTest SpeedProfileTest OnlineResearchTest; do
   java -cp 'build/core-tests:build/test-libs/*' "br.com.arakaki.codigolivre.$suite"
 done
