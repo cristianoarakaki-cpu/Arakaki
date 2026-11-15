@@ -33,7 +33,7 @@ extern "C" JNIEXPORT void JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_l
         if (model) llama_model_free(model); model=nullptr;
         auto params=llama_model_default_params(); params.n_gpu_layers=0; params.use_mmap=true;
         model=llama_model_load_from_file(bytes(env,path).c_str(), params);
-        if (!model) throw std::runtime_error("Modelo incompatível ou memória insuficiente. Use Qwen2.5-Coder Instruct GGUF Q4_K_M de 1,5B.");
+        if (!model) throw std::runtime_error("Modelo incompatível ou memória insuficiente. Use Qwen2.5-Coder Instruct GGUF Q4_K_M (1,5B ou 3B; 7B exige mais RAM).");
     } catch(const std::exception & e) { fail(env,e.what()); }
 }
 extern "C" JNIEXPORT jbyteArray JNICALL Java_br_com_arakaki_codigolivre_NativeEngine_generate(

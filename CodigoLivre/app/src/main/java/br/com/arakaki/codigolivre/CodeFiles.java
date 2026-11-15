@@ -8,7 +8,7 @@ import java.util.zip.*;
 
 final class CodeFiles {
     static final int MAX_BYTES=256*1024;
-    static final Set<String> EXT=new HashSet<>(Arrays.asList("java","kt","kts","py","js","ts","tsx","jsx","html","htm","css","scss","json","xml","yaml","yml","md","txt","bas","cls","vbs","vb","sql","ps1","bat","cmd","c","h","cpp","hpp","cs","go","rs","dart","php","rb","sh","swift","r","lua","toml","gradle","properties"));
+    static final Set<String> EXT=new HashSet<>(Arrays.asList("java","kt","kts","py","js","ts","tsx","jsx","html","htm","css","scss","json","xml","yaml","yml","md","txt","bas","cls","vbs","vb","sql","ps1","bat","cmd","c","h","cpp","hpp","cs","go","rs","dart","php","rb","sh","swift","r","lua","toml","gradle","properties","csv","tsv"));
     static boolean source(String name) {
         String n=name.toLowerCase(Locale.ROOT); int p=n.lastIndexOf('.');
         return EXT.contains(p<0?n:n.substring(p+1));
@@ -25,7 +25,7 @@ final class CodeFiles {
     }
     static String importCode(InputStream in,String name) throws IOException {
         if(!name.toLowerCase(Locale.ROOT).endsWith(".zip")) {
-            if(!source(name)) throw new IOException("Formato não suportado. Envie código em texto ou ZIP; ACCDB, APK e EXE não são códigos-fonte.");
+            if(!source(name)) throw new IOException("Formato não suportado. Para Access ACCDB/MDB, exporte tabelas em CSV, esquema em SQL e módulos BAS/CLS. Para XLS antigo, salve como XLSX. APK, EXE e PDF não são suportados.");
             return decode(read(in,MAX_BYTES));
         }
         StringBuilder result=new StringBuilder();int total=0,entries=0,accepted=0;

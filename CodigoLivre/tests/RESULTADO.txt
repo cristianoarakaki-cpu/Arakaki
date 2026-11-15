@@ -14,3 +14,55 @@ OK 13 exportação código Python
 OK 14 exportação código VBA
 OK 15 extensões permitidas
 15 testes passaram.
+OK 1 CSV brasileiro: separador e contagem de registros lógicos
+OK 2 CSV: aspas escapadas e quebras dentro de campo
+OK 3 CSV: seleção por faixa sem inferir cabeçalho
+OK 4 TSV detectado
+OK 5 CSV irregular: estatística verificada
+OK 6 CSV: aspas abertas recusadas
+OK 7 CSV malformado após aspas recusado
+OK 8 CSV vazio
+OK 9 CSV: faixa inexistente informada
+OK 10 Campos longos sinalizados
+OK 11 Faixa inicial inválida recusada
+OK 12 Amostra acima de 30 recusada
+OK 13 XLSX: relações e nomes das abas
+OK 14 XLSX: strings compartilhadas, inline e rich text
+OK 15 XLSX: contagens reais, incluindo células fora da amostra
+OK 16 XLSX: fórmula e cache sem simular recálculo
+OK 17 Datas numéricas não são reinterpretadas incorretamente
+OK 18 XLSX: erros e colunas omitidas explícitos
+OK 19 Fórmula compartilhada sem expressão não é escondida
+OK 20 XLSX: filtro exato de aba e linha
+OK 21 XLSX: faixa inexistente sinalizada
+OK 22 XLSX: aba inexistente recusada
+OK 23 XLSX: DTD e entidades externas recusados
+OK 24 XLSX: XML inválido recusado
+OK 25 XLSX: referência externa recusada
+OK 26 XLSX: traversal recusado
+OK 27 XLSX: parte descompactada excessiva recusada
+OK 28 XLSX: índice de string inválido recusado
+OK 29 Prévia limitada com aviso explícito
+OK 30 Formatos suportados e limites explícitos
+30 testes de dados passaram.
+OK 1 Cabeçalho SQLite independente aceito
+OK 2 Contagem real e esquema de tabela
+OK 3 Amostra ordenada pela chave primária
+OK 4 NULL e BLOB explícitos
+OK 5 Verificação estrutural SQLite executada
+OK 6 Restrições e DDL na prévia
+OK 7 Paginação e limite por célula
+OK 8 Ordenação numérica da PK preservada apesar de prévia textual
+OK 9 Nome com aspas citado corretamente
+OK 10 WITHOUT ROWID e PK composta
+OK 11 Limite de 3 tabelas, views fora da análise
+OK 12 Tabela vazia
+OK 13 Tabela inexistente recusada
+OK 14 Texto de filtro não vira SQL executável
+OK 15 Driver de teste realmente aberto somente leitura
+OK 16 Hash do banco original preservado após todas as consultas
+OK 17 Banco WAL sem auxiliares recusado
+OK 18 Arquivo não SQLite recusado
+OK 19 Cabeçalho truncado recusado
+OK 20 Bancos com mais de 200 tabelas recusados
+20 testes SQLite passaram (JDBC Linux; adaptador Android requer teste no aparelho).

@@ -1,63 +1,64 @@
-# Código Livre IA — Android offline (0.1.0 experimental)
+# Código Livre IA — Android offline (0.2.0 experimental)
 
-Assistente de programação em português, com inferência local via llama.cpp. Não exige conta, chave de API ou mensalidade. O aplicativo não declara a permissão INTERNET. O download do APK e dos pesos do modelo precisa ser feito previamente pelo navegador ou transferido por USB.
+Assistente em português para programação, planilhas e dados, com inferência local via llama.cpp. Sem conta, chave de API ou mensalidade. O APK não solicita a permissão INTERNET. Pesos do modelo e APK são baixados previamente pelo navegador ou transferidos por USB. Os botões de download de modelos apenas abrem o navegador externo após um toque do usuário.
 
-## Instalar e começar no POCO F7 Pro
+## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.1.0-arm64.apk`. É uma versão experimental com assinatura de depuração; o Android solicitará autorização para instalar o APK a partir do navegador/gerenciador de arquivos escolhido.
-2. Baixe o modelo **Qwen2.5-Coder-1.5B-Instruct-GGUF**, arquivo **Q4_K_M**, do repositório oficial: https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/tree/main . O arquivo ocupa aproximadamente 1,1 GB. Confira o nome e a licença na página do modelo. Não baixe um arquivo `.safetensors` para este app.
-3. Reserve pelo menos 3 GB livres para o download, a cópia privada do modelo e a sessão. Toque em **Importar modelo GGUF** e selecione o arquivo. A importação pode demorar. Depois de conferir que carregou, a cópia em Downloads pode ser removida para liberar espaço; o app mantém sua própria cópia.
-4. Ative o modo avião. Descreva um pedido pequeno, por exemplo: “Crie uma função Python que valide uma data no formato dd/mm/aaaa”. Selecione **Criar programa** e toque em **Processar no aparelho**.
-5. Para revisar um código, cole o texto ou abra um arquivo/ZIP, selecione Analisar, Corrigir ou Explicar e descreva o problema. A resposta aparece gradualmente. Mantenha o app aberto durante o cálculo.
-6. Use **Salvar resposta e códigos em ZIP** e escolha uma pasta no seletor do Android. O ZIP inclui a resposta completa e os blocos Markdown de código numerados por linguagem.
+1. Instale `CodigoLivre-0.2.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura da 0.1.0 disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e mantenha o app em primeiro plano. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
+3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
+4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Mantenha a tela do app aberta durante a geração.
+5. Para dados, preencha **nome exato da aba/tabela**, **linha/registro inicial** e **quantidade de linhas** antes de abrir o arquivo. O nome vazio seleciona até 3 primeiras abas/tabelas. CSV não usa o filtro por nome. Confira a prévia e seus limites, escreva o que precisa avaliar e toque em **Processar no aparelho**.
+6. **Salvar resposta e códigos em ZIP** salva a resposta completa e blocos de código. Os arquivos importados permanecem inalterados. Esta versão não grava correções diretamente nas planilhas ou bancos nem compila APK/EXE.
 
-O POCO F7 Pro possui hardware adequado para experimentar modelos pequenos. A velocidade, a qualidade das respostas, o aquecimento e a RAM efetivamente disponível ainda precisam ser medidos no aparelho. O modelo de 1,5B é o ponto de partida, não garantia de desempenho ou qualidade para projetos complexos. Um modelo 3B Q4 pode ser experimentado depois, com maior uso de memória; não foi validado nesta entrega.
+Há exemplos fictícios de XLSX, CSV e SQLite na pasta `examples` e no ZIP de exemplos da entrega. Descompacte antes de importar cada arquivo individualmente.
 
-## Funcionalidades desta versão
+Downloads oficiais (internet apenas para obter os pesos):
 
-- Interface nativa Android com quatro tarefas: análise, correção, criação e explicação.
-- Motor CPU ARM64 integrado; não usa servidor, Ollama ou serviços externos.
-- Importação de arquivos-fonte, incluindo BAS/CLS do Access e PowerShell, em UTF-8 ou Windows-1252.
-- Importação de ZIP sem extrair os arquivos no armazenamento. Exibe os nomes junto ao conteúdo.
-- Resposta incremental, botão de interrupção e escolha entre 512, 1024 e 1536 tokens de saída.
-- Exportação em ZIP pelo seletor de documentos do Android.
-- Recuperação da **última sessão**: pedido, código, resposta e opções ficam no armazenamento privado do app. Limpar sessão apaga esses dados, preservando o modelo. Desinstalar apaga ambos. O backup Android está desativado.
+- [3B Instruct Q4_K_M — recomendado inicialmente](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf?download=true)
+- [7B Instruct Q4_K_M — maior capacidade e consumo](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf?download=true)
 
-## Limites e cuidados de uso
+Não é necessário baixar os dois. Um modelo maior pode produzir melhores respostas em tarefas difíceis, mas quantidade de parâmetros não garante acerto. A escolha 3B inicial equilibra recursos e capacidade; o resultado real exige avaliação no celular. Esta versão não inclui o modelo no APK e não afirma ser a IA mais avançada disponível.
 
-- Nenhuma IA domina todas as linguagens ou garante ausência de erros. As sugestões precisam de revisão e testes no ambiente correto.
-- Esta versão não executa, compila, instala nem testa automaticamente os programas produzidos. Ela gera código-fonte; não transforma projetos em APK/EXE.
-- Não abre diretamente bancos ACCDB, executáveis ou PDFs. Exporte os módulos BAS/CLS ou cole o código.
-- Contexto total de **4096 tokens**, incluindo instruções, arquivos, pedido e resposta. Se o conteúdo não couber, a geração é recusada com uma mensagem; nenhum trecho é silenciosamente omitido. Reduza o pedido ou divida o projeto. Não existe análise automática de projetos grandes em partes nesta versão.
-- ZIP: no máximo 200 entradas e 256 KiB descompactados no conjunto (inclusive arquivos ignorados). Arquivos individuais: 256 KiB. Há também limite de 30 mil caracteres na solicitação antes da tokenização.
-- O app envia uma solicitação independente a cada processamento. A resposta anterior é preservada na sessão, mas não é acrescentada automaticamente como histórico de conversa ao modelo.
-- Uma resposta cortada pelo limite ou pelo botão Interromper recebe um aviso de que pode estar incompleta. Não use um código incompleto sem revisão.
-- Não modifica os arquivos importados. Modelos de IA ainda podem seguir instruções indesejadas contidas em comentários; a revisão do usuário permanece necessária.
-- O modelo copiado não é criptografado pelo app. Código e última resposta ficam privados por isolamento do Android, sem criptografia adicional específica do aplicativo.
-- Somente ARM64 com instruções ARMv8.2-A + dotprod, adequadas ao POCO F7 Pro. Android 9 ou posterior. Não é um APK universal para qualquer telefone.
+## Formatos e escopo real
 
-## Compilar a partir do código
+| Formato | Conteúdo disponibilizado à IA | Limites |
+| --- | --- | --- |
+| BAS/CLS, PS1, Python, Java, JS, SQL e demais textos aceitos | Código-fonte selecionado | 256 KiB por arquivo; não executa nem compila |
+| ZIP de código | Arquivos-fonte com seus nomes | Até 200 entradas e 256 KiB descompactados no conjunto; não processa planilhas/bancos binários dentro do ZIP |
+| CSV/TSV | Faixa de registros lógicos; contagens e quantidade de campos por registro | Até 2 MiB; aspas, quebras dentro de campos e Windows-1252 aceitos; não presume cabeçalho |
+| XLSX/XLSM | Nomes de abas, contagens de linhas/células/fórmulas e amostra por aba | Até 3 abas; nome exato seleciona outra; colunas A a L; fórmulas e valores salvos, sem recálculo |
+| SQLite `.db`, `.sqlite`, `.sqlite3` | Verificação estrutural rápida, DDL, colunas/tipos/restrições, contagem e amostras | Cópia independente de até 32 MiB; até 200 tabelas no banco, 3 por importação, 12 colunas por amostra; aberto somente leitura |
+| Access ACCDB/MDB | Não aberto diretamente | Exporte tabelas em CSV, esquema em SQL e módulos em BAS/CLS |
+| XLS antigo, PDF, imagens, bancos criptografados | Não abertos diretamente | Salve XLS como XLSX; envie os outros conteúdos em formatos suportados |
 
-Pré-requisitos: JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. A compilação exige internet para baixar ferramentas e o motor; o aplicativo instalado funciona offline.
+### Como interpretar a prévia
+
+- Padrão: 8 linhas por aba/tabela; ajustável entre 1 e 30, início entre 1 e 100000. Em XLSX o número é a linha do Excel; em CSV é o registro lógico; no SQLite é a posição após a ordenação informada.
+- Cada valor é abreviado a 160 caracteres, com aviso. A prévia completa fica limitada a 5000 caracteres, com aviso explícito quando houver informações não incluídas. Revise a seleção ou importe outra faixa para aprofundar a análise. Não existe varredura automática em partes por IA nesta versão.
+- No XLSX, contagens são feitas nas células XML das abas selecionadas, incluindo células vazias/formatadas presentes no arquivo. Fórmulas compartilhadas sem expressão local recebem aviso e não são expandidas. Datas numéricas permanecem seriais; os estilos não são interpretados. Macros VBA, imagens, gráficos, conexões e regras de formatação não são analisados. Partes ZIP são limitadas a 8 MiB cada, 64 MiB descompactados no total e 1000 entradas; XML deve ser UTF-8 e não conter DTD/entidades.
+- No SQLite, `quick_check(1)=ok` indica apenas a verificação estrutural rápida. Não verifica chaves estrangeiras, regras de negócio ou completude da exportação. DDL é abreviado a 1000 caracteres. A prévia ordena pela chave primária, ou por até 12 colunas quando não houver PK. Views, gatilhos, índices e tabelas fora da seleção não são analisados. BLOBs são omitidos.
+- **Não copie apenas o `.db` de um SQLite em uso.** Gere uma exportação independente com a ferramenta de origem. Bancos marcados como WAL são recusados, mesmo se aparentarem estar completos, porque o app não recebe os arquivos auxiliares. Em uma cópia consistente, encerre conexões e use `PRAGMA journal_mode=DELETE` pela ferramenta apropriada antes de importar. O app não executa essa mudança no arquivo recebido.
+
+## IA e dados locais
+
+A IA recebe somente o texto visível importado e o pedido. O prompt a orienta a separar evidências, hipóteses e limites, mas isso não garante que ela siga todas as orientações. Nenhuma IA garante ausência de erros. Revise códigos e cálculos no ambiente apropriado antes de usar as sugestões.
+
+O contexto total é de **4096 tokens**, incluindo instruções, prévia/código, pedido e resposta (512, 1024 ou 1536 tokens). Conteúdo que não couber é recusado; reduza a faixa ou envie uma função menor. O limite preliminar da solicitação é 30 mil caracteres. Respostas interrompidas/cortadas recebem aviso.
+
+Apenas a **última sessão** é preservada no armazenamento privado: pedido, código/prévia, resposta e opções de seleção. A resposta anterior não é automaticamente adicionada ao contexto de uma nova solicitação. Limpar sessão apaga o histórico local, preservando o modelo. Não há anúncios, telemetria ou criptografia adicional específica do app. Backup Android e transferência automática estão desabilitados. As cópias temporárias de SQLite são apagadas ao finalizar a leitura; uma interrupção abrupta do processo pode deixar uma cópia no cache privado, que pode ser removido nas configurações do Android.
+
+## Compilar e testar
+
+JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. As ferramentas e os testes exigem internet durante a preparação. O APK continua offline.
 
 ```sh
 bash tools/prepare-engine.sh
-# Configure o SDK em local.properties: sdk.dir=/caminho/para/android-sdk
+# local.properties: sdk.dir=/caminho/para/android-sdk
+bash tools/test-core.sh
 gradle assembleRelease lintRelease
 ```
 
-O motor fica fixado pela revisão em `ENGINE_REVISION` (tag upstream b5046). A pasta `third_party` é baixada durante o preparo e não deve conter modelos. O APK fica em `app/build/outputs/apk/release/app-release.apk`.
+Motor fixado em `ENGINE_REVISION` (upstream b5046). Testes de CSV/XLSX são JVM; testes de SQLite usam JDBC nativo Linux e as mesmas consultas do resumo. JDBC e SLF4J são dependências exclusivamente dos testes e **não entram no APK**. O adaptador SQLite Android, o fluxo de arquivos e a inferência real precisam de validação física. O APK fica em `app/build/outputs/apk/release/app-release.apk`.
 
-Testes de arquivos, sem Android:
-
-```sh
-mkdir -p build/core-tests
-javac -d build/core-tests app/src/main/java/br/com/arakaki/codigolivre/CodeFiles.java tests/CodeFilesTest.java
-java -cp build/core-tests br.com.arakaki.codigolivre.CodeFilesTest
-```
-
-## Privacidade e licenças
-
-Não há anúncios, telemetria, contas ou chamadas de rede no app. O seletor de arquivos dá acesso apenas aos documentos escolhidos pelo usuário. A interface e o código desta pasta são disponibilizados sob a licença MIT em `LICENSE`. O motor llama.cpp é MIT; sua licença está incluída em `THIRD_PARTY_NOTICES.txt`. Os pesos de IA não estão incluídos no APK e têm sua própria licença indicada pelo fornecedor.
-
-Esta entrega precisa de validação funcional no POCO: carregar modelo real, gerar e interromper resposta, testar modo avião, exportar ZIP e reabrir a última sessão. Compilar o APK e passar nos testes estáticos não substitui esse teste físico.
+Somente ARM64 com ARMv8.2-A + dotprod, adequado ao POCO F7 Pro, Android 9 ou posterior. Código sob MIT; licenças do llama.cpp e runtime LLVM incluídas em `assets/licenses`. Pesos de IA têm licença própria do fornecedor.

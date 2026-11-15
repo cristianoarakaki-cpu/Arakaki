@@ -1,0 +1,8 @@
+DADOS FICTÍCIOS.
+Descompacte o ZIP de exemplos antes de importar cada arquivo no app.
+
+Excel: aba Horas, linha inicial 1, quantidade 8. Pedido: explique a fórmula de B4 e os limites desta prévia. O valor salvo é 18; o app não recalcula.
+CSV: pedido: identifique os setores e descreva as colunas.
+SQLite: tabela servidores, linha 1, quantidade 8. Pedido: avalie a estrutura e as restrições fornecidas. Existem 3 registros fictícios.
+
+Nenhum desses exemplos contém informações pessoais reais.
