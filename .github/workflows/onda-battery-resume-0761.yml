@@ -59,7 +59,7 @@ jobs:
       - name: Guardar APK e compilar apenas o emulador
         run: |
           mkdir -p Onda/distribution
-          cp original-apk/app-debug.apk Onda/distribution/Onda-Musica.apk
+          cp original-apk/Onda-Android-APK/app-debug.apk Onda/distribution/Onda-Musica.apk
           gradle --no-daemon -p Onda -PondaEmulator=true assembleDebug
       - name: Compilar testes do emulador
         run: gradle --no-daemon -p Onda -PondaEmulator=true assembleDebugAndroidTest
