@@ -35,6 +35,7 @@
         <activity android:name=".YouTubeFavoritesActivity" android:exported="false" />
         <activity android:name=".AutomationActivity" android:exported="false" />
         <activity android:name=".AppearanceActivity" android:exported="false" />
+        <activity android:name=".LocalAiActivity" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".BatchDeleteActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".DeleteMediaActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />

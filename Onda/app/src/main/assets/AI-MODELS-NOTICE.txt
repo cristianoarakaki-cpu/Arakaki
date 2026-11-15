@@ -1,0 +1,6 @@
+Onda IA: processamento local opcional, sem API paga. Runtime llama.cpp, commit5fce5f948df8f189a5401a8ecaa9753106e75abb, MIT. Fontes acompanham a release e estão em https://github.com/ggml-org/llama.cpp . Código de integração e demais partes do Onda: GNU GPL v3 ou posterior, sem garantia.
+
+Modelos opcionais baixados diretamente do Hugging Face, não incluídos no APK:
+SmolLM2-135M-Instruct: Hugging Face TB, Apache License2.0. Quantização GGUF: bartowski. https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct e https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF , revisão09816acd5d99df7be770d85ea30822623dab342c.
+Qwen2.5-0.5B-Instruct: Qwen Team / Alibaba Cloud, Apache License2.0. GGUF oficial https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF , revisão9217f5db79a29953eb74d5343926648285ec7e67.
+Ambos são experimentais, podem produzir erros. Não são serviços hospedados nem garantem desempenho em todo hardware. Licença Apache2.0 completa também reproduzida no aviso PDFBOX-LICENSE deste aplicativo. Os pedidos não são enviados para servidores; fotos externas em provedores de nuvem podem depender do próprio provedor.

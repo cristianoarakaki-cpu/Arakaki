@@ -42,3 +42,28 @@ target_include_directories(onda_whisper PRIVATE "${whisper_SOURCE_DIR}/include" 
 target_compile_options(onda_whisper PRIVATE -fvisibility=hidden)
 target_link_options(onda_whisper PRIVATE "-Wl,-z,max-page-size=16384" "-Wl,--exclude-libs,ALL")
 target_link_libraries(onda_whisper whisper log)
+
+# Separate build prevents the optional chat runtime's ggml revision from
+# replacing/interposing the already shipped Whisper ggml implementation.
+include(ExternalProject)
+FetchContent_Declare(onda_llama_source URL https://github.com/ggml-org/llama.cpp/archive/5fce5f948df8f189a5401a8ecaa9753106e75abb.tar.gz URL_HASH SHA256=6f3d91375567c0540f3b4ded5edd267e0dd306c3b7ab86eb7edc77d875025189)
+FetchContent_GetProperties(onda_llama_source)
+if(NOT onda_llama_source_POPULATED)
+ FetchContent_Populate(onda_llama_source)
+endif()
+set(ONDA_LLAMA_BUILD "${CMAKE_CURRENT_BINARY_DIR}/onda-ai-core")
+set(ONDA_LLAMA_LIBS "${ONDA_LLAMA_BUILD}/src/libllama.a" "${ONDA_LLAMA_BUILD}/ggml/src/libggml.a" "${ONDA_LLAMA_BUILD}/ggml/src/libggml-cpu.a" "${ONDA_LLAMA_BUILD}/ggml/src/libggml-base.a")
+ExternalProject_Add(onda_ai_core
+ SOURCE_DIR "${onda_llama_source_SOURCE_DIR}"
+ BINARY_DIR "${ONDA_LLAMA_BUILD}"
+ DOWNLOAD_COMMAND ""
+ CMAKE_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}" "-DANDROID_ABI=${ANDROID_ABI}" "-DANDROID_PLATFORM=android-26" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_POSITION_INDEPENDENT_CODE=ON" "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}" "-DBUILD_SHARED_LIBS=OFF" "-DGGML_NATIVE=OFF" "-DGGML_OPENMP=OFF" "-DGGML_VULKAN=OFF" "-DGGML_CUDA=OFF" "-DGGML_METAL=OFF" "-DLLAMA_CURL=OFF" "-DLLAMA_BUILD_COMMON=OFF" "-DLLAMA_BUILD_TESTS=OFF" "-DLLAMA_BUILD_TOOLS=OFF" "-DLLAMA_BUILD_EXAMPLES=OFF" "-DLLAMA_BUILD_SERVER=OFF"
+ BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target llama --parallel 2
+ INSTALL_COMMAND ""
+ BUILD_BYPRODUCTS ${ONDA_LLAMA_LIBS})
+add_library(onda_ai SHARED ai_jni.cpp)
+add_dependencies(onda_ai onda_ai_core)
+target_include_directories(onda_ai PRIVATE "${onda_llama_source_SOURCE_DIR}/include" "${onda_llama_source_SOURCE_DIR}/ggml/include")
+target_compile_options(onda_ai PRIVATE -O3 -fvisibility=hidden)
+target_link_options(onda_ai PRIVATE "-Wl,-z,max-page-size=16384" "-Wl,--exclude-libs,ALL" "-Wl,-Bsymbolic")
+target_link_libraries(onda_ai "-Wl,--start-group" ${ONDA_LLAMA_LIBS} "-Wl,--end-group" log m atomic dl)

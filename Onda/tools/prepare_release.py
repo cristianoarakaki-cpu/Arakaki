@@ -29,17 +29,21 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Selecionar vários para excluir
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Onda IA local e fotos próprias
 
-Selecione várias músicas, áudios ou vídeos e confirme a exclusão em conjunto. Acesso em Menu → Selecionar vários para excluir, ou segure um arquivo e escolha Selecionar vários para excluir. Usa a lista filtrada atual, com caixas de seleção, quantidade selecionada e selecionar/desmarcar todos. Só os arquivos marcados são processados.
+Nova tela Menu → Onda IA: perguntas e mensagens processadas no celular, sem conta ou API paga. Modelos opcionais: Leve (SmolLM2,105MB,menor precisão em português) e Equilibrado (Qwen2.5,491MB). Download verificável, retomada e Wi-Fi por padrão. Pedidos e respostas não são enviados para servidores. Memória e desempenho variam por aparelho; celulares simples mantêm tarefas e criações manuais mesmo sem executar um modelo. O Onda mantém Android8 ou superior, ARM32 e ARM64. Não há garantia de IA generativa completa em qualquer smartphone.
 
-Confirmação com quantidade e nomes dos arquivos antes de excluir. A exclusão é permanente, sem opção de desfazer no Onda. O Android ou provedor poderá pedir autorização adicional por arquivo. Ao cancelar uma autorização, o processo para e mantém os arquivos restantes. Arquivos já excluídos são contabilizados e as listas, filas e favoritas são atualizadas. Nenhuma pasta é percorrida para exclusão.
+Tarefas levam o pedido à Central inteligente para revisar e tocar em Executar. Respostas de IA não executam ações. O chat é experimental, pode errar e não consulta notícias em tempo real.
 
-Lixeiras individuais, compartilhamento, bateria, temas e recursos anteriores mantidos. Processamento apenas durante a ação solicitada, sem serviço novo, consulta contínua ou acesso a todos os arquivos.
+Cartões: a IA cria mensagens inéditas, ou você usa o próprio texto; a arte é composta no celular. Fotos próprias podem ser usadas como fundo, com originais preservados. Selecione uma ou várias fotos pelo seletor Android, sem teto de quantidade ou tamanho imposto pelo Onda, usando os formatos que o Android consegue decodificar. Imagens em nuvem podem precisar de conexão. Prévia temporária; Salvar mantém nova cópia em Onda/IA no Android10+ ou no local escolhido em versões anteriores. Compartilhamento pelo Android.
+
+Clipes: animação do cartão em MP4 sem som, ou apresentação de todas as fotos selecionadas, três segundos por foto. A memória de leitura é limitada por foto, sem carregar o álbum inteiro. Não é geração de fotografias ou cenas de vídeo por descrição; o modelo de texto não interpreta o conteúdo das fotos. Som, legendas e recursos anteriores continuam disponíveis nas telas existentes.
+
+Processamento somente sob demanda, até dois núcleos de CPU para a IA, com Interromper e cancelamento ao sair da tela. Sem serviço novo, microfone permanente, consulta contínua ou download automático dos modelos. Rotinas e tarefas leves continuam disponíveis em aparelhos que não têm memória para os modelos.
 
 Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
 
-Licenças e fontes: aplicativo GNU GPL v3 ou posterior, sem garantia; Whisper.cpp e modelos Whisper MIT, NewPipe Extractor GPL v3 ou posterior, LAME GNU Library GPL v2 ou posterior e LibVLC 3.7.7 LGPL 2.1 ou posterior. Fontes do aplicativo e dos componentes Whisper.cpp, NewPipe e LAME acompanham a release. Fontes do LibVLC: https://code.videolan.org/videolan/libvlcjni . Avisos no app em Downloads → Opções de download → Licença e código-fonte. Dependências conservam suas licenças.
+Licenças e fontes: llama.cpp MIT; modelos opcionais SmolLM2 e Qwen2.5 Apache2.0, não incluídos no APK; aplicativo GNU GPL v3 ou posterior, sem garantia; Whisper.cpp e modelos Whisper MIT, NewPipe Extractor GPL v3 ou posterior, LAME GNU Library GPL v2 ou posterior e LibVLC 3.7.7 LGPL 2.1 ou posterior. Fontes do aplicativo e dos componentes llama.cpp, Whisper.cpp, NewPipe e LAME acompanham a release. Fontes do LibVLC: https://code.videolan.org/videolan/libvlcjni . Avisos no app em Downloads → Opções de download → Licença e código-fonte. Dependências conservam suas licenças.
 
 Pacote: `{package_name}`. Código: {version_code}. APK ARM32 e ARM64 com o certificado fixado do projeto. Modelos opcionais não são incluídos no APK.
 """)
