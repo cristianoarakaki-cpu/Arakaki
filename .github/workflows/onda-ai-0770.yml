@@ -1,3 +1,4 @@
+# ARMv7: verify portable GGML path without FP16-only llamafile kernels.
 name: Onda - IA local e fotos 0770
 on:
   push:
