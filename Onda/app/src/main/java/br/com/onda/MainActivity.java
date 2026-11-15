@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private LinearLayout nowPanel,mainNavigation;private ListView libraryList;private LibraryRows libraryAdapter;private LinearLayout libraryEmpty;private final ArrayList<MediaItem> visibleSongs=new ArrayList<>();
     private TextView status, title, artist, elapsed, total, repeatState, chapterRange;
     private Toast repeatToast;
+    private BatteryIndicator battery;
     private Button chapters, play, shuffle, repeat, favorite, share, allTab, favoritesTab, searchFilter, previousTransport, nextTransport;
     private SeekBar seek;
     private EditText localSearch;
@@ -58,7 +59,7 @@ public class MainActivity extends Activity {
         LinearLayout root=column();Ui.background(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),dp(compact?8:12)+insets.getSystemWindowInsetTop(),dp(20),dp(compact?8:12)+insets.getSystemWindowInsetBottom());return insets;});setContentView(root);
         LinearLayout topBar=new LinearLayout(this);topBar.setGravity(Gravity.CENTER_VERTICAL);if(headerArt)topBar.addView(Ui.art(this,38,0));
-        LinearLayout identity=column();TextView brand=Ui.text(this,"onda",27,Ui.TEXT);brand.setLetterSpacing(.08f);Ui.bold(brand);identity.addView(brand);TextView subbrand=Ui.text(this,compact?"MÚSICAS":"MEDIA PLAYER",9,Ui.MUTED);subbrand.setLetterSpacing(.18f);identity.addView(subbrand);
+        LinearLayout identity=column();battery=new BatteryIndicator(this);identity.addView(battery.badge);TextView brand=Ui.text(this,"onda",9,Ui.MUTED);brand.setLetterSpacing(.18f);identity.addView(brand);
         LinearLayout.LayoutParams identityParams=new LinearLayout.LayoutParams(0,-2,1);identityParams.leftMargin=headerArt?dp(10):0;topBar.addView(identity,identityParams);
         Button shortcuts=Ui.button(this,"Atalhos",v->QuickAccess.menu(this,v));shortcuts.setContentDescription("Atalhos e ajuda rápida");shortcuts.setSingleLine(true);shortcuts.setHorizontallyScrolling(false);Ui.ghost(shortcuts);topBar.addView(shortcuts,new LinearLayout.LayoutParams(-2,-2));
         Button menu=Ui.menuButton(this,"Menu da biblioteca",this::showLibraryMenu);topBar.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));root.addView(topBar);
@@ -182,7 +183,7 @@ public class MainActivity extends Activity {
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private String time(long ms){long s=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",s/60,s%60);}
     private void restartProgress(){handler.removeCallbacks(progress);if(screenStarted&&!keyboardVisible)handler.post(progress);}
-    @Override protected void onStart(){super.onStart();screenStarted=true;Set<String> latest=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));boolean changed=!latest.equals(favorites);favorites=latest;render();refresh();restartProgress();}
-    @Override protected void onStop(){screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
+    @Override protected void onStart(){super.onStart();battery.start();screenStarted=true;Set<String> latest=new HashSet<>(prefs.getStringSet("favorites",Collections.emptySet()));boolean changed=!latest.equals(favorites);favorites=latest;render();refresh();restartProgress();}
+    @Override protected void onStop(){battery.stop();screenStarted=false;handler.removeCallbacks(progress);super.onStop();}
     @Override public void onDestroy(){if(repeatToast!=null)repeatToast.cancel();handler.removeCallbacksAndMessages(null);scanner.shutdownNow();if(connection!=null)MediaController.releaseFuture(connection);super.onDestroy();}
 }

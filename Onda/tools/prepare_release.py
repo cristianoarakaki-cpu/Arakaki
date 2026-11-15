@@ -29,17 +29,11 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Interface mais limpa
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Bateria visível
 
-Visual limpo ativado por padrão: menos bordas, relevos e gradientes nos controles, com cores de destaque reservadas às ações principais. Mantém o leão, as cores do tema e os dezenove temas existentes. Para recuperar os efeitos completos, abra Aparências → Opções de estilo e desligue Visual limpo. A troca do estilo atualiza a tela sem reiniciar o tocador.
+Porcentagem da bateria em destaque no cabeçalho da biblioteca. Toque na porcentagem para abrir um visor grande, com indicação de carregamento e atualização enquanto a tela estiver aberta. Usa eventos do Android, sem timer, serviço adicional ou consulta contínua, e interrompe o monitoramento ao sair da tela.
 
-Biblioteca com menos elementos repetidos: os cartões deixam de repetir o logotipo em cada resultado no visual limpo, ampliando o espaço para título e artista. Compartilhamento e favoritas permanecem acessíveis. O texto de repetição aparece quando há repetição ou uma faixa de coletânea selecionada.
-
-Downloads prioriza o link, a análise e o andamento. Qualidade MP3, arquivos, histórico, relatório e licença ficam em Opções de download. Cancelar aparece durante uma operação ativa. As explicações completas continuam em Como funcionam os downloads.
-
-Tradução ao vivo com mais espaço para o canto e a tradução. Idiomas e modelo ficam em uma seção expansível, com resumo visível da seleção; explicações completas em Como funciona. O aviso experimental permanece visível. Reconhecimento, modelos, tradução e comportamento da reprodução são os mesmos: sem microfone, sem upload do áudio e sem API paga; há atraso e possíveis erros. Para ao sair da tela mantendo a música.
-
-Os controles continuam nativos, com ajuste à fonte do Android e rolagem. Esta mudança não adiciona downloads de imagens, tarefas de monitoramento ou animações contínuas. Botões animados continuam opcionais, com efeito breve ao toque e respeito à economia de bateria.
+Visual limpo, temas e recursos da versão anterior preservados. Os controles se adaptam à fonte do Android e às telas menores.
 
 Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
 
