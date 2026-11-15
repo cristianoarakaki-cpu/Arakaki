@@ -29,17 +29,21 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Tradução do canto ao vivo (experimental)
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Interface mais limpa
 
-Em Letra da música → Ao vivo, escolha o idioma cantado, o idioma de destino e o modelo, com uma música ou rádio já tocando no tocador do Onda. Toque em Iniciar. O reconhecimento usa o áudio realmente decodificado pelo tocador, mesmo sem letra no catálogo, sem abrir o microfone e sem enviar o canto a um servidor. Mostra o trecho reconhecido e sua tradução automática.
+Visual limpo ativado por padrão: menos bordas, relevos e gradientes nos controles, com cores de destaque reservadas às ações principais. Mantém o leão, as cores do tema e os dezenove temas existentes. Para recuperar os efeitos completos, abra Aparências → Opções de estilo e desligue Visual limpo. A troca do estilo atualiza a tela sem reiniciar o tocador.
 
-É um recurso experimental: trabalha com janelas de 8 segundos, há atraso e podem ocorrer erros, sobretudo com instrumentos, coros, ruído, vozes sobrepostas e gravações antigas. Não garante identificação ou tradução de qualquer música. O modelo Equilibrado baixa cerca de 60 MB; Precisão, cerca de 190 MB e exige mais memória e processamento. Os idiomas do tradutor Google ML Kit usam aproximadamente 30 MB por idioma. O primeiro uso exige download, com escolha explícita entre Wi-Fi e dados móveis. Depois os modelos permitem processamento local, sem API paga ou cobrança por uso.
+Biblioteca com menos elementos repetidos: os cartões deixam de repetir o logotipo em cada resultado no visual limpo, ampliando o espaço para título e artista. Compartilhamento e favoritas permanecem acessíveis. O texto de repetição aparece quando há repetição ou uma faixa de coletânea selecionada.
 
-Funciona no áudio nativo de músicas e rádios, incluindo o áudio do YouTube aberto no tocador; não captura vídeos reproduzidos pela página WebView do YouTube ou pelo tocador de vídeo. Não inicia, pausa ou troca a música. Ao pausar a reprodução, o reconhecimento aguarda; ao sair desta tela ou tocar em Parar, encerra a captura e o reconhecimento. Mantém apenas uma janela em espera para evitar fila crescente em aparelhos lentos. Desativado por padrão, sem reconhecimento ou microfone em segundo plano. Ativado consome mais energia; desempenho e bateria variam por aparelho.
+Downloads prioriza o link, a análise e o andamento. Qualidade MP3, arquivos, histórico, relatório e licença ficam em Opções de download. Cancelar aparece durante uma operação ativa. As explicações completas continuam em Como funcionam os downloads.
 
-Mantém a busca e tradução das letras escritas, as faixas de coletâneas, identificação por metadados, rádios, downloads, conversões, PDF, temas e os demais recursos existentes. Mesmo pacote e assinatura: instale sobre a versão atual, sem desinstalar. Atualizadores anteriores à 0.74.0 ainda têm limite de 64 MB e precisam do link direto desta release; a partir da 0.74.0 o atualizador aceita até 256 MB com conferência de hash, pacote e certificado.
+Tradução ao vivo com mais espaço para o canto e a tradução. Idiomas e modelo ficam em uma seção expansível, com resumo visível da seleção; explicações completas em Como funciona. O aviso experimental permanece visível. Reconhecimento, modelos, tradução e comportamento da reprodução são os mesmos: sem microfone, sem upload do áudio e sem API paga; há atraso e possíveis erros. Para ao sair da tela mantendo a música.
 
-Licenças e fontes: aplicativo GNU GPL v3 ou posterior, sem garantia; Whisper.cpp e modelos Whisper MIT, NewPipe Extractor GPL v3 ou posterior, LAME GNU Library GPL v2 ou posterior e LibVLC 3.7.7 LGPL 2.1 ou posterior. Fontes do aplicativo e dos componentes Whisper.cpp, NewPipe e LAME estão anexadas. Fontes do LibVLC: https://code.videolan.org/videolan/libvlcjni . Avisos no app em Downloads → Licença e código-fonte. Dependências conservam suas licenças.
+Os controles continuam nativos, com ajuste à fonte do Android e rolagem. Esta mudança não adiciona downloads de imagens, tarefas de monitoramento ou animações contínuas. Botões animados continuam opcionais, com efeito breve ao toque e respeito à economia de bateria.
+
+Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
+
+Licenças e fontes: aplicativo GNU GPL v3 ou posterior, sem garantia; Whisper.cpp e modelos Whisper MIT, NewPipe Extractor GPL v3 ou posterior, LAME GNU Library GPL v2 ou posterior e LibVLC 3.7.7 LGPL 2.1 ou posterior. Fontes do aplicativo e dos componentes Whisper.cpp, NewPipe e LAME acompanham a release. Fontes do LibVLC: https://code.videolan.org/videolan/libvlcjni . Avisos no app em Downloads → Opções de download → Licença e código-fonte. Dependências conservam suas licenças.
 
 Pacote: `{package_name}`. Código: {version_code}. APK ARM32 e ARM64 com o certificado fixado do projeto. Modelos opcionais não são incluídos no APK.
 """)
