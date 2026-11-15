@@ -167,7 +167,7 @@ OK 6 Código não é enviado como consulta literal
 OK 7 Pedido extenso gera termos genéricos
 OK 8 Pergunta de informação atual reconhecida
 OK 9 HTTP não seguro recusado
-OK 10 Fonte não autorizada recusada
+OK 10 Destino interno recusado
 OK 11 Credencial em URL recusada
 OK 12 RSS preserva título e veículo
 OK 13 HTML dos trechos vira texto
@@ -188,3 +188,47 @@ OK 27 Calendário vazio não vira data inventada
 OK 28 Comando do kit preserva aspas para caminhos com espaços
 OK 29 Consulta genérica de anexo evita rede desnecessária
 29 verificações online/kit passaram com fontes simuladas, sem rede externa.
+OK 1 Regressão: parser antigo recusa ISO sem segundos
+OK 2 Parser novo aceita hora/minuto UTC
+OK 3 Offset sem segundos convertido corretamente
+OK 4 Não presume fuso ausente
+OK 5 Evento com data sem segundos não é mais descartado
+OK 6 Resposta não reconhecida não conta como calendário válido
+OK 7 Destino privado/reservado recusado: 127.0.0.1
+OK 8 Destino privado/reservado recusado: 10.1.2.3
+OK 9 Destino privado/reservado recusado: 172.16.0.1
+OK 10 Destino privado/reservado recusado: 192.168.1.1
+OK 11 Destino privado/reservado recusado: 169.254.169.254
+OK 12 Destino privado/reservado recusado: 100.64.1.1
+OK 13 Destino privado/reservado recusado: ::1
+OK 14 Destino privado/reservado recusado: fc00::1
+OK 15 Destino privado/reservado recusado: fe80::1
+OK 16 Destino privado/reservado recusado: 64:ff9b::a00:1
+OK 17 Destino privado/reservado recusado: 2002:7f00:1::1
+OK 18 Endereços públicos IPv4/IPv6 permitidos
+OK 19 localhost recusado
+OK 20 URL de rede privada recusada
+OK 21 HTTP sem TLS recusado
+OK 22 Credenciais em link recusadas
+OK 23 Porta arbitrária recusada
+OK 24 NAT64 com destino público permitido em redes móveis IPv6
+OK 25 Página pública de programação aceita
+OK 26 Lê evento estruturado da página HTML
+OK 27 Script não vira texto da página
+OK 28 Conteúdo marcado como restrito não é extraído
+OK 29 Evento cancelado no HTML ignorado
+OK 30 Extrai texto principal e limita trecho sem executar scripts
+OK 31 JSON muito profundo recusado antes do parser
+OK 32 Feed não é contado como artigo lido
+OK 33 Extrai estado JSON do calendário sem executar JavaScript
+OK 34 Lê eventos do estado embutido ESPN
+OK 35 Quando a API não tem jogos, a página fornece resposta direta com data
+OK 36 Sem evento estruturado, envia conteúdo lido à IA, não só link
+OK 37 Consulta geral abre resultado e fornece conteúdo à resposta
+OK 38 Limita tentativas de páginas indisponíveis e mostra erro sem burlar acesso
+OK 39 Resposta rápida seleciona passagem relevante sem gerar fatos
+OK 40 Resposta extrativa não substitui geração de programa nem análise de anexo
+OK 41 Consulta geral pode responder sem aguardar modelo local
+OK 42 Orçamento global encerra coleta mesmo com fonte travada
+OK 43 Duas páginas são coletadas em paralelo
+43 verificações de páginas/calendário passaram com dados simulados.

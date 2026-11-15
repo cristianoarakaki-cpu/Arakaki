@@ -1,9 +1,9 @@
 {
   "packageName": "br.com.arakaki.codigolivre",
-  "versionCode": 7,
-  "versionName": "0.7.0",
-  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_7_0/CodigoLivre-0.7.0-arm64.apk",
-  "sha256": "b684791e20503d2f34c0eabb140553fa8e1faac1835e35a3044c81e13ecd3040",
-  "bytes": 3952386,
-  "notes": "Consulta opcional de notícias, calendários do Flamengo e fontes para dúvidas de programação. Kit guiado Termux para compilar um app Java de exemplo no smartphone."
+  "versionCode": 8,
+  "versionName": "0.8.0",
+  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_8_0/CodigoLivre-0.8.0-arm64.apk",
+  "sha256": "2b57812ca73934a6f2dde7951f3b8b109aa1a30128f84c8e61b7ec26903e5520",
+  "bytes": 7286708,
+  "notes": "Leitura de páginas públicas, resposta online rápida sem aguardar IA, consultas paralelas com orçamento de tempo e correção de datas do calendário do Flamengo."
 }

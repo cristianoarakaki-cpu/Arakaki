@@ -27,8 +27,9 @@ final class LiveFeeds {
     static String time(String date){try{return ZonedDateTime.parse(date,DateTimeFormatter.RFC_1123_DATE_TIME).withZoneSameInstant(ZoneId.of("America/Sao_Paulo")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm 'Brasília'"));}catch(Exception e){return date;}}
     static final class Match {
         final String id,opponents,competition,url;final Instant when;final boolean timeValid;
-        Match(String id,String opponents,String competition,String date,String url,boolean timeValid){this.id=id;this.opponents=opponents;this.competition=competition;this.when=Instant.parse(date);this.url=url;this.timeValid=timeValid;}
+        Match(String id,String opponents,String competition,String date,String url,boolean timeValid){this.id=id;this.opponents=opponents;this.competition=competition;this.when=instant(date);this.url=url;this.timeValid=timeValid;}
     }
+    static Instant instant(String date){try{return Instant.parse(date);}catch(java.time.format.DateTimeParseException e){return OffsetDateTime.parse(date,DateTimeFormatter.ISO_DATE_TIME).toInstant();}}
     static Match earliest(List<Match> matches,Instant now){return matches.stream().filter(m->m.when.isAfter(now)).min(Comparator.comparing(m->m.when)).orElse(null);}
     static String describe(Match m){String date=m.when.atZone(ZoneId.of("America/Sao_Paulo")).format(DateTimeFormatter.ofPattern(m.timeValid?"dd/MM/yyyy 'às' HH:mm '(Brasília)'":"dd/MM/yyyy '(horário a confirmar)'"));return m.opponents+"\n"+m.competition+"\n"+date+"\nFonte: "+m.url;}
 }

@@ -18,7 +18,7 @@ index={
  'url':'https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/'+relative,
  'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
  'bytes':apk.stat().st_size,
- 'notes':'Consulta opcional de notícias, calendários do Flamengo e fontes para dúvidas de programação. Kit guiado Termux para compilar um app Java de exemplo no smartphone.'
+ 'notes':'Leitura de páginas públicas, resposta online rápida sem aguardar IA, consultas paralelas com orçamento de tempo e correção de datas do calendário do Flamengo.'
 }
 (app/'update.json').write_text(json.dumps(index,ensure_ascii=False,indent=2)+'\n')
 print('Índice atualizado:',app/'update.json')

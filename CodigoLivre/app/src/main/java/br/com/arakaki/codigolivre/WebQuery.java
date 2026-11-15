@@ -14,5 +14,5 @@ final class WebQuery {
     }
     static boolean requiresFreshness(String question){String q=normalized(question);return kind(question)!=Kind.SEARCH||q.matches("(?s).*(hoje|agora|atual|ultimo|ultima|proximo|preco|cotacao|tempo real|versao mais recente).*" );}
     static boolean shouldSearch(String question,boolean hasSource){String q=normalized(question);return !hasSource||kind(question)!=Kind.SEARCH||requiresFreshness(question)||q.length()>=80||q.matches("(?s).*(android|kotlin|versao|como |erro|documentacao|pesquis|busqu).*" );}
-    static void allowed(String url){URI u=URI.create(url);if(!"https".equals(u.getScheme())||u.getUserInfo()!=null||u.getPort()!=-1||!Arrays.asList("news.google.com","www.bing.com","site.api.espn.com").contains(u.getHost()))throw new IllegalArgumentException("Fonte online não autorizada.");}
+    static void allowed(String url){WebSafety.url(url);}
 }
