@@ -29,11 +29,11 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Bateria visível
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Exclusão direta na biblioteca
 
-Porcentagem da bateria em destaque no cabeçalho da biblioteca. Toque na porcentagem para abrir um visor grande, com indicação de carregamento e atualização enquanto a tela estiver aberta. Usa eventos do Android, sem timer, serviço adicional ou consulta contínua, e interrompe o monitoramento ao sair da tela.
+Ícone de lixeira em cada música, áudio e vídeo nas listas locais, ao lado de compartilhar. Abre a confirmação de exclusão com o nome do arquivo; o Android poderá pedir autorização adicional. A exclusão é permanente e afeta o arquivo do celular, sem opção de desfazer no Onda. Cancelar preserva o arquivo.
 
-Visual limpo, temas e recursos da versão anterior preservados. Os controles se adaptam à fonte do Android e às telas menores.
+O atalho usa o fluxo de exclusão existente. Após confirmar, atualiza a biblioteca, a fila e os favoritos. Compartilhamento, reprodução, favoritos, visor de bateria e temas continuam disponíveis. Botões com alvo de toque de 48dp e ícone estático desenhado nativamente, sem serviço ou monitoramento adicional.
 
 Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
 

@@ -183,7 +183,7 @@ jobs:
             adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_VIDEO
             adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-35-tests.txt
             cat /tmp/onda-delete-35-tests.txt
-            python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             mkdir -p Onda/ui-preview
             adb shell settings put secure immersive_mode_confirmations confirmed
@@ -318,7 +318,7 @@ jobs:
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-29-tests.txt
             cat /tmp/onda-delete-29-tests.txt
-            python -c 's=open("/tmp/onda-delete-29-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-delete-29-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
             adb shell am force-stop br.com.onda.musica
             adb shell am instrument -w -e class br.com.onda.CodecEvolutionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-codec-tests.txt
             cat /tmp/onda-codec-tests.txt
