@@ -1,28 +1,27 @@
-# Código Livre IA — Android offline (0.10.0 experimental)
+# Código Livre IA — Android simplificado (0.11.0 experimental)
 
-Assistente em português para programação, planilhas e dados. Pode usar um modelo GGUF local sem conta ou APIs online com suas próprias chaves. IA online vem desativada; quando ativada envia a pergunta aos provedores configurados. Código e prévias anexadas só são enviados após autorização separada. Chaves ficam cifradas com Android Keystore e não entram nos históricos/exportações. Não há garantia de uso gratuito ilimitado; confira as condições e mantenha cobrança desabilitada nas contas que usar.
+Sem conta nem chave de API. A IA roda no aparelho e seus códigos/prévias ficam locais. Pesquisa pública opcional envia termos da pergunta para obter fontes atuais. Não integra IA em nuvem nesta versão; as configurações online da 0.10.0 não são usadas.
 
-## IAs online e alternância (0.10.0)
+## Começar
 
-1. Abra **Configurar IAs online e alternância**. Para cada provedor desejado, toque em **Criar chave**, obtenha a chave no site oficial e cole somente no aplicativo.
-2. Toque **Buscar modelos**, escolha um modelo e repita para outros provedores. O catálogo é consultado dinamicamente; a listagem não comprova cota ou gratuidade na sua conta.
-3. Ative **Usar IAs online com alternância automática** e toque **Salvar**. Com código/prévia anexada, autorize o envio no mesmo menu ou use apenas o modo local.
-4. O app tenta o provedor configurado há mais tempo sem uso. Cada provedor é tentado uma vez por pergunta; após HTTP 429 respeita Retry-After, ou aguarda 60 segundos se ausente. Nova pergunta tenta novamente quando a espera termina; não há repetição automática de perguntas em segundo plano.
-5. Gemini e Groq dependem das condições da conta/projeto: use sem faturamento/créditos pagos e confira os termos. OpenRouter aceita apenas modelos `:free`/`openrouter/free` com preço de entrada e saída zero no catálogo. As cotas não são removidas.
-6. A pergunta e anexos autorizados vão ao provedor que responder e podem ir aos seguintes se houver falha. Não envie dados sensíveis sem avaliar as políticas desses serviços. A consulta web separada envia termos de pesquisa conforme descrito abaixo.
-7. Consulta de fontes pode levar até o orçamento de 20 segundos; cada tentativa de IA tem limite de 30 segundos. Tempos reais variam. Não houve benchmark de velocidade/qualidade no celular.
-8. O modo rápido extrativo não substitui a IA quando o modo online está ativado. Para notícias e jogos a IA recebe as fontes obtidas; sem evidências deve informar a limitação. Ainda pode errar: confira fontes e datas.
-9. Se todos falharem, o app pode usar o modelo local **já carregado**, conforme a opção. Ao abrir com IA online ativada, não carrega automaticamente os pesos locais, para evitar espera e RAM desnecessárias. Para operar offline, desative IA online e reinicie o app com o modelo importado.
+1. Instale o APK por cima da versão anterior, sem desinstalar. Modelos e sessão existentes são preservados.
+2. Se ainda não tiver um modelo, toque **Preparar IA automaticamente · sem chave**, confirme o download e prefira Wi-Fi. O modelo recomendado Qwen2.5 Instruct 1,5B Q4_K_M ocupa cerca de 1,1 GB; reserve cerca de 1,5 GB livres. Não vem embutido no APK.
+3. O app consulta metadados oficiais, fixa a revisão, baixa para área privada, verifica tamanho/cabeçalho/SHA256 e carrega antes de trocar o arquivo atual. Acesso/download não exige conta. A disponibilidade da hospedagem externa não é garantida. [Modelo, licença e informações oficiais](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF).
+4. O download mostra MB e percentual e continua no serviço foreground ao trocar de tela. Autorize notificações. Se houver interrupção, toque novamente no botão: o arquivo parcial é retomado se revisão e integridade esperada ainda coincidirem. Não reinicia sozinho após encerrar o processo. Durante verificação/carregamento a barra é indeterminada.
+5. Ao aparecer **IA pronta para usar offline**, faça sua pergunta, escolha uma tarefa ou abra um código. Não são necessárias chaves nem contas de provedores. Sem internet, desative a pesquisa de fontes; respostas de assuntos atuais dependem de fontes recentes.
+6. Se já usa um modelo importado, pode continuar com ele. Preparar IA pede confirmação antes de baixar/substituir por 1,5B. A troca preserva o arquivo anterior até o novo carregar, mas não mantém uma cópia de backup depois de concluir.
 
-A chamada online aceita até 200 mil caracteres por pedido e recusa excesso explicitamente. Não oferece contexto ilimitado, histórico automático ou ferramenta de navegação autônoma. Saída cortada por limite do provedor é identificada. Consulte os links oficiais no menu para criar suas próprias chaves; nunca envie chaves por conversa.
+O modelo leve prioriza menor consumo de memória; não equivale à capacidade de uma IA online grande. Não foi medido no POCO nesta entrega. O modo rápido extrativo passa a vir desativado: a IA local pode sintetizar as fontes em consultas gerais; manchetes e calendários estruturados mantêm a resposta direta. A escolha de tarefa começa em assuntos gerais para novas sessões; sessões existentes preservam a tarefa salva.
+
+**Validação:** compilação/lint e testes automatizados com metadados/arquivos fictícios. A hospedagem Hugging Face foi bloqueada pelo proxy de desenvolvimento (CONNECT 403), portanto não houve download completo, inferência com o modelo recomendado ou teste de instalação/retomada em Android físico. O procedimento deve ser confirmado no aparelho. Se o acesso à hospedagem falhar, importar GGUF manualmente continua disponível.
 
 ## Instalar ou atualizar no POCO F7 Pro com 12 GB de RAM
 
-1. Instale `CodigoLivre-0.10.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
+1. Instale `CodigoLivre-0.11.0-arm64.apk`. Esta entrega usa o mesmo pacote e a mesma assinatura das versões anteriores desta entrega disponibilizada neste repositório; instale por cima, sem desinstalar, para preservar modelo e última sessão. Faça uma cópia dos códigos importantes antes de atualizar. É uma versão experimental com assinatura de depuração, não uma publicação na Play Store.
 2. O modelo **1,5B já importado continua funcionando**. Para melhorar a capacidade, experimente **Qwen2.5-Coder 3B Instruct GGUF Q4_K_M** (~2,1 GB). O **7B Q4_K_M** (~4,7 GB) é uma opção de maior capacidade para experimentar no aparelho de 12 GB, com maior consumo de RAM, espaço e tempo. Não foi medido no POCO nesta entrega. Feche outros aplicativos e o serviço mantém a análise ativa ao trocar de tela. A RAM física inclui a memória usada pelo Android; não confunda RAM expandida com memória física.
 3. Reserve espaço para o arquivo baixado e a cópia privada. Durante a troca de modelo, o anterior também fica no disco até a importação terminar. O botão **Modelos de IA para 12 GB de RAM** mostra a memória disponível e abre os downloads oficiais. Depois, toque em **Importar modelo GGUF**. Desinstalar apaga modelo e sessão.
 4. Ative o modo avião após importar o modelo. Selecione uma tarefa, descreva o pedido e importe ou cole um código. Autorize as notificações para acompanhar a análise ao trocar de aplicativo ou bloquear a tela.
-5. Para dados, preencha **nome exato da aba/tabela**, **linha/registro inicial** e **quantidade de linhas** antes de abrir o arquivo. O nome vazio seleciona até 3 primeiras abas/tabelas. CSV não usa o filtro por nome. Confira a prévia e seus limites, escreva o que precisa avaliar e toque em **Processar no aparelho**.
+5. Para dados, preencha **nome exato da aba/tabela**, **linha/registro inicial** e **quantidade de linhas** antes de abrir o arquivo. O nome vazio seleciona até 3 primeiras abas/tabelas. CSV não usa o filtro por nome. Confira a prévia e seus limites, escreva o que precisa avaliar e toque em **Processar pedido**.
 6. **Salvar resposta e códigos em ZIP** salva a resposta completa e blocos de código. Os arquivos importados permanecem inalterados. Esta versão não grava correções diretamente nas planilhas ou bancos nem compila APK/EXE.
 
 Há exemplos fictícios de XLSX, CSV e SQLite na pasta `examples` e no ZIP de exemplos da entrega. Descompacte antes de importar cada arquivo individualmente.
@@ -59,7 +58,7 @@ A foto enviada mostrou 3/4 fontes disponíveis, mas não contém o payload da AP
 
 ## Notícias, jogos e programação com fontes online (novo na 0.7.0)
 
-A opção **Consultar fontes online para melhorar a resposta** vem ativada nesta entrega, conforme solicitado. Pode ser desativada para usar apenas o modelo local. Na busca pública os anexos não são enviados; o envio à IA online depende da autorização separada. Para buscar fontes o app usa termos derivados do campo da pergunta, com até 240 caracteres. Pedidos que parecem conter código, ou são muito extensos, viram uma busca genérica por documentação/linguagens detectadas, em vez de enviar esse código como consulta literal. Isso é uma heurística, não um filtro garantido de dados pessoais digitados na pergunta.
+A opção **Consultar fontes online para melhorar a resposta** vem ativada nesta entrega, conforme solicitado. Pode ser desativada para usar apenas o modelo local. Os anexos não são enviados. Para buscar fontes o app usa termos derivados do campo da pergunta, com até 240 caracteres. Pedidos que parecem conter código, ou são muito extensos, viram uma busca genérica por documentação/linguagens detectadas, em vez de enviar esse código como consulta literal. Isso é uma heurística, não um filtro garantido de dados pessoais digitados na pergunta.
 
 - **“Últimas notícias no Brasil e no mundo”**: consulta feeds públicos do Google News por Brasil e Mundo, exibindo até 6 manchetes de cada, veículo, data retornada e link. A resposta é direta, sem esperar o modelo 7B resumir. A ordem editorial do agregador não garante que sejam as publicações mais recentes de toda a imprensa. Pode haver leitura parcial de até duas páginas públicas, sem garantia de acesso à matéria completa.
 - **“Quando será o próximo jogo do Flamengo?”**: consulta os calendários públicos ESPN para Brasileirão, Copa do Brasil, Libertadores e Sul-Americana, na temporada do ano informado pelo relógio do aparelho. Filtra o time 819, partidas futuras e não adiadas/canceladas, escolhendo a menor data entre os resultados disponíveis. O texto diz **próximo jogo encontrado nas fontes consultadas**, informa as competições cobertas, o fuso de Brasília e um link para conferir. Não cobre necessariamente amistosos, Supercopa, Mundial, outras competições ou o ano seguinte. Se não conseguir confirmar, não inventa uma data.
@@ -170,7 +169,7 @@ Apenas a **última sessão** é preservada no armazenamento privado: pedido, có
 
 ## Compilar e testar
 
-JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. As ferramentas e os testes exigem internet durante a preparação. A inferência pode ser local ou online; atualizador e consultas usam a rede conforme as opções escolhidas.
+JDK 17, Gradle 8.11.1, SDK Android 35, Build Tools 35.0.0, NDK 27.2.12479018 e CMake 3.22.1. As ferramentas e os testes exigem internet durante a preparação. A inferência é local; atualizador e consultas usam a rede conforme as opções escolhidas.
 
 ```sh
 bash tools/prepare-engine.sh

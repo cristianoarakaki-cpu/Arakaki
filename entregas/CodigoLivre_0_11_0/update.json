@@ -1,0 +1,9 @@
+{
+  "packageName": "br.com.arakaki.codigolivre",
+  "versionCode": 11,
+  "versionName": "0.11.0",
+  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_11_0/CodigoLivre-0.11.0-arm64.apk",
+  "sha256": "375babb56f85a80e168482540b4ac8c51ec0f120873e8ed7a772fbfb8e315e26",
+  "bytes": 7303088,
+  "notes": "Versão simplificada sem chaves de API: botão para baixar, verificar e preparar a IA local; progresso, continuidade em segundo plano e retomada de download."
+}

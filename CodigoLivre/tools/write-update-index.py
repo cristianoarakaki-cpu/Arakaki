@@ -18,7 +18,7 @@ index={
  'url':'https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/'+relative,
  'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
  'bytes':apk.stat().st_size,
- 'notes':'IA online com Gemini, Groq e modelos gratuitos OpenRouter; alternância respeitando cotas, chaves cifradas no aparelho e envio de anexos apenas com autorização.'
+ 'notes':'Versão simplificada sem chaves de API: botão para baixar, verificar e preparar a IA local; progresso, continuidade em segundo plano e retomada de download.'
 }
 (app/'update.json').write_text(json.dumps(index,ensure_ascii=False,indent=2)+'\n')
 print('Índice atualizado:',app/'update.json')

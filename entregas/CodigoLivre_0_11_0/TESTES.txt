@@ -1,0 +1,258 @@
+OK 1 UTF-8 preservado
+OK 2 VBA Windows-1252
+OK 3 ZIP multiarquivo
+OK 4 ZIP traversal recusado
+OK 5 ZIP caminho Windows absoluto recusado
+OK 6 binário recusado
+OK 7 APK recusado
+OK 8 limite de tamanho
+OK 9 ZIP sem fonte recusado
+OK 10 entrada ignorada também limitada
+OK 11 limite de entradas
+OK 12 ZIP inclui relatório e dois blocos
+OK 13 exportação código Python
+OK 14 exportação código VBA
+OK 15 extensões permitidas
+15 testes passaram.
+OK 1 CSV brasileiro: separador e contagem de registros lógicos
+OK 2 CSV: aspas escapadas e quebras dentro de campo
+OK 3 CSV: seleção por faixa sem inferir cabeçalho
+OK 4 TSV detectado
+OK 5 CSV irregular: estatística verificada
+OK 6 CSV: aspas abertas recusadas
+OK 7 CSV malformado após aspas recusado
+OK 8 CSV vazio
+OK 9 CSV: faixa inexistente informada
+OK 10 Campos longos sinalizados
+OK 11 Faixa inicial inválida recusada
+OK 12 Amostra acima de 30 recusada
+OK 13 XLSX: relações e nomes das abas
+OK 14 XLSX: strings compartilhadas, inline e rich text
+OK 15 XLSX: contagens reais, incluindo células fora da amostra
+OK 16 XLSX: fórmula e cache sem simular recálculo
+OK 17 Datas numéricas não são reinterpretadas incorretamente
+OK 18 XLSX: erros e colunas omitidas explícitos
+OK 19 Fórmula compartilhada sem expressão não é escondida
+OK 20 XLSX: filtro exato de aba e linha
+OK 21 XLSX: faixa inexistente sinalizada
+OK 22 XLSX: aba inexistente recusada
+OK 23 XLSX: DTD e entidades externas recusados
+OK 24 XLSX: XML inválido recusado
+OK 25 XLSX: referência externa recusada
+OK 26 XLSX: traversal recusado
+OK 27 XLSX: parte descompactada excessiva recusada
+OK 28 XLSX: índice de string inválido recusado
+OK 29 Prévia limitada com aviso explícito
+OK 30 Formatos suportados e limites explícitos
+30 testes de dados passaram.
+OK 1 Cabeçalho SQLite independente aceito
+OK 2 Contagem real e esquema de tabela
+OK 3 Amostra ordenada pela chave primária
+OK 4 NULL e BLOB explícitos
+OK 5 Verificação estrutural SQLite executada
+OK 6 Restrições e DDL na prévia
+OK 7 Paginação e limite por célula
+OK 8 Ordenação numérica da PK preservada apesar de prévia textual
+OK 9 Nome com aspas citado corretamente
+OK 10 WITHOUT ROWID e PK composta
+OK 11 Limite de 3 tabelas, views fora da análise
+OK 12 Tabela vazia
+OK 13 Tabela inexistente recusada
+OK 14 Texto de filtro não vira SQL executável
+OK 15 Driver de teste realmente aberto somente leitura
+OK 16 Hash do banco original preservado após todas as consultas
+OK 17 Banco WAL sem auxiliares recusado
+OK 18 Arquivo não SQLite recusado
+OK 19 Cabeçalho truncado recusado
+OK 20 Bancos com mais de 200 tabelas recusados
+20 testes SQLite passaram (JDBC Linux; adaptador Android requer teste no aparelho).
+OK 1 Prompt real da chamada 1 cabe na etapa
+OK 2 Conteúdo pequeno segue em chamada única
+OK 3 Pedido acima de 30 mil caracteres é dividido automaticamente
+OK 4 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 5 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 6 Cobertura integral sem buracos, duplicação ou divisão de surrogate
+OK 7 Prompt real da chamada 1 cabe na etapa
+OK 8 Prompt real da chamada 2 cabe na etapa
+OK 9 Prompt real da chamada 3 cabe na etapa
+OK 10 Prompt real da chamada 4 cabe na etapa
+OK 11 Prompt real da chamada 5 cabe na etapa
+OK 12 Prompt real da chamada 6 cabe na etapa
+OK 13 Prompt real da chamada 7 cabe na etapa
+OK 14 Prompt real da chamada 8 cabe na etapa
+OK 15 Prompt real da chamada 9 cabe na etapa
+OK 16 Relatórios parciais e conclusão com escopo explícito
+OK 17 Respostas inicial e final preservadas
+OK 18 Progresso informado por parte
+OK 19 Prompt real da chamada 1 cabe na etapa
+OK 20 Prompt real da chamada 2 cabe na etapa
+OK 21 Interrupção mantém resultados e marca cobertura incompleta
+OK 22 Interrupção durante planejamento
+OK 23 Prompt real da chamada 1 cabe na etapa
+OK 24 Prompt real da chamada 2 cabe na etapa
+OK 25 Falha não descarta resultados nem declara análise completa
+OK 26 Prompt real da chamada 1 cabe na etapa
+OK 27 Prompt real da chamada 2 cabe na etapa
+OK 28 Prompt real da chamada 3 cabe na etapa
+OK 29 Prompt real da chamada 4 cabe na etapa
+OK 30 Prompt real da chamada 5 cabe na etapa
+OK 31 Prompt real da chamada 6 cabe na etapa
+OK 32 Prompt real da chamada 7 cabe na etapa
+OK 33 Prompt real da chamada 8 cabe na etapa
+OK 34 Prompt real da chamada 9 cabe na etapa
+OK 35 Pedido longo no campo de instruções também é coberto
+OK 36 Prompt real da chamada 1 cabe na etapa
+OK 37 Etapa única informa início e conclusão reais
+OK 38 Prompt real da chamada 1 cabe na etapa
+OK 39 Prompt real da chamada 2 cabe na etapa
+OK 40 Prompt real da chamada 3 cabe na etapa
+OK 41 Prompt real da chamada 4 cabe na etapa
+OK 42 Prompt real da chamada 5 cabe na etapa
+OK 43 Prompt real da chamada 6 cabe na etapa
+OK 44 Prompt real da chamada 7 cabe na etapa
+OK 45 Prompt real da chamada 8 cabe na etapa
+OK 46 Prompt real da chamada 9 cabe na etapa
+OK 47 Progresso em partes é monotônico e chega a 100% ao concluir
+OK 48 Prompt real da chamada 1 cabe na etapa
+OK 49 Prompt real da chamada 2 cabe na etapa
+OK 50 Cancelamento não informa 100% indevidamente
+OK 51 Prompt real da chamada 1 cabe na etapa
+OK 52 Prompt real da chamada 2 cabe na etapa
+OK 53 Falha mantém percentual das partes realmente finalizadas
+Testes de análise em partes passaram: 53 verificações.
+OK 1 Atualização apenas para versão superior
+OK 2 Digest correto aceito
+OK 3 Digest diferente recusado
+OK 4 URL não autorizada recusada
+OK 5 URL não autorizada recusada
+OK 6 URL não autorizada recusada
+OK 7 URL não autorizada recusada
+OK 8 URL não autorizada recusada
+OK 9 URL não autorizada recusada
+OK 10 URL não autorizada recusada
+OK 11 URL não autorizada recusada
+OK 12 SHA256 malformado recusado
+OK 13 APK excessivo recusado
+OK 14 Arquivo vazio recusado
+OK 15 Pacote diferente recusado
+OK 16 Ordem dos signatários não altera identidade
+OK 17 Assinatura diferente recusada
+OK 18 Assinatura ausente recusada
+OK 19 Modo geral e técnico separados
+OK 20 Modelos gerais e Coder têm links distintos
+OK 21 Modelo desconhecido recusado
+21 verificações de atualização/modos passaram.
+OK 1 Rápido usa contexto e respostas menores
+OK 2 Equilibrado preserva mais espaço para detalhes
+OK 3 Longo mantém geração até o espaço disponível
+OK 4 Perfil inválido retorna padrão Rápido
+OK 5 Perfil 0: todos os caracteres preservados
+OK 6 Perfil 0: reserva de saída respeitada
+OK 7 Perfil 0: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 8 Perfil 1: todos os caracteres preservados
+OK 9 Perfil 1: reserva de saída respeitada
+OK 10 Perfil 1: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 11 Perfil 2: todos os caracteres preservados
+OK 12 Perfil 2: reserva de saída respeitada
+OK 13 Perfil 2: ampliar contexto não aumenta quantidade de etapas no caso de teste
+OK 14 Modelo leve geral disponível
+OK 15 Modelo leve Coder disponível
+15 verificações de perfis passaram (motor simulado, sem benchmark de celular).
+OK 1 Notícias atuais detectadas
+OK 2 Próximo jogo detectado
+OK 3 Programação usa pesquisa geral
+OK 4 Notícia do clube não é confundida com calendário
+OK 5 Pergunta natural vira termos de busca
+OK 6 Código não é enviado como consulta literal
+OK 7 Pedido extenso gera termos genéricos
+OK 8 Pergunta de informação atual reconhecida
+OK 9 HTTP não seguro recusado
+OK 10 Destino interno recusado
+OK 11 Credencial em URL recusada
+OK 12 RSS preserva título e veículo
+OK 13 HTML dos trechos vira texto
+OK 14 Horário RSS convertido para Brasília
+OK 15 RSS com entidades recusado
+OK 16 Link não HTTPS descartado
+OK 17 Notícias consultam Brasil e Mundo sem geração local
+OK 18 Resposta direta mantém origem
+OK 19 Busca de programação fornece evidências para IA
+OK 20 Falha de rede não inventa notícia
+OK 21 Cancelamento antes da rede respeitado
+OK 22 Calendário ignora outro time e partida adiada
+OK 23 Menor data futura e competição traduzida
+OK 24 Jogos passados não são apresentados como próximos
+OK 25 Jogo inclui fuso e fonte
+OK 26 Resposta de jogo informa limites das competições consultadas
+OK 27 Calendário vazio não vira data inventada
+OK 28 Comando do kit preserva aspas para caminhos com espaços
+OK 29 Consulta genérica de anexo evita rede desnecessária
+29 verificações online/kit passaram com fontes simuladas, sem rede externa.
+OK 1 Regressão: parser antigo recusa ISO sem segundos
+OK 2 Parser novo aceita hora/minuto UTC
+OK 3 Offset sem segundos convertido corretamente
+OK 4 Não presume fuso ausente
+OK 5 Evento com data sem segundos não é mais descartado
+OK 6 Resposta não reconhecida não conta como calendário válido
+OK 7 Destino privado/reservado recusado: 127.0.0.1
+OK 8 Destino privado/reservado recusado: 10.1.2.3
+OK 9 Destino privado/reservado recusado: 172.16.0.1
+OK 10 Destino privado/reservado recusado: 192.168.1.1
+OK 11 Destino privado/reservado recusado: 169.254.169.254
+OK 12 Destino privado/reservado recusado: 100.64.1.1
+OK 13 Destino privado/reservado recusado: ::1
+OK 14 Destino privado/reservado recusado: fc00::1
+OK 15 Destino privado/reservado recusado: fe80::1
+OK 16 Destino privado/reservado recusado: 64:ff9b::a00:1
+OK 17 Destino privado/reservado recusado: 2002:7f00:1::1
+OK 18 Endereços públicos IPv4/IPv6 permitidos
+OK 19 localhost recusado
+OK 20 URL de rede privada recusada
+OK 21 HTTP sem TLS recusado
+OK 22 Credenciais em link recusadas
+OK 23 Porta arbitrária recusada
+OK 24 NAT64 com destino público permitido em redes móveis IPv6
+OK 25 Página pública de programação aceita
+OK 26 Lê evento estruturado da página HTML
+OK 27 Script não vira texto da página
+OK 28 Conteúdo marcado como restrito não é extraído
+OK 29 Evento cancelado no HTML ignorado
+OK 30 Extrai texto principal e limita trecho sem executar scripts
+OK 31 JSON muito profundo recusado antes do parser
+OK 32 Feed não é contado como artigo lido
+OK 33 Extrai estado JSON do calendário sem executar JavaScript
+OK 34 Lê eventos do estado embutido ESPN
+OK 35 Quando a API não tem jogos, a página fornece resposta direta com data
+OK 36 Sem evento confirmado, o calendário não vira resposta esportiva presumida
+OK 37 Consulta geral abre resultado e fornece conteúdo à resposta
+OK 38 Limita tentativas de páginas indisponíveis e mostra erro sem burlar acesso
+OK 39 Resposta rápida seleciona passagem relevante sem gerar fatos
+OK 40 Resposta extrativa não substitui geração de programa nem análise de anexo
+OK 41 Consulta geral pode responder sem aguardar modelo local
+OK 42 Orçamento global encerra coleta mesmo com fonte travada
+OK 43 Duas páginas são coletadas em paralelo
+43 verificações de páginas/calendário passaram com dados simulados.
+OK 1 Pergunta de jogo passado reconhecida: último jogo do flamengo
+OK 2 Pergunta de jogo passado reconhecida: Qual foi a última partida do Flamengo?
+OK 3 Pergunta de jogo passado reconhecida: Flamengo jogou contra quem?
+OK 4 Pergunta de jogo passado reconhecida: Qual o placar do Flamengo?
+OK 5 Próximo jogo continua separado
+OK 6 Referência explícita a próximo não é confundida com passado
+OK 7 Pergunta sobre título não vira pergunta sobre jogo
+OK 8 Palavra último não torna dicionário relevante para Flamengo
+OK 9 Regressão da imagem: trecho do Dicio recusado
+OK 10 Fonte realmente relacionada à programação aceita
+OK 11 Palavra genérica criar não substitui o assunto Android
+OK 12 Último é o encerrado mais recente, não o próximo
+OK 13 Próximo ignora os encerrados
+OK 14 Placar preserva nomes e ordem dos participantes
+OK 15 Jogo em andamento não é marcado como encerrado
+OK 16 Jogo cancelado não vira último resultado
+OK 17 Placar ausente não é inventado
+OK 18 Pergunta exata produz resposta esportiva direta
+OK 19 Não busca a palavra último no buscador genérico
+OK 20 Sem resultado encerrado, não responde com partida futura
+OK 21 Outra consulta esportiva também recusa página de dicionário
+21 verificações de último jogo e relevância passaram com dados simulados.
+CloudTest: 17 verificações passaram (protocolos e alternância simulados; sem chamada real).
+ModelPackageTest: 28 verificações passaram com metadados e GGUF fictícios; sem download/carregamento real.
