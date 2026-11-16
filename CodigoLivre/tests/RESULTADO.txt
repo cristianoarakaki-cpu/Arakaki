@@ -254,3 +254,4 @@ OK 19 Não busca a palavra último no buscador genérico
 OK 20 Sem resultado encerrado, não responde com partida futura
 OK 21 Outra consulta esportiva também recusa página de dicionário
 21 verificações de último jogo e relevância passaram com dados simulados.
+CloudTest: 17 verificações passaram (protocolos e alternância simulados; sem chamada real).

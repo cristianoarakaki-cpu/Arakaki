@@ -1,0 +1,9 @@
+{
+  "packageName": "br.com.arakaki.codigolivre",
+  "versionCode": 10,
+  "versionName": "0.10.0",
+  "url": "https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/entregas/CodigoLivre_0_10_0/CodigoLivre-0.10.0-arm64.apk",
+  "sha256": "2bd5f0464199300855c55eb7fab5f1321556a0fc510faea656d395722ad0833a",
+  "bytes": 7319468,
+  "notes": "IA online com Gemini, Groq e modelos gratuitos OpenRouter; alternância respeitando cotas, chaves cifradas no aparelho e envio de anexos apenas com autorização."
+}

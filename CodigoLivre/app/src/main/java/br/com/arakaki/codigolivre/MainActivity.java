@@ -57,9 +57,9 @@ public class MainActivity extends Activity {
         processingPanel.setVisibility(View.GONE);screen.addView(processingPanel,new LinearLayout.LayoutParams(-1,-2));setContentView(screen);
         screen.setOnApplyWindowInsetsListener((v,insets)->{screen.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});
 
-        label("CÓDIGO LIVRE  /  IA LOCAL",12,Color.rgb(94,234,212));
-        label("Seu assistente de IA local",27,Color.WHITE);
-        label("Perguntas · Código · Planilhas\nSem conta, sem mensalidade e sem enviar seus arquivos.",14,Color.rgb(180,195,215));
+        label("CÓDIGO LIVRE  /  IA LOCAL E ONLINE",12,Color.rgb(94,234,212));
+        label("Seu assistente de IA",27,Color.WHITE);
+        label("Perguntas · Código · Planilhas\nIA local ou provedores online configuráveis.",14,Color.rgb(180,195,215));
         status=label("Importe um modelo para respostas da IA. Notícias e jogos também podem ser consultados online.",14,Color.rgb(94,234,212));
         modelButton=button("＋ Importar modelo GGUF",v->pick(MODEL));
         modelInfo=label(modelDescription(),13,Color.rgb(180,195,215));
@@ -67,10 +67,11 @@ public class MainActivity extends Activity {
         button("ⓘ Como usar e formatos aceitos",v->help());
         updates=new AppUpdates(this,()->!busy&&!AnalysisService.running());button("↻ Atualizações do aplicativo",v->updates.menu());
         button("⚒ Preparar criação de APK no celular",v->androidKit());
+        button("✦ Configurar IAs online e alternância",v->{if(!busy)new CloudSettings(this).menu(this,()->runButton.setEnabled(!busy&&(ready||online.isChecked()||new CloudSettings(this).enabled())));});
         online=new CheckBox(this);online.setText("Consultar fontes online para melhorar a resposta");online.setTextColor(Color.WHITE);online.setChecked(getSharedPreferences("pesquisa",MODE_PRIVATE).getBoolean("online",true));root.addView(online);
-        label("A consulta envia termos da pergunta ao buscador. Arquivos anexados ficam no aparelho. Desative para usar somente a IA offline.",12,Color.rgb(180,195,215));
+        label("A consulta envia termos da pergunta ao buscador. Arquivos ficam no aparelho, exceto se você autorizar o envio no menu de IA online. Desative para não pesquisar fontes. O modo IA online é configurado separadamente.",12,Color.rgb(180,195,215));
         quickWeb=new CheckBox(this);quickWeb.setText("Resposta online rápida · trecho da fonte, sem IA");quickWeb.setTextColor(Color.WHITE);quickWeb.setChecked(getSharedPreferences("pesquisa",MODE_PRIVATE).getBoolean("quick",true));root.addView(quickWeb);quickWeb.setOnCheckedChangeListener((b,value)->getSharedPreferences("pesquisa",MODE_PRIVATE).edit().putBoolean("quick",value).apply());
-        online.setOnCheckedChangeListener((b,value)->{getSharedPreferences("pesquisa",MODE_PRIVATE).edit().putBoolean("online",value).apply();if(runButton!=null)runButton.setEnabled(!busy&&(ready||value));});
+        online.setOnCheckedChangeListener((b,value)->{getSharedPreferences("pesquisa",MODE_PRIVATE).edit().putBoolean("online",value).apply();if(runButton!=null)runButton.setEnabled(!busy&&(ready||value||new CloudSettings(this).enabled()));});
         label("O QUE VOCÊ QUER FAZER?",12,Color.rgb(180,195,215));
         action=spinner(new String[]{"Analisar código","Corrigir código","Criar programa","Explicar código","Analisar planilha/dados","Auditar estrutura SQLite","Conversar / assuntos gerais"});
         request=input("Digite sua pergunta, pedido ou descreva o problema…",4,false);
@@ -84,14 +85,14 @@ public class MainActivity extends Activity {
         label("VELOCIDADE E DETALHAMENTO",12,Color.rgb(180,195,215));
         budget=spinner(new String[]{"Rápido · trechos menores e resposta objetiva","Equilibrado · mais detalhes","Longo · trechos e respostas extensos"});budget.setSelection(0);
         label("Arquivos extensos são analisados em partes automaticamente. O perfil Rápido reduz a espera inicial com trechos menores. Modelos 7B ainda podem ser lentos; para mais agilidade, use 3B ou 1,5B.",12,Color.rgb(180,195,215));
-        runButton=button("✦ Processar no aparelho",v->generate());runButton.setEnabled(online.isChecked());
+        runButton=button("✦ Processar pedido",v->generate());runButton.setEnabled(online.isChecked()||new CloudSettings(this).enabled());
         stopButton=button("■ Interromper geração",v->{AnalysisService.cancel(this);status.setText("Interrompendo…");processingStage="Interrompendo…";refreshProgressLabel();});stopButton.setEnabled(false);
         label("RESPOSTA",12,Color.rgb(94,234,212));
         answer=label("As respostas aparecerão aqui. Os arquivos originais não são alterados.",15,Color.WHITE);answer.setTextIsSelectable(true);answer.setAutoLinkMask(android.text.util.Linkify.WEB_URLS);answer.setLinksClickable(true);answer.setLinkTextColor(Color.rgb(94,234,212));answer.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());answer.setTypeface(Typeface.MONOSPACE);answer.setPadding(dp(12),dp(12),dp(12),dp(12));answer.setBackground(card(Color.rgb(24,37,55)));
         saveButton=button("↓ Salvar resposta e códigos em ZIP",v->export());saveButton.setEnabled(false);
         clearButton=button("Limpar pedido e histórico local",v->new AlertDialog.Builder(this).setMessage("Apagar o pedido, o código e a última resposta deste app? O modelo será preservado.").setNegativeButton("Cancelar",null).setPositiveButton("Limpar",(d,w)->clear()).show());
         restore();AnalysisService.State saved=AnalysisService.saved(this);if(saved!=null&&!saved.text.isEmpty()){response=saved.text;answer.setText(response);}
-        if(AnalysisService.running()){ready=model.exists();}else if(model.exists())loadExisting();
+        if(AnalysisService.running()){ready=model.exists();}else if(model.exists()&&!new CloudSettings(this).enabled())loadExisting();
     }
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable card(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(12));return d;}
@@ -101,7 +102,7 @@ public class MainActivity extends Activity {
     private Spinner spinner(String[] options){Spinner s=new Spinner(this);ArrayAdapter<String> a=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,options){@Override public View getView(int pos,View v,android.view.ViewGroup parent){TextView t=(TextView)super.getView(pos,v,parent);t.setTextColor(Color.WHITE);t.setPadding(dp(8),dp(12),dp(8),dp(12));return t;}};a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);s.setAdapter(a);root.addView(s);return s;}
     private void setBusy(boolean value,String message){boolean wasBusy=busy;busy=value;status.setText(message);
         if(value){if(!wasBusy){processingStarted=SystemClock.elapsedRealtime();processingFinished=0;completedParts=0;totalParts=0;}processingStage=message;activityIndicator.setVisibility(View.VISIBLE);processingPanel.setVisibility(View.VISIBLE);processingBar.setIndeterminate(true);refreshProgressLabel();progressHandler.removeCallbacks(progressClock);progressHandler.postDelayed(progressClock,1000);}
-        else{progressHandler.removeCallbacks(progressClock);processingPanel.setVisibility(View.GONE);}modelButton.setEnabled(!value);importButton.setEnabled(!value);runButton.setEnabled(!value&&(ready||online.isChecked()));clearButton.setEnabled(!value);saveButton.setEnabled(!value&&!response.isEmpty());code.setEnabled(!value);request.setEnabled(!value);action.setEnabled(!value);budget.setEnabled(!value);section.setEnabled(!value);firstRow.setEnabled(!value);rowCount.setEnabled(!value);online.setEnabled(!value);quickWeb.setEnabled(!value);stopButton.setEnabled(false);}
+        else{progressHandler.removeCallbacks(progressClock);processingPanel.setVisibility(View.GONE);}modelButton.setEnabled(!value);importButton.setEnabled(!value);runButton.setEnabled(!value&&(ready||online.isChecked()||new CloudSettings(this).enabled()));clearButton.setEnabled(!value);saveButton.setEnabled(!value&&!response.isEmpty());code.setEnabled(!value);request.setEnabled(!value);action.setEnabled(!value);budget.setEnabled(!value);section.setEnabled(!value);firstRow.setEnabled(!value);rowCount.setEnabled(!value);online.setEnabled(!value);quickWeb.setEnabled(!value);stopButton.setEnabled(false);}
     private void ui(Runnable r){runOnUiThread(()->{if(!dead)r.run();});}
     private String fileName(Uri uri){String name="arquivo.txt";try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())name=c.isNull(0)?name:c.getString(0);}catch(Exception ignored){}return name;}
     private void pick(int what){if(busy)return;Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,what);}
@@ -139,7 +140,7 @@ public class MainActivity extends Activity {
     }
     private void loadExisting(){setBusy(true,"Carregando o modelo local…");worker.execute(()->{try{NativeEngine.load(model.getAbsolutePath().getBytes(StandardCharsets.UTF_8));ready=true;ui(()->{setBusy(false,"Modelo local pronto. Pode usar em modo avião.");AnalysisService.State saved=AnalysisService.saved(this);if(saved!=null)renderService(saved);});}catch(Exception e){ready=false;ui(()->setBusy(false,"Modelo não carregado: "+message(e)));}});}
     private void generate(){
-        if(busy||(!ready&&!online.isChecked()))return;
+        if(busy||(!ready&&!online.isChecked()&&!new CloudSettings(this).enabled()))return;
         String instruction=request.getText().toString().trim(),source=code.getText().toString();
         if(instruction.isEmpty()&&source.trim().isEmpty()){status.setText("Descreva o pedido ou envie um código.");return;}
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},501);

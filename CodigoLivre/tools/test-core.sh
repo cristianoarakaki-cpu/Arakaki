@@ -17,8 +17,8 @@ fetch com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar okhttp.jar
 fetch com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar okio.jar
 fetch org/jetbrains/kotlin/kotlin-stdlib/1.8.21/kotlin-stdlib-1.8.21.jar kotlin-stdlib.jar
 javac -cp 'build/test-libs/*' -d build/core-tests \
- app/src/main/java/br/com/arakaki/codigolivre/{CodeFiles,DataFiles,SqliteSummary,LargeAnalysis,UpdatePolicy,AssistantModes,SpeedProfile,WebQuery,LiveFeeds,OnlineResearch,AndroidKit,WebSafety,PublicHttp,PublicPage,QuickWebAnswer,SearchRelevance}.java \
- tests/{CodeFilesTest,DataFilesTest,SqliteSummaryTest,LargeAnalysisTest,UpdatePolicyTest,SpeedProfileTest,OnlineResearchTest,PublicPageTest,LastGameTest}.java
-for suite in CodeFilesTest DataFilesTest SqliteSummaryTest LargeAnalysisTest UpdatePolicyTest SpeedProfileTest OnlineResearchTest PublicPageTest LastGameTest; do
+ app/src/main/java/br/com/arakaki/codigolivre/{CodeFiles,DataFiles,SqliteSummary,LargeAnalysis,UpdatePolicy,AssistantModes,SpeedProfile,WebQuery,LiveFeeds,OnlineResearch,AndroidKit,WebSafety,PublicHttp,PublicPage,QuickWebAnswer,SearchRelevance,CloudProtocol,CloudRouter}.java \
+ tests/{CodeFilesTest,DataFilesTest,SqliteSummaryTest,LargeAnalysisTest,UpdatePolicyTest,SpeedProfileTest,OnlineResearchTest,PublicPageTest,LastGameTest,CloudTest}.java
+for suite in CodeFilesTest DataFilesTest SqliteSummaryTest LargeAnalysisTest UpdatePolicyTest SpeedProfileTest OnlineResearchTest PublicPageTest LastGameTest CloudTest; do
   java -cp 'build/core-tests:build/test-libs/*' "br.com.arakaki.codigolivre.$suite"
 done

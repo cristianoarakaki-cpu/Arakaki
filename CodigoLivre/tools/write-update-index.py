@@ -18,7 +18,7 @@ index={
  'url':'https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/entrega/codigo-livre-android-offline/'+relative,
  'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
  'bytes':apk.stat().st_size,
- 'notes':'Correção de último jogo do Flamengo com partidas encerradas e placar; separação de jogos futuros e filtro de relevância contra páginas sem relação com a pergunta.'
+ 'notes':'IA online com Gemini, Groq e modelos gratuitos OpenRouter; alternância respeitando cotas, chaves cifradas no aparelho e envio de anexos apenas com autorização.'
 }
 (app/'update.json').write_text(json.dumps(index,ensure_ascii=False,indent=2)+'\n')
 print('Índice atualizado:',app/'update.json')
