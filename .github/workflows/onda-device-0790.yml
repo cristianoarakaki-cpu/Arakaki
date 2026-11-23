@@ -1,3 +1,4 @@
+# Recovery transport uses exit-status-aware ADB shell; fixture preferences are flushed before reading.
 name: Onda - Smartphone e backup 0790
 on:
   push:

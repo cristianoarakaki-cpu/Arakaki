@@ -19,7 +19,7 @@ final class PlaylistStore {
                 String id=o.optString("id",""),name=o.optString("name","").trim();
                 if(id.isEmpty()||name.isEmpty()||!seen.add(id))continue;
                 Entry e=new Entry(id,name);JSONArray tracks=o.optJSONArray("songs");
-                if(tracks!=null)for(int j=0;j<tracks.length()&&e.songs.size()<2000;j++){String track=tracks.optString(j,"");if(track.matches("\\d+")&&!e.songs.contains(track))e.songs.add(track);}
+                if(tracks!=null)for(int j=0;j<tracks.length()&&e.songs.size()<2000;j++){String track=tracks.optString(j,"");if(track.matches("(?:\\d+|download:-?\\d{1,11})")&&!e.songs.contains(track))e.songs.add(track);}
                 lists.add(e);
             }
         }catch(JSONException ignored){}return lists;

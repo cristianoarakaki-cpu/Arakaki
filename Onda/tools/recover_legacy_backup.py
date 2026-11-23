@@ -69,7 +69,8 @@ def main():
     elif len(ready)!=1:raise RecoveryError('Connect exactly one authorized phone, or specify --serial.')
     prefs={}
     for name in ['library','playlists','voice_phrases','downloaded_audio']:
-        prefs[name]=preferences(adb('exec-out','run-as',OLD,'cat','shared_prefs/'+name+'.xml',optional=True))
+        try:prefs[name]=preferences(adb('shell','run-as',OLD,'cat','shared_prefs/'+name+'.xml',optional=True))
+        except ET.ParseError:raise RecoveryError('Android did not return valid '+name+' preferences. No output was saved and the old app was not changed.')
     def field(key,column):
         raw=adb('shell','content','query','--uri','content://media/external/audio/media/'+key,'--projection',column).decode('utf-8').strip()
         if raw=='No result found.':return None
