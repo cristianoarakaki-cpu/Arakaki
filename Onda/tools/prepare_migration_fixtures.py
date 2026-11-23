@@ -24,8 +24,9 @@ shutil.copyfile(module/'app/build/outputs/apk/androidTest/debug/app-debug-androi
 # Verify a future update really keeps the new app's identity/data and signature.
 config=root/'app/build.gradle';before=config.read_text()
 try:
- assert 'versionCode 105;' in before
- config.write_text(before.replace('versionCode 105;','versionCode 106;'))
+ import re
+ code=int(re.search(r'versionCode (\d+);',before).group(1))
+ config.write_text(before.replace('versionCode '+str(code)+';','versionCode '+str(code+1)+';'))
  subprocess.run(['gradle','--no-daemon','-p',str(root),'-PondaEmulator=true','-PondaNativeBundle='+str(native),'assembleDebug'],check=True)
  shutil.copyfile(root/'app/build/outputs/apk/debug/app-debug.apk',output/'future-update.apk')
 finally:config.write_text(before)

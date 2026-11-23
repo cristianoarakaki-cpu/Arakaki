@@ -1,0 +1,21 @@
+RECUPERAR METADADOS DO ONDA ANTIGO, SEM DESINSTALAR
+
+A mensagem antiga que menciona 8 MB também aparece quando uma favorita é um download local sem duração cadastrada. Não prova que o arquivo tenha esse tamanho. O Onda Novo 0.79 corrige essa validação e mostra causas específicas de erro, mas não pode atualizar a instalação com a assinatura perdida nem ler diretamente os dados privados dela.
+
+OPÇÃO DE RECUPERAÇÃO PARA O DONO DO CELULAR, POR USB
+Esta ferramenta é opcional, gratuita, local e não envia seus dados à internet. Requer um computador com Python 3 e o adb do Android platform-tools. A versão antiga precisa permitir o comando run-as (as compilações de teste distribuídas pelo projeto permitem). Alguns fabricantes restringem a consulta de metadados: nesse caso a ferramenta para sem modificar o antigo. Não exige root nem contorna restrições do Android.
+
+1. Mantenha o Onda antigo instalado. No celular, ative as Opções do desenvolvedor (normalmente tocando 7 vezes em Número da versão/compilação nas configurações) e autorize Depuração USB.
+2. Instale Python 3 e Android SDK Platform-Tools no computador. Deixe adb no PATH ou abra um terminal na pasta que contém adb. Conecte o celular por USB e aceite a autorização na tela dele.
+3. Execute adb devices. Deve aparecer exatamente um aparelho com estado device; unauthorized exige aceitar a autorização no celular.
+4. Baixe Recuperar-backup-Onda.py dos anexos da versão. No Windows execute:
+   py Recuperar-backup-Onda.py --output Onda-recuperado.json
+   No Linux/macOS:
+   python3 Recuperar-backup-Onda.py --output Onda-recuperado.json
+5. O programa lê somente favoritas, playlists, frases de voz e registros de downloads do Onda antigo e consulta os títulos das músicas referenciadas no Android. Não modifica preferências, não desinstala aplicativos e não copia os áudios. Se já existir um arquivo de saída, escolha outro nome para preservá-lo.
+6. Copie Onda-recuperado.json para Downloads do mesmo celular. No Onda Novo 0.79, permita acesso às músicas e escolha Menu > Backup e restauração > Restaurar backup. Confira a prévia antes de confirmar.
+7. Downloads não indexados pelo Android podem precisar ser abertos novamente no Onda Novo para aparecerem na biblioteca. Referências ausentes ou ambíguas não são associadas a outra música. Você pode restaurar o mesmo backup novamente após abrir os arquivos.
+8. Confira suas listas antes de remover a instalação antiga. Ao terminar, você pode desativar Depuração USB.
+
+LIMITES
+O JSON recuperado não é criptografado: guarde-o em um local privado. Histórico, posição, fila, ajustes, favoritos de vídeo/YouTube, modelos de IA e os arquivos de áudio/vídeo não são transferidos por esta ferramenta. Não cole dados pessoais em issues ou comentários públicos do GitHub.
