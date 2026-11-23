@@ -1,3 +1,4 @@
+# Owner confirmed the private signing secret is configured; queue a fresh run.
 # Verify owner-configured signing secret and preserve the installed legacy app.
 name: Onda - Nova assinatura e transferencia 0780
 on:
