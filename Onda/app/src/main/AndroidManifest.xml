@@ -38,6 +38,7 @@
         <activity android:name=".LocalAiActivity" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".BatchDeleteActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".DeleteMediaActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".DocumentConverterActivity" android:exported="false" />
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OndaFilesActivity" android:exported="false" />
         <activity android:name=".DownloadCenterActivity" android:exported="false" />

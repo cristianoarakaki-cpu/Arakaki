@@ -29,23 +29,22 @@ manifest = {
     'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
 }
 (output / 'onda-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(output / 'notes.md').write_text(f"""Onda Música {version_name} — Onda IA local e fotos próprias
+(output / 'notes.md').write_text(f"""Onda Música {version_name} — Conversor de documentos e PDF
 
-Nova tela Menu → Onda IA: perguntas e mensagens processadas no celular, sem conta ou API paga. Modelos opcionais: Leve (SmolLM2,105MB,para mensagens criativas simples, sem recomendação para informações factuais) e Completo (Qwen2.5-1.5B,cerca de 1,1GB). Download verificável, retomada e Wi-Fi por padrão. Pedidos e respostas não são enviados para servidores. O modelo Completo exige 64 bits e memória suficiente. Memória e desempenho variam por aparelho; celulares simples mantêm tarefas e criações manuais mesmo sem executar um modelo. O Onda mantém Android8 ou superior, ARM32 e ARM64. Não há garantia de IA generativa completa em qualquer smartphone.
+Menu → Documentos e PDF, Conversor local → Converter documentos e PDF, ou menu do leitor → Converter PDF.
 
-Tarefas levam o pedido à Central inteligente para revisar e tocar em Executar. Respostas de IA não executam ações. O chat é experimental, pode errar e não consulta notícias em tempo real.
+Conversões locais sem conta ou serviço pago:
+- Fotos JPG/PNG/WebP e formatos decodificados pelo Android → PDF, uma foto por página A4, na ordem recebida do seletor, originais preservados.
+- TXT, CSV, MD, JSON e LOG em UTF-8/UTF-16 → PDF com texto paginado. CSV vira texto, não uma planilha diagramada.
+- DOCX → PDF somente com o texto principal. Não mantém imagens, tabelas, estilos, cabeçalhos ou a diagramação do Word. DOC/XLS/PPT não são aceitos.
+- PDF → TXT, extraindo o texto selecionável de todas as páginas. PDFs digitalizados precisam do OCR disponível no leitor; esta conversão não faz OCR automático.
+- PDF → PNG: todas as páginas, até 1.600 pixels no maior lado, reunidas em um ZIP.
 
-Cartões: a IA cria mensagens inéditas, ou você usa o próprio texto; a arte é composta no celular. Fotos próprias podem ser usadas como fundo, com originais preservados. Selecione uma ou várias fotos pelo seletor Android, sem teto de quantidade ou tamanho imposto pelo Onda, usando os formatos que o Android consegue decodificar. Imagens em nuvem podem precisar de conexão. Prévia temporária; Salvar mantém nova cópia em Onda/IA no Android10+ ou no local escolhido em versões anteriores. Compartilhamento pelo Android.
+Novos arquivos podem ser abertos, salvos no local escolhido ou compartilhados pelo Android. Resultado temporário: use Salvar para guardar uma cópia. Sem teto fixo de páginas/fotos; depende do espaço, da memória e das regras do Android. PDFs protegidos não são desbloqueados. Processamento somente sob demanda, com Interromper, cancelado ao sair, sem serviços novos ou consultas recorrentes. Nenhuma nova biblioteca de conversão. Funções anteriores de música, vídeo, downloads, IA, fotos, rádios, OCR e leitura em voz alta preservadas.
 
-Clipes: animação do cartão em MP4 sem som, ou apresentação de todas as fotos selecionadas, três segundos por foto. A memória de leitura é limitada por foto, sem carregar o álbum inteiro. Não é geração de fotografias ou cenas de vídeo por descrição; o modelo de texto não interpreta o conteúdo das fotos. Som, legendas e recursos anteriores continuam disponíveis nas telas existentes.
+Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar. Modelos de IA continuam opcionais e não são incluídos no APK. O atualizador a partir da 0.74.0 aceita este tamanho; versões antigas precisam do link direto.
 
-Processamento somente sob demanda, até dois núcleos de CPU para a IA, com Interromper e cancelamento ao sair da tela. Sem serviço novo, microfone permanente, consulta contínua ou download automático dos modelos. Rotinas e tarefas leves continuam disponíveis em aparelhos que não têm memória para os modelos.
-
-Mesmo pacote e assinatura: instale sobre a versão atual sem desinstalar, mantendo seus dados. O atualizador a partir da 0.74.0 aceita este tamanho de APK; versões anteriores precisam do link direto desta release.
-
-Licenças e fontes: llama.cpp MIT; modelos opcionais SmolLM2 e Qwen2.5 Apache2.0, não incluídos no APK; aplicativo GNU GPL v3 ou posterior, sem garantia; Whisper.cpp e modelos Whisper MIT, NewPipe Extractor GPL v3 ou posterior, LAME GNU Library GPL v2 ou posterior e LibVLC 3.7.7 LGPL 2.1 ou posterior. Fontes do aplicativo e dos componentes llama.cpp, Whisper.cpp, NewPipe e LAME acompanham a release. Fontes do LibVLC: https://code.videolan.org/videolan/libvlcjni . Avisos no app em Downloads → Opções de download → Licença e código-fonte. Dependências conservam suas licenças.
-
-Pacote: `{package_name}`. Código: {version_code}. APK ARM32 e ARM64 com o certificado fixado do projeto. Modelos opcionais não são incluídos no APK.
+Licenças: aplicativo GNU GPL v3 ou posterior; llama.cpp/Whisper.cpp MIT; NewPipe GPL v3 ou posterior; LAME Library GPL v2 ou posterior; LibVLC LGPL2.1 ou posterior; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos em Downloads → Opções de download → Licença e código-fonte. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)
 
 with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
