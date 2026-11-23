@@ -48,7 +48,7 @@ final class DocumentConverter {
  static void copy(InputStream in,OutputStream out,LocalAiModels.Cancel cancel)throws IOException{byte[] b=new byte[32768];int n;while((n=in.read(b))!=-1){cancel.check();out.write(b,0,n);}cancel.check();}
  private static File spool(Context c,Uri source,LocalAiModels.Cancel cancel)throws IOException{File f=File.createTempFile("onda-document-source-",".pdf",c.getCacheDir());boolean ok=false;try(InputStream in=open(c,source);OutputStream out=new FileOutputStream(f)){copy(in,out,cancel);ok=true;return f;}finally{if(!ok)f.delete();}}
  private static void images(Context c,List<Uri> sources,File target,LocalAiModels.Cancel cancel,Progress progress)throws Exception{
-  try(PdfDocument pdf=new PdfDocument()){
+  PdfDocument pdf=new PdfDocument();try{
    Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);int count=0;
    for(Uri source:sources){cancel.check();Bitmap image=LocalAiPhotos.load(c,source,1600,cancel);PdfDocument.Page page=null;try{
     boolean landscape=image.getWidth()>image.getHeight();int w=landscape?842:595,h=landscape?595:842;
@@ -57,7 +57,7 @@ final class DocumentConverter {
     canvas.drawBitmap(image,null,new RectF((w-bw)/2,(h-bh)/2,(w+bw)/2,(h+bh)/2),paint);
    }finally{image.recycle();if(page!=null)pdf.finishPage(page);}progress.page(count,sources.size());}
    cancel.check();try(OutputStream out=new FileOutputStream(target)){pdf.writeTo(out);}
-  }
+  }finally{pdf.close();}
  }
  /** Text uses Android shaping (including accented scripts), paginated rather than clipped. */
  private static final class TextPdf implements Closeable {
