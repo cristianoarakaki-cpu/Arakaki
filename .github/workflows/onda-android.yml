@@ -11,8 +11,12 @@ jobs:
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[onda-targeted]')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    env:
+      ONDA_SIGNING_PASSPHRASE: ${{ secrets.ONDA_SIGNING_PASSPHRASE }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,36 +40,10 @@ jobs:
         run: python Onda/tests/check_archive.py
       - name: Conferir busca de catálogo com Chitãozinho e Xororó
         run: python Onda/tests/check_catalog.py
-      - name: Reutilizar assinatura de teste
-        uses: actions/cache@v4
-        with:
-          path: Onda/.signing/debug.keystore
-          key: onda-musica-debug-signing-v1
-      - name: Preparar assinatura persistente de teste
-        env:
-          ONDA_KEYSTORE_BASE64: ${{ secrets.ONDA_KEYSTORE_BASE64 }}
+      - name: Restaurar chave permanente de backup criptografado
         run: |
-          mkdir -p Onda/.signing
-          python - <<'PYKEY'
-          import os,base64
-          from pathlib import Path
-          supplied=os.environ.get('ONDA_KEYSTORE_BASE64','').strip()
-          if supplied:Path('Onda/.signing/debug.keystore').write_bytes(base64.b64decode(supplied,validate=True))
-          assert Path('Onda/.signing/debug.keystore').is_file(),'Original signing key unavailable. Restore ONDA_KEYSTORE_BASE64 before releasing; never replace the certificate.'
-          PYKEY
-          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
-          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
-      - name: Compilar a versão anterior para conferir atualização
-        run: |
-          git fetch --no-tags origin refs/tags/onda-v0.21.1:refs/tags/onda-v0.21.1
-          ONDA_OLD_SOURCE="$RUNNER_TEMP/onda-upgrade-source"
-          mkdir -p "$ONDA_OLD_SOURCE"
-          git archive onda-v0.21.1 Onda | tar -x -C "$ONDA_OLD_SOURCE"
-          mkdir -p "$ONDA_OLD_SOURCE/Onda/.signing"
-          cp Onda/.signing/debug.keystore "$ONDA_OLD_SOURCE/Onda/.signing/debug.keystore"
-          gradle --no-daemon -p "$ONDA_OLD_SOURCE/Onda" -PondaEmulator=true assembleDebug
-          mkdir -p Onda/upgrade-fixtures
-          cp "$ONDA_OLD_SOURCE/Onda/app/build/outputs/apk/debug/app-debug.apk" Onda/upgrade-fixtures/Onda-0.21.1-x86_64.apk
+          python -m pip install --disable-pip-version-check cryptography==50.0.0
+          python Onda/signing/restore.py
       - run: gradle --no-daemon -p Onda assembleDebug lintDebug testDebugUnitTest compileDebugAndroidTestJavaWithJavac
       - name: Salvar relatórios de falhas
         if: failure()
@@ -80,13 +58,13 @@ jobs:
           python -m pip install --disable-pip-version-check --timeout 30 --retries 1 zopfli==0.2.3.post1
           python Onda/tools/compact_apk.py Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-compact.apk
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f 4 /tmp/onda-compact.apk /tmp/onda-aligned.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks Onda/.signing/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey --out Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-aligned.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks Onda/.signing/release.keystore --ks-pass env:ONDA_SIGNING_PASSPHRASE --key-pass env:ONDA_SIGNING_PASSPHRASE --ks-key-alias onda-release --out Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-final-certificate.txt
           python -c 'from pathlib import Path; s=Path("/tmp/onda-final-certificate.txt").read_text(); expected=Path("Onda/signing-certificate.sha256").read_text().strip(); assert "Signer #1 certificate SHA-256 digest: "+expected in s, "Assinatura final incorreta"'
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
-          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert "package: name=\x27br.com.onda.musica\x27 " in s; assert "arm64-v8a" in s and "armeabi-v7a" in s and "x86_64" not in s; print("Pacote independente confirmado")'
+          python -c 'import re; s=open("/tmp/onda-package.txt").read(); assert "package: name=\x27br.com.onda.player\x27 " in s; assert "arm64-v8a" in s and "armeabi-v7a" in s and "x86_64" not in s; print("Pacote independente confirmado")'
       - uses: actions/upload-artifact@v4
         with:
           name: Onda-Android-APK
@@ -186,21 +164,21 @@ jobs:
           script: |
             adb install -r Onda/app/build/outputs/apk/debug/app-debug.apk
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_AUDIO
-            adb shell pm grant br.com.onda.musica android.permission.READ_MEDIA_VIDEO
-            adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-35-tests.txt
+            adb shell pm grant br.com.onda.player android.permission.READ_MEDIA_AUDIO
+            adb shell pm grant br.com.onda.player android.permission.READ_MEDIA_VIDEO
+            adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-35-tests.txt
             cat /tmp/onda-delete-35-tests.txt
             python -c 's=open("/tmp/onda-delete-35-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             mkdir -p Onda/ui-preview
             adb shell settings put secure immersive_mode_confirmations confirmed
             adb logcat -c
             adb logcat -v threadtime > /tmp/onda-android35-logcat.txt 2>&1 &
-            adb shell am instrument -w -e class br.com.onda.YouTubeBackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
+            adb shell am instrument -w -e class br.com.onda.YouTubeBackTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-35-tests.txt || { free -m; df -h /; sudo dmesg --ctime | tail -60; exit 1; }
             cat /tmp/onda-youtube-fullscreen-35-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/youtube-back-35.json > Onda/ui-preview/youtube-back-35.json
+            adb exec-out run-as br.com.onda.player cat files/youtube-back-35.json > Onda/ui-preview/youtube-back-35.json
             python -c 's=open("/tmp/onda-youtube-fullscreen-35-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
       - name: Guardar diagnóstico do emulador Android 15
         if: failure()
         uses: actions/upload-artifact@v4
@@ -231,304 +209,304 @@ jobs:
           script: |
             python Onda/tools/check_upgrade.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell pm grant br.com.onda.musica android.permission.READ_EXTERNAL_STORAGE
+            adb shell pm grant br.com.onda.player android.permission.READ_EXTERNAL_STORAGE
             python Onda/tools/install_ai_test_models.py
-            adb shell am instrument -w -e class br.com.onda.DocumentConverterTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-document-tests.txt
+            adb shell am instrument -w -e class br.com.onda.DocumentConverterTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-document-tests.txt
             cat /tmp/onda-document-tests.txt
             python -c 's=open("/tmp/onda-document-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
-            adb shell am instrument -w -e class br.com.onda.LocalAiTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-local-ai-tests.txt
+            adb shell am instrument -w -e class br.com.onda.LocalAiTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-local-ai-tests.txt
             cat /tmp/onda-local-ai-tests.txt
             python -c 's=open("/tmp/onda-local-ai-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
 
-            adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-on-device-translation-tests.txt
+            adb shell am instrument -w -e class br.com.onda.OnDeviceTranslationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-on-device-translation-tests.txt
             cat /tmp/onda-on-device-translation-tests.txt
             python -c 's=open("/tmp/onda-on-device-translation-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-live-translation-tests.txt
+            adb exec-out run-as br.com.onda.player cat files/on-device-translation.json > Onda/ui-preview/on-device-translation.json
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.LiveTranslationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-live-translation-tests.txt
             cat /tmp/onda-live-translation-tests.txt
-            for part in translation precision; do adb exec-out run-as br.com.onda.musica cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
+            for part in translation precision; do adb exec-out run-as br.com.onda.player cat "files/live-$part.json" > "Onda/ui-preview/live-$part.json" || true; done
+            adb exec-out run-as br.com.onda.player cat files/live-translation.png > Onda/ui-preview/live-translation.png || true
             python -c 's=open("/tmp/onda-live-translation-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.CleanInterfaceTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-clean-interface-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.CleanInterfaceTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-clean-interface-tests.txt
             cat /tmp/onda-clean-interface-tests.txt
-            for screen in clean-downloads clean-live-lyrics; do adb exec-out run-as br.com.onda.musica cat "files/$screen.png" > "Onda/ui-preview/$screen.png" || true; done
+            for screen in clean-downloads clean-live-lyrics; do adb exec-out run-as br.com.onda.player cat "files/$screen.png" > "Onda/ui-preview/$screen.png" || true; done
             python -c 's=open("/tmp/onda-clean-interface-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
 
-            adb shell am instrument -w -e class br.com.onda.BatteryIndicatorTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-battery-tests.txt
+            adb shell am instrument -w -e class br.com.onda.BatteryIndicatorTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-battery-tests.txt
             cat /tmp/onda-battery-tests.txt
             python -c 's=open("/tmp/onda-battery-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.AutomationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-automation-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.AutomationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-automation-tests.txt
             cat /tmp/onda-automation-tests.txt
             python -c 's=open("/tmp/onda-automation-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/automation-central.png > Onda/ui-preview/automation-central.png
-            adb exec-out run-as br.com.onda.musica cat files/automation-color-player.png > Onda/ui-preview/automation-color-player.png
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.PdfSpeechTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pdf-voice-tests.txt
+            adb exec-out run-as br.com.onda.player cat files/automation-central.png > Onda/ui-preview/automation-central.png
+            adb exec-out run-as br.com.onda.player cat files/automation-color-player.png > Onda/ui-preview/automation-color-player.png
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.PdfSpeechTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pdf-voice-tests.txt
             cat /tmp/onda-pdf-voice-tests.txt
             python -c 's=open("/tmp/onda-pdf-voice-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/pdf-voice-reader.png > Onda/ui-preview/pdf-voice-reader.png
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.VideoPipTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pip-tests.txt
+            adb exec-out run-as br.com.onda.player cat files/pdf-voice-reader.png > Onda/ui-preview/pdf-voice-reader.png
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.VideoPipTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pip-tests.txt
             cat /tmp/onda-pip-tests.txt
             python -c 's=open("/tmp/onda-pip-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb exec-out run-as br.com.onda.musica cat files/pip-tests.json > Onda/ui-preview/pip-tests.json
-            adb exec-out run-as br.com.onda.musica cat files/video-pip.png > Onda/ui-preview/20-janela-flutuante.png
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.AudioEvolutionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-audio-evolution-tests.txt
+            adb exec-out run-as br.com.onda.player cat files/pip-tests.json > Onda/ui-preview/pip-tests.json
+            adb exec-out run-as br.com.onda.player cat files/video-pip.png > Onda/ui-preview/20-janela-flutuante.png
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.AudioEvolutionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-audio-evolution-tests.txt
             cat /tmp/onda-audio-evolution-tests.txt
             python -c 's=open("/tmp/onda-audio-evolution-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ShortcutLayoutTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-shortcut-layout-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ShortcutLayoutTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-shortcut-layout-tests.txt
             cat /tmp/onda-shortcut-layout-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/shortcuts-layout.json > Onda/ui-preview/shortcuts-layout.json || true
-            adb exec-out run-as br.com.onda.musica cat files/shortcuts-header.png > Onda/ui-preview/shortcuts-header.png || true
+            adb exec-out run-as br.com.onda.player cat files/shortcuts-layout.json > Onda/ui-preview/shortcuts-layout.json || true
+            adb exec-out run-as br.com.onda.player cat files/shortcuts-header.png > Onda/ui-preview/shortcuts-header.png || true
             python -c 's=open("/tmp/onda-shortcut-layout-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb shell settings put system font_scale 1.3
-            adb shell am instrument -w -e class br.com.onda.PlayerClarityTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-player-clarity-tests.txt
+            adb shell am instrument -w -e class br.com.onda.PlayerClarityTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-player-clarity-tests.txt
             cat /tmp/onda-player-clarity-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/player-clarity-last.png > Onda/ui-preview/player-clarity-last.png || true
-            adb exec-out run-as br.com.onda.musica cat files/player-clarity.png > Onda/ui-preview/player-clarity.png || true
+            adb exec-out run-as br.com.onda.player cat files/player-clarity-last.png > Onda/ui-preview/player-clarity-last.png || true
+            adb exec-out run-as br.com.onda.player cat files/player-clarity.png > Onda/ui-preview/player-clarity.png || true
             python -c 's=open("/tmp/onda-player-clarity-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             adb shell settings put system font_scale 1.0
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.VoiceScreensTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-voice-screens-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.VoiceScreensTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-voice-screens-tests.txt
             cat /tmp/onda-voice-screens-tests.txt
             python -c 's=open("/tmp/onda-voice-screens-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.YouTubeAudioTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-audio-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.YouTubeAudioTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-audio-tests.txt
             cat /tmp/onda-youtube-audio-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/youtube-native-audio.json > Onda/ui-preview/youtube-native-audio.json || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-native-audio.json > Onda/ui-preview/youtube-native-audio.json || true
             python -c 's=open("/tmp/onda-youtube-audio-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.YouTubeFullscreenTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-fullscreen-tests.txt
             cat /tmp/onda-youtube-fullscreen-tests.txt
-            for part in video lifecycle; do adb exec-out run-as br.com.onda.musica cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-$part.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-failure.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-fullscreen-failure.json > Onda/ui-preview/youtube-fullscreen-failure.json || true
+            for part in video lifecycle; do adb exec-out run-as br.com.onda.player cat "files/youtube-fullscreen-$part.json" > "Onda/ui-preview/youtube-fullscreen-$part.json" || true; done
+            adb exec-out run-as br.com.onda.player cat files/youtube-fullscreen.png > Onda/ui-preview/youtube-fullscreen.png || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-fullscreen-failure.png > Onda/ui-preview/youtube-fullscreen-failure.png || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-fullscreen-failure.json > Onda/ui-preview/youtube-fullscreen-failure.json || true
             python -c 's=open("/tmp/onda-youtube-fullscreen-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ImageMessagesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-image-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ImageMessagesTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-image-tests.txt
             cat /tmp/onda-image-tests.txt
             python -c 's=open("/tmp/onda-image-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            for part in message photo internet; do adb exec-out run-as br.com.onda.musica cat "files/image-$part-tests.json" > "Onda/ui-preview/image-$part-tests.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/image-message-preview.png > Onda/ui-preview/image-message-preview.png || true
-            adb exec-out run-as br.com.onda.musica cat files/image-internet-fixture.png > Onda/ui-preview/image-internet-fixture.png || true
-            for view in compact expanded; do adb exec-out run-as br.com.onda.musica cat "files/image-$view.png" > "Onda/ui-preview/image-$view.png" || true; done
-            adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ChapterRepeatTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-chapter-repeat-tests.txt
+            for part in message photo internet; do adb exec-out run-as br.com.onda.player cat "files/image-$part-tests.json" > "Onda/ui-preview/image-$part-tests.json" || true; done
+            adb exec-out run-as br.com.onda.player cat files/image-message-preview.png > Onda/ui-preview/image-message-preview.png || true
+            adb exec-out run-as br.com.onda.player cat files/image-internet-fixture.png > Onda/ui-preview/image-internet-fixture.png || true
+            for view in compact expanded; do adb exec-out run-as br.com.onda.player cat "files/image-$view.png" > "Onda/ui-preview/image-$view.png" || true; done
+            adb shell am force-stop br.com.onda.player
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ChapterRepeatTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-chapter-repeat-tests.txt
             cat /tmp/onda-chapter-repeat-tests.txt
             python -c 's=open("/tmp/onda-chapter-repeat-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.AudioChapterTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-audio-chapter-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.AudioChapterTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-audio-chapter-tests.txt
             cat /tmp/onda-audio-chapter-tests.txt
             python -c 's=open("/tmp/onda-audio-chapter-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.YouTubeFavoritesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-favorites-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.YouTubeFavoritesTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-favorites-tests.txt
             cat /tmp/onda-youtube-favorites-tests.txt
             python -c 's=open("/tmp/onda-youtube-favorites-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-29-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.DeleteMediaTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-delete-29-tests.txt
             cat /tmp/onda-delete-29-tests.txt
             python -c 's=open("/tmp/onda-delete-29-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
-            adb shell am instrument -w -e class br.com.onda.BatchDeleteTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-batch-tests.txt
+            adb shell am instrument -w -e class br.com.onda.BatchDeleteTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-batch-tests.txt
             cat /tmp/onda-batch-tests.txt
             python -c 's=open("/tmp/onda-batch-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.CodecEvolutionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-codec-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.CodecEvolutionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-codec-tests.txt
             cat /tmp/onda-codec-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/codec-tests.json > Onda/ui-preview/codec-tests.json || true
+            adb exec-out run-as br.com.onda.player cat files/codec-tests.json > Onda/ui-preview/codec-tests.json || true
             python -c 's=open("/tmp/onda-codec-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.FastConversionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-fast-conversion-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.FastConversionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-fast-conversion-tests.txt
             cat /tmp/onda-fast-conversion-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/fast-conversion-tests.json > Onda/ui-preview/fast-conversion-tests.json || true
+            adb exec-out run-as br.com.onda.player cat files/fast-conversion-tests.json > Onda/ui-preview/fast-conversion-tests.json || true
             python -c 's=open("/tmp/onda-fast-conversion-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ShareMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-share-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ShareMediaTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-share-tests.txt
             cat /tmp/onda-share-tests.txt
             python -c 's=open("/tmp/onda-share-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ShareShortcutsTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-share-shortcuts-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ShareShortcutsTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-share-shortcuts-tests.txt
             cat /tmp/onda-share-shortcuts-tests.txt
-            for part in now music video youtube; do adb exec-out run-as br.com.onda.musica cat "files/share-shortcuts-$part.json" > "Onda/ui-preview/share-shortcuts-$part.json" || true; done
-            adb exec-out run-as br.com.onda.musica cat files/share-shortcuts-now.png > Onda/ui-preview/share-shortcuts-now.png || true
-            adb exec-out run-as br.com.onda.musica cat files/share-shortcuts-youtube.png > Onda/ui-preview/share-shortcuts-youtube.png || true
-            adb exec-out run-as br.com.onda.musica cat files/share-shortcuts-failure.png > Onda/ui-preview/share-shortcuts-failure.png || true
+            for part in now music video youtube; do adb exec-out run-as br.com.onda.player cat "files/share-shortcuts-$part.json" > "Onda/ui-preview/share-shortcuts-$part.json" || true; done
+            adb exec-out run-as br.com.onda.player cat files/share-shortcuts-now.png > Onda/ui-preview/share-shortcuts-now.png || true
+            adb exec-out run-as br.com.onda.player cat files/share-shortcuts-youtube.png > Onda/ui-preview/share-shortcuts-youtube.png || true
+            adb exec-out run-as br.com.onda.player cat files/share-shortcuts-failure.png > Onda/ui-preview/share-shortcuts-failure.png || true
             python -c 's=open("/tmp/onda-share-shortcuts-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.PowerEfficiencyTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-power-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.PowerEfficiencyTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-power-tests.txt
             cat /tmp/onda-power-tests.txt
-            for part in ui background lyrics; do adb exec-out run-as br.com.onda.musica cat "files/power-$part.json" > "Onda/ui-preview/power-$part.json" || true; done
+            for part in ui background lyrics; do adb exec-out run-as br.com.onda.player cat "files/power-$part.json" > "Onda/ui-preview/power-$part.json" || true; done
             python -c 's=open("/tmp/onda-power-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.VideoShareFlowTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-video-share-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.VideoShareFlowTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-video-share-tests.txt
             cat /tmp/onda-video-share-tests.txt
-            for part in complete isolation; do adb exec-out run-as br.com.onda.musica cat "files/video-share-$part.json" > "Onda/ui-preview/video-share-$part.json" || true; done
+            for part in complete isolation; do adb exec-out run-as br.com.onda.player cat "files/video-share-$part.json" > "Onda/ui-preview/video-share-$part.json" || true; done
             python -c 's=open("/tmp/onda-video-share-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.YoutubeRecoveryTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-recovery-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am force-stop br.com.onda.player
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.YoutubeRecoveryTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-youtube-recovery-tests.txt
             cat /tmp/onda-youtube-recovery-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/youtube-recovery-tests.json > Onda/ui-preview/youtube-recovery-tests.json || true
-            adb exec-out run-as br.com.onda.musica cat files/vevo-download-tests.json > Onda/ui-preview/vevo-download-tests.json || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-recovery-tests.json > Onda/ui-preview/youtube-recovery-tests.json || true
+            adb exec-out run-as br.com.onda.player cat files/vevo-download-tests.json > Onda/ui-preview/vevo-download-tests.json || true
             python -c 's=open("/tmp/onda-youtube-recovery-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.LightweightTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-lightweight-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.LightweightTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-lightweight-tests.txt
             cat /tmp/onda-lightweight-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/lightweight-tests.json > Onda/ui-preview/lightweight-tests.json || true
+            adb exec-out run-as br.com.onda.player cat files/lightweight-tests.json > Onda/ui-preview/lightweight-tests.json || true
             python -c 's=open("/tmp/onda-lightweight-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.DownloadExpansionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-download-expansion-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.DownloadExpansionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-download-expansion-tests.txt
             cat /tmp/onda-download-expansion-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/youtube-ui.png > Onda/ui-preview/85-youtube-tab.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-voice-ui.png > Onda/ui-preview/89-youtube-voz.png || true
-            adb exec-out run-as br.com.onda.musica cat files/youtube-protection-ui.png > Onda/ui-preview/90-youtube-protecao.png || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-ui.png > Onda/ui-preview/85-youtube-tab.png || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-voice-ui.png > Onda/ui-preview/89-youtube-voz.png || true
+            adb exec-out run-as br.com.onda.player cat files/youtube-protection-ui.png > Onda/ui-preview/90-youtube-protecao.png || true
             python -c 's=open("/tmp/onda-download-expansion-tests.txt").read(); assert "OK (8 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class br.com.onda.PdfLuminanceTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pdf-luminance-tests.txt
+            adb shell am instrument -w -e class br.com.onda.PdfLuminanceTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-pdf-luminance-tests.txt
             cat /tmp/onda-pdf-luminance-tests.txt
             python -c 's=open("/tmp/onda-pdf-luminance-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.PdfOcrTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-ocr-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.PdfOcrTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-ocr-tests.txt
             cat /tmp/onda-ocr-tests.txt
             python -c 's=open("/tmp/onda-ocr-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-original-media-tests.txt
+            adb shell am instrument -w -e class br.com.onda.OriginalMediaTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-original-media-tests.txt
             cat /tmp/onda-original-media-tests.txt
             python -c 's=open("/tmp/onda-original-media-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             python Onda/tools/check_media_links.py
             python Onda/tools/check_public_downloads.py
-            adb shell am instrument -w -e class br.com.onda.PhotoVideoTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-photo-video-tests.txt
+            adb shell am instrument -w -e class br.com.onda.PhotoVideoTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-photo-video-tests.txt
             cat /tmp/onda-photo-video-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/photo-video-tests.json > Onda/ui-preview/photo-video-tests.json
+            adb exec-out run-as br.com.onda.player cat files/photo-video-tests.json > Onda/ui-preview/photo-video-tests.json
             cat Onda/ui-preview/photo-video-tests.json
             python -c 's=open("/tmp/onda-photo-video-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.TiktokDownloadTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-tiktok-download-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.TiktokDownloadTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-tiktok-download-tests.txt
             cat /tmp/onda-tiktok-download-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/tiktok-photo-tests.json > Onda/ui-preview/tiktok-photo-tests.json
+            adb exec-out run-as br.com.onda.player cat files/tiktok-photo-tests.json > Onda/ui-preview/tiktok-photo-tests.json
             cat Onda/ui-preview/tiktok-photo-tests.json
-            adb exec-out run-as br.com.onda.musica cat files/tiktok-download-tests.json > Onda/ui-preview/tiktok-download-tests.json
+            adb exec-out run-as br.com.onda.player cat files/tiktok-download-tests.json > Onda/ui-preview/tiktok-download-tests.json
             python -c 's=open("/tmp/onda-tiktok-download-tests.txt").read(); assert "OK (4 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class br.com.onda.ConnectSessionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-connect-tests.txt
+            adb shell am instrument -w -e class br.com.onda.ConnectSessionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-connect-tests.txt
             cat /tmp/onda-connect-tests.txt
             python -c 's=open("/tmp/onda-connect-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_connect.py
-            adb shell am instrument -w -e class br.com.onda.ConnectStorageTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-connect-storage-tests.txt
+            adb shell am instrument -w -e class br.com.onda.ConnectStorageTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-connect-storage-tests.txt
             cat /tmp/onda-connect-storage-tests.txt
             python -c 's=open("/tmp/onda-connect-storage-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am instrument -w -e class br.com.onda.AutoDestinationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-auto-destination-tests.txt
+            adb shell am instrument -w -e class br.com.onda.AutoDestinationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-auto-destination-tests.txt
             cat /tmp/onda-auto-destination-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/auto-destination.png > Onda/ui-preview/87-auto-destination.png || true
+            adb exec-out run-as br.com.onda.player cat files/auto-destination.png > Onda/ui-preview/87-auto-destination.png || true
             python -c 's=open("/tmp/onda-auto-destination-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.DownloadOrganizationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-download-organization-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.DownloadOrganizationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-download-organization-tests.txt
             cat /tmp/onda-download-organization-tests.txt
             python -c 's=open("/tmp/onda-download-organization-tests.txt").read(); assert "OK (7 tests)" in s and "FAILURES" not in s'
-            adb shell am instrument -w -e class br.com.onda.FavoriteCopiesTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-favorite-copies-tests.txt
+            adb shell am instrument -w -e class br.com.onda.FavoriteCopiesTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-favorite-copies-tests.txt
             cat /tmp/onda-favorite-copies-tests.txt
             python -c 's=open("/tmp/onda-favorite-copies-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb logcat -c
-            adb shell am instrument -w -e class br.com.onda.EvolutionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-evolution-tests.txt
+            adb shell am instrument -w -e class br.com.onda.EvolutionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-evolution-tests.txt
             cat /tmp/onda-evolution-tests.txt
             adb logcat -d -b crash -v threadtime > Onda/ui-preview/evolution-crash.txt
             cat Onda/ui-preview/evolution-crash.txt
             adb logcat -d -v threadtime > Onda/ui-preview/evolution-logcat.txt
             python -c 's=open("/tmp/onda-evolution-tests.txt").read(); assert "OK (5 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             python Onda/tools/check_download_center.py
-            adb shell am instrument -w -e class br.com.onda.TouchMotionTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-touch-motion-tests.txt
+            adb shell am instrument -w -e class br.com.onda.TouchMotionTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-touch-motion-tests.txt
             cat /tmp/onda-touch-motion-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/touch-motion-tests.json > Onda/ui-preview/touch-motion-tests.json
+            adb exec-out run-as br.com.onda.player cat files/touch-motion-tests.json > Onda/ui-preview/touch-motion-tests.json
             cat Onda/ui-preview/touch-motion-tests.json
-            adb exec-out run-as br.com.onda.musica cat files/color-touch-preview.png > Onda/ui-preview/color-touch-preview.png
+            adb exec-out run-as br.com.onda.player cat files/color-touch-preview.png > Onda/ui-preview/color-touch-preview.png
             python -c 's=open("/tmp/onda-touch-motion-tests.txt").read(); assert "OK (3 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.LionBrandTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-lion-brand-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.LionBrandTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-lion-brand-tests.txt
             cat /tmp/onda-lion-brand-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/lion-brand-tests.json > Onda/ui-preview/lion-brand-tests.json
+            adb exec-out run-as br.com.onda.player cat files/lion-brand-tests.json > Onda/ui-preview/lion-brand-tests.json
             cat Onda/ui-preview/lion-brand-tests.json
-            adb exec-out run-as br.com.onda.musica cat files/lion-brand-preview.png > Onda/ui-preview/lion-brand-preview.png
+            adb exec-out run-as br.com.onda.player cat files/lion-brand-preview.png > Onda/ui-preview/lion-brand-preview.png
             python -c 's=open("/tmp/onda-lion-brand-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.AppearanceTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-appearance-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.AppearanceTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-appearance-tests.txt
             cat /tmp/onda-appearance-tests.txt
             python -c 's=open("/tmp/onda-appearance-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.MenuPanelTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-menu-panel-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.MenuPanelTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-menu-panel-tests.txt
             cat /tmp/onda-menu-panel-tests.txt
             python -c 's=open("/tmp/onda-menu-panel-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.NowPlayingInfoTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-track-identity-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.NowPlayingInfoTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-track-identity-tests.txt
             cat /tmp/onda-track-identity-tests.txt
             python -c 's=open("/tmp/onda-track-identity-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.RadioPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-radio-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.RadioPlaybackTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-radio-tests.txt
             cat /tmp/onda-radio-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/radio-playback.json > Onda/ui-preview/radio-playback.json || true
-            adb exec-out run-as br.com.onda.musica cat files/radio-player.png > Onda/ui-preview/radio-player.png || true
+            adb exec-out run-as br.com.onda.player cat files/radio-playback.json > Onda/ui-preview/radio-playback.json || true
+            adb exec-out run-as br.com.onda.player cat files/radio-player.png > Onda/ui-preview/radio-player.png || true
             python -c 's=open("/tmp/onda-radio-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.RadioCityUiTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-radio-city-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.RadioCityUiTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-radio-city-tests.txt
             cat /tmp/onda-radio-city-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/radio-city-ui.json > Onda/ui-preview/radio-city-ui.json || true
+            adb exec-out run-as br.com.onda.player cat files/radio-city-ui.json > Onda/ui-preview/radio-city-ui.json || true
             python -c 's=open("/tmp/onda-radio-city-tests.txt").read(); assert "OK (1 test)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-screen-review-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-screen-review-tests.txt
             cat /tmp/onda-screen-review-tests.txt
-            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review-normal.json > Onda/ui-preview/screen-layout-review-normal.json || true
-            adb exec-out run-as br.com.onda.musica cat files/screen-layout-review-compact.json > Onda/ui-preview/screen-layout-review-compact.json || true
-            adb exec-out run-as br.com.onda.musica cat files/audit-MainActivity-compact.png > Onda/ui-preview/library-compact.png || true
-            adb exec-out run-as br.com.onda.musica cat files/audit-OnlineActivity-compact.png > Onda/ui-preview/explore-compact.png || true
+            adb exec-out run-as br.com.onda.player cat files/screen-layout-review-normal.json > Onda/ui-preview/screen-layout-review-normal.json || true
+            adb exec-out run-as br.com.onda.player cat files/screen-layout-review-compact.json > Onda/ui-preview/screen-layout-review-compact.json || true
+            adb exec-out run-as br.com.onda.player cat files/audit-MainActivity-compact.png > Onda/ui-preview/library-compact.png || true
+            adb exec-out run-as br.com.onda.player cat files/audit-OnlineActivity-compact.png > Onda/ui-preview/explore-compact.png || true
             python -c 's=open("/tmp/onda-screen-review-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             python Onda/tools/check_appearance.py
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-speech-tests.txt
+            adb shell am instrument -w -e class br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-speech-tests.txt
             cat /tmp/onda-speech-tests.txt
             python -c 's=open("/tmp/onda-speech-tests.txt").read(); assert "OK (6 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             python Onda/tools/check_menus.py
             python Onda/tools/check_pdf.py
             python Onda/tools/check_open_background.py
             python Onda/tools/check_shelf.py
             python Onda/tools/check_unified_search.py
-            adb shell am instrument -w -e class br.com.onda.SearchIndexTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-search-tests.txt
+            adb shell am instrument -w -e class br.com.onda.SearchIndexTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-search-tests.txt
             cat /tmp/onda-search-tests.txt
             python -c 's=open("/tmp/onda-search-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class br.com.onda.ShelfStoreTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-shelf-tests.txt
+            adb shell am instrument -w -e class br.com.onda.ShelfStoreTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-shelf-tests.txt
             cat /tmp/onda-shelf-tests.txt
             python -c 's=open("/tmp/onda-shelf-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_speech_ui.py
-            adb shell am force-stop br.com.onda.musica
-            adb shell pm clear br.com.onda.musica
+            adb shell am force-stop br.com.onda.player
+            adb shell pm clear br.com.onda.player
             adb shell pm clear com.android.documentsui
             python Onda/tools/check_video.py
             adb install -r Onda/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e notClass br.com.onda.DocumentConverterTest,br.com.onda.LocalAiTest,br.com.onda.BatchDeleteTest,br.com.onda.BatteryIndicatorTest,br.com.onda.CleanInterfaceTest,br.com.onda.LiveTranslationTest,br.com.onda.PdfLuminanceTest,br.com.onda.OnDeviceTranslationTest,br.com.onda.NowPlayingInfoTest,br.com.onda.AutomationTest,br.com.onda.PdfSpeechTest,br.com.onda.LionBrandTest,br.com.onda.PhotoVideoTest,br.com.onda.TouchMotionTest,br.com.onda.ShortcutLayoutTest,br.com.onda.PlayerClarityTest,br.com.onda.ChapterRepeatTest,br.com.onda.VoiceScreensTest,br.com.onda.AudioEvolutionTest,br.com.onda.YouTubeAudioTest,br.com.onda.AudioChapterTest,br.com.onda.RadioCityUiTest,br.com.onda.ScreenLayoutReviewTest,br.com.onda.VideoPipTest,br.com.onda.ImageMessagesTest,br.com.onda.RadioPlaybackTest,br.com.onda.MenuPanelTest,br.com.onda.YouTubeBackTest,br.com.onda.YouTubeFullscreenTest,br.com.onda.PowerEfficiencyTest,br.com.onda.VideoShareFlowTest,br.com.onda.ShareShortcutsTest,br.com.onda.YoutubeRecoveryTest,br.com.onda.ShareMediaTest,br.com.onda.FastConversionTest,br.com.onda.YouTubeFavoritesTest,br.com.onda.DeleteMediaTest,br.com.onda.CodecEvolutionTest,br.com.onda.LightweightTest,br.com.onda.AutoDestinationTest,br.com.onda.DownloadExpansionTest,br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
+            adb shell am instrument -w -e notClass br.com.onda.SigningMigrationTest,br.com.onda.DocumentConverterTest,br.com.onda.LocalAiTest,br.com.onda.BatchDeleteTest,br.com.onda.BatteryIndicatorTest,br.com.onda.CleanInterfaceTest,br.com.onda.LiveTranslationTest,br.com.onda.PdfLuminanceTest,br.com.onda.OnDeviceTranslationTest,br.com.onda.NowPlayingInfoTest,br.com.onda.AutomationTest,br.com.onda.PdfSpeechTest,br.com.onda.LionBrandTest,br.com.onda.PhotoVideoTest,br.com.onda.TouchMotionTest,br.com.onda.ShortcutLayoutTest,br.com.onda.PlayerClarityTest,br.com.onda.ChapterRepeatTest,br.com.onda.VoiceScreensTest,br.com.onda.AudioEvolutionTest,br.com.onda.YouTubeAudioTest,br.com.onda.AudioChapterTest,br.com.onda.RadioCityUiTest,br.com.onda.ScreenLayoutReviewTest,br.com.onda.VideoPipTest,br.com.onda.ImageMessagesTest,br.com.onda.RadioPlaybackTest,br.com.onda.MenuPanelTest,br.com.onda.YouTubeBackTest,br.com.onda.YouTubeFullscreenTest,br.com.onda.PowerEfficiencyTest,br.com.onda.VideoShareFlowTest,br.com.onda.ShareShortcutsTest,br.com.onda.YoutubeRecoveryTest,br.com.onda.ShareMediaTest,br.com.onda.FastConversionTest,br.com.onda.YouTubeFavoritesTest,br.com.onda.DeleteMediaTest,br.com.onda.CodecEvolutionTest,br.com.onda.LightweightTest,br.com.onda.AutoDestinationTest,br.com.onda.DownloadExpansionTest,br.com.onda.PdfOcrTest,br.com.onda.AppearanceTest,br.com.onda.EvolutionTest,br.com.onda.FavoriteCopiesTest,br.com.onda.DownloadOrganizationTest,br.com.onda.TiktokDownloadTest,br.com.onda.DjMemoryIntegrationTest,br.com.onda.ShelfStoreTest,br.com.onda.SpeechProcessorTest,br.com.onda.SpeechPlaybackTest,br.com.onda.SearchIndexTest,br.com.onda.ConnectSessionTest,br.com.onda.ConnectStorageTest,br.com.onda.OriginalMediaTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-native-tests.txt
             cat /tmp/onda-native-tests.txt
             python -c 's=open("/tmp/onda-native-tests.txt").read(); assert "OK (31 tests)" in s and "FAILURES" not in s'
-            adb shell am force-stop br.com.onda.musica
-            adb shell am instrument -w -e class br.com.onda.DjMemoryIntegrationTest br.com.onda.musica.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-memory-tests.txt
+            adb shell am force-stop br.com.onda.player
+            adb shell am instrument -w -e class br.com.onda.DjMemoryIntegrationTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-memory-tests.txt
             cat /tmp/onda-memory-tests.txt
             python -c 's=open("/tmp/onda-memory-tests.txt").read(); assert "OK (2 tests)" in s and "FAILURES" not in s'
             python Onda/tools/check_dj_memory.py
@@ -622,7 +600,7 @@ jobs:
             fi
             PUBLISHED=false
             for ATTEMPT in 1 2 3; do
-              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/Whisper.cpp-Fontes.zip Onda/release-out/Llama.cpp-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
+              if gh release create "$ONDA_TAG" Onda/release-out/Onda-Musica.apk Onda/release-out/onda-player-update.json Onda/release-out/Onda-Fontes.zip Onda/release-out/NewPipeExtractor-Fontes.zip Onda/release-out/LAME-Fontes.zip Onda/release-out/Whisper.cpp-Fontes.zip Onda/release-out/Llama.cpp-Fontes.zip Onda/release-out/SHA256SUMS.txt --target "$CURRENT_HEAD" --latest=true --title "Onda Música $ONDA_VERSION" --notes-file Onda/release-out/notes.md; then
                 PUBLISHED=true
                 break
               fi

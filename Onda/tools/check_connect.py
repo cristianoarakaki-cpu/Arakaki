@@ -1,7 +1,7 @@
 """Real menu, Android folder grant, QR waiting state and explicit cancellation."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-P='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
+P='br.com.onda.player';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
 def shell(*a):return adb('shell',shlex.join(str(x) for x in a))
 def nodes():

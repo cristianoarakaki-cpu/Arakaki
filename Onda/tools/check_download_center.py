@@ -1,7 +1,7 @@
 """Real UI, SAF output and retry navigation; restore preferences after fixture cleanup."""
 from pathlib import Path
 import subprocess,shlex,time,json,re,xml.etree.ElementTree as ET,uuid
-P='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
+P='br.com.onda.player';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
 URL='https://raw.githubusercontent.com/cristianoarakaki-cpu/Arakaki/245b693e64cf5b5b33bc2a5f491a607f6a435655/Onda/tests/fixtures/download.mp4'
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):return adb('shell',shlex.join(str(a) for a in args))

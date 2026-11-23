@@ -1,0 +1,16 @@
+package br.com.onda;
+import android.content.*;import android.net.Uri;import android.os.Environment;import android.provider.MediaStore;import org.junit.Test;import static org.junit.Assert.*;import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;import java.io.*;import java.nio.*;import java.nio.charset.StandardCharsets;import java.nio.file.Files;import java.util.*;
+/** Test-only fixture compiled against the previous source and independent temporary signing key. */
+@androidx.media3.common.util.UnstableApi
+public class LegacyMigrationFixtureTest {
+ @Test public void exportPortableBackupUsingPreviousOndaCode()throws Exception{
+  Context c=getInstrumentation().getTargetContext();assertEquals("br.com.onda.musica",c.getPackageName());
+  ContentValues values=new ContentValues();values.put(MediaStore.Audio.Media.DISPLAY_NAME,"Onda-migration-fixture.wav");values.put(MediaStore.Audio.Media.MIME_TYPE,"audio/wav");values.put(MediaStore.Audio.Media.RELATIVE_PATH,Environment.DIRECTORY_MUSIC+"/OndaMigration");values.put(MediaStore.Audio.Media.IS_PENDING,1);Uri uri=c.getContentResolver().insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,values);assertNotNull(uri);
+  int rate=8000,samples=24000,bytes=samples*2;ByteBuffer wav=ByteBuffer.allocate(44+bytes).order(ByteOrder.LITTLE_ENDIAN);wav.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(36+bytes).put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII)).putInt(16).putShort((short)1).putShort((short)1).putInt(rate).putInt(rate*2).putShort((short)2).putShort((short)16).put("data".getBytes(StandardCharsets.US_ASCII)).putInt(bytes);for(int i=0;i<samples;i++)wav.putShort((short)(Math.sin(i*2*Math.PI*440/rate)*1500));
+  try(OutputStream out=c.getContentResolver().openOutputStream(uri)){out.write(wav.array());}
+  values.clear();values.put(MediaStore.Audio.Media.IS_PENDING,0);values.put(MediaStore.Audio.Media.TITLE,"Onda transferência");values.put(MediaStore.Audio.Media.ARTIST,"Artista de teste");values.put(MediaStore.Audio.Media.ALBUM,"Migração");values.put(MediaStore.Audio.Media.DURATION,3000);c.getContentResolver().update(uri,values,null,null);
+  String id=String.valueOf(ContentUris.parseId(uri));List<BackupData.Track> tracks=BackupStore.tracks(c);assertTrue(tracks.stream().anyMatch(t->t.id.equals(id)));
+  c.getSharedPreferences("library",0).edit().putStringSet("favorites",new HashSet<>(Collections.singleton(id))).commit();PlaylistStore.Entry list=new PlaylistStore.Entry("legacy-list","Transferência teste");list.songs.add(id);PlaylistStore.save(c,Collections.singletonList(list));VoicePhraseBook phrases=new VoicePhraseBook("[]");phrases.put(null,"pausa da transferência",VoiceCommand.Action.PAUSE,"",0);VoicePhrases.save(c,phrases);c.getSharedPreferences("migration-check",0).edit().putString("marker","legacy-preserved").commit();
+  String raw=BackupData.json(BackupStore.snapshot(c));BackupData.Archive archive=BackupData.parse(raw);assertEquals(1,archive.favorites.size());assertEquals(1,archive.lists.size());assertEquals(1,archive.phrases.entries.size());Files.write(new File(c.getFilesDir(),"legacy-backup.json").toPath(),raw.getBytes(StandardCharsets.UTF_8));
+ }
+}

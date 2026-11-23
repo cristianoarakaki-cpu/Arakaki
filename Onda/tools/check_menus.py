@@ -1,7 +1,7 @@
 """Reproduce the cut-off menu on a small display with enlarged text, then rotate."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-PACKAGE='br.com.onda.musica'
+PACKAGE='br.com.onda.player'
 OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
 def shell(*a):return adb('shell',shlex.join(str(v) for v in a))

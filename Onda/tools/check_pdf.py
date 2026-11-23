@@ -1,7 +1,7 @@
 """Open a real PDF through Android DocumentsUI, render pages, zoom and restore reading."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-PACKAGE='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
+PACKAGE='br.com.onda.player';OUT=Path('Onda/ui-preview');OUT.mkdir(exist_ok=True,parents=True)
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):return adb('shell',shlex.join(str(v) for v in args))
 def nodes():

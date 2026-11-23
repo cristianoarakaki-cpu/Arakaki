@@ -1,7 +1,7 @@
 """Check speech controls, persistence and absence of autoplay on actual Android UI."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-P='br.com.onda.musica';OUT=Path('Onda/ui-preview')
+P='br.com.onda.player';OUT=Path('Onda/ui-preview')
 def adb(*a):return subprocess.check_output(['adb',*a],timeout=60)
 def shell(*a):return adb('shell',shlex.join(str(x) for x in a))
 def nodes():

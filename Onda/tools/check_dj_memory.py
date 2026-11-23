@@ -1,7 +1,7 @@
 """Emulator-only process restart check using the queue created by the native service test."""
 import subprocess,shlex,json,time,re,xml.etree.ElementTree as ET
 from pathlib import Path
-PACKAGE='br.com.onda.musica'
+PACKAGE='br.com.onda.player'
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):return adb('shell',shlex.join(str(v) for v in args))
 assert any(shell('getprop',p).strip()==b'1' for p in ('ro.kernel.qemu','ro.boot.qemu')),'Only the CI emulator may run this fixture'

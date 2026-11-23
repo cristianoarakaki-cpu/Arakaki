@@ -45,7 +45,7 @@ public class VideoActivity extends Activity {
     private VideoLoop videoLoop=new VideoLoop();
     private boolean leavingForPicker,enteringPip,handedOff;private long resumePosition=-1,resumeDuration;private VideoBackgroundService.Snapshot backgroundRestore;private boolean playRequested,videoControlsVisible=true;
     private AlertDialog resumeDialog,momentDialog,loopDialog;private boolean framesSeen;private boolean pipReceiverRegistered;
-    private static final String PIP_ACTION="br.com.onda.musica.PIP_TOGGLE";
+    private static final String PIP_ACTION="br.com.onda.player.PIP_TOGGLE";
     private final BroadcastReceiver pipControls=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(PIP_ACTION.equals(i.getAction())&&isInPictureInPictureMode()&&video!=null){if(video.isPlaying())pauseVideo();else resumeVideo();}}};
     private final Runnable firstFrameCheck=()->{
         if(!started||!playRequested||video==null||current==null||framesSeen||!video.isPlaying())return;

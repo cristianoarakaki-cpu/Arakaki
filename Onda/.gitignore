@@ -11,3 +11,5 @@ ui-preview/
 app/src/main/assets/ocr/*.traineddata
 app/src/main/assets/ocr/*.sha256
 app/src/main/assets/ocr/*.part
+
+migration-fixtures/

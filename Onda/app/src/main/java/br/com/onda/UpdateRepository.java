@@ -11,6 +11,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 
 final class UpdateRepository {
+    static final String MANIFEST_NAME="onda-player-update.json";
     static final String RELEASES="https://api.github.com/repos/cristianoarakaki-cpu/Arakaki/releases?per_page=20";
     private static final String ASSETS="https://github.com/cristianoarakaki-cpu/Arakaki/releases/download/";
     static final class Update {
@@ -41,7 +42,7 @@ final class UpdateRepository {
             JSONObject r=releases.getJSONObject(i);
             if(r.optBoolean("draft")||r.optBoolean("prerelease")||!r.optString("tag_name").startsWith("onda-v"))continue;
             JSONArray assets=r.optJSONArray("assets");if(assets==null)continue;
-            for(int j=0;j<assets.length();j++){JSONObject a=assets.getJSONObject(j);if(!a.optString("name").equals("onda-update.json"))continue;String url=a.optString("browser_download_url");if(!validAsset(url))throw new IOException("Origem inválida");Update u=new Update(new JSONObject(text(url)),packageName);if(best==null||u.code>best.code)best=u;}
+            for(int j=0;j<assets.length();j++){JSONObject a=assets.getJSONObject(j);if(!a.optString("name").equals(MANIFEST_NAME))continue;String url=a.optString("browser_download_url");if(!validAsset(url))throw new IOException("Origem inválida");Update u=new Update(new JSONObject(text(url)),packageName);if(best==null||u.code>best.code)best=u;}
         }
         return best;
     }

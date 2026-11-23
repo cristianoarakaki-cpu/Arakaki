@@ -11,7 +11,7 @@ import time
 import wave
 import xml.etree.ElementTree as ET
 
-PACKAGE='br.com.onda.musica'
+PACKAGE='br.com.onda.player'
 OUTPUT=Path('Onda/ui-preview')
 OUTPUT.mkdir(parents=True,exist_ok=True)
 def adb(*args):

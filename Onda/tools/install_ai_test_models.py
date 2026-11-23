@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess,shlex
 from prepare_ai_test_models import ROOT,MODELS,sha
-PACKAGE='br.com.onda.musica'
+PACKAGE='br.com.onda.player'
 def shell(*args):subprocess.run(['adb','shell',shlex.join(args)],check=True,timeout=180)
 shell('run-as',PACKAGE,'mkdir','-p','files/ai-models')
 for repo,rev,name,size,expected in MODELS:

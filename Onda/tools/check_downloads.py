@@ -1,7 +1,7 @@
 import subprocess,time,xml.etree.ElementTree as ET,json
 from pathlib import Path
 out=Path('Onda/download-preview');out.mkdir(exist_ok=True,parents=True)
-package='br.com.onda.musica'
+package='br.com.onda.player'
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=45)
 def nodes():
  adb('shell','uiautomator','dump','/sdcard/onda-lab.xml')

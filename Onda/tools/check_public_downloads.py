@@ -1,7 +1,7 @@
 """Real public HTML page -> declared media -> visible audio/video choices, no provider login."""
 from pathlib import Path
 import os,subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-P='br.com.onda.musica';OUT=Path('Onda/ui-preview');OUT.mkdir(parents=True,exist_ok=True)
+P='br.com.onda.player';OUT=Path('Onda/ui-preview');OUT.mkdir(parents=True,exist_ok=True)
 def adb(*args):return subprocess.check_output(['adb',*args],timeout=60)
 def shell(*args):return adb('shell',shlex.join(str(x) for x in args))
 def nodes():

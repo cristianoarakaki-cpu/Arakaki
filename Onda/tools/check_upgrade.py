@@ -1,7 +1,7 @@
-"""CI emulator only: install the previous Onda, retain its data across a real package upgrade."""
+"""CI emulator only: verify same-key reinstall retains data in the new package."""
 from pathlib import Path
 import subprocess,shlex,time,re,json,xml.etree.ElementTree as ET
-PACKAGE='br.com.onda.musica'
+PACKAGE='br.com.onda.player'
 config=Path('Onda/app/build.gradle').read_text()
 expected_code=int(re.search(r'versionCode\s+(\d+)',config).group(1))
 expected_name=re.search(r"versionName\s+'([^']+)'",config).group(1)
@@ -9,10 +9,10 @@ def adb(*args,data=None):
  return subprocess.run(['adb',*args],input=data,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=90).stdout
 def shell(*args,data=None):return adb('shell',shlex.join(str(v) for v in args),data=data)
 assert any(shell('getprop',prop).strip()==b'1' for prop in ('ro.kernel.qemu','ro.boot.qemu')),'Upgrade test is restricted to an emulator'
-previous=Path('Onda/upgrade-fixtures/Onda-0.21.1-x86_64.apk');current=Path('Onda/app/build/outputs/apk/debug/app-debug.apk')
+current=Path('Onda/app/build/outputs/apk/debug/app-debug.apk');previous=current
 assert previous.is_file() and current.is_file()
 adb('install','-r',str(previous));old_info=shell('dumpsys','package',PACKAGE).decode()
-assert re.search(r'versionCode=25\b',old_info),'Expected the actual Onda 0.21.1'
+assert re.search(rf'versionCode={expected_code}\b',old_info),'Expected the current new-signing Onda'
 shell('pm','grant',PACKAGE,'android.permission.READ_EXTERNAL_STORAGE')
 shell('am','force-stop',PACKAGE);shell('run-as',PACKAGE,'mkdir','-p','shared_prefs')
 playlist=[{'id':'d52038c3-a495-42c4-aae6-f270ec3fd93f','name':'AtualizacaoTeste','songs':['100001']}]
@@ -52,7 +52,7 @@ assert re.search(r'userId=(\d+)',old_info).group(1)==re.search(r'userId=(\d+)',n
 shell('am','start','-W','-n',PACKAGE+'/br.com.onda.MainActivity');time.sleep(1);shell('am','force-stop',PACKAGE)
 for name,values in seeds.items():assert read(name)==values,('Upgrade lost data',name)
 output=Path('Onda/ui-preview');output.mkdir(exist_ok=True,parents=True)
-(output/'upgrade-tests.json').write_text(json.dumps({'from':'0.21.1','to':expected_name,'versionCode':expected_code,'installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
-print('Real Onda upgrade passed: favorites, playlists, voice phrases and sound settings retained.')
+(output/'upgrade-tests.json').write_text(json.dumps({'from':expected_name,'to':expected_name,'versionCode':expected_code,'installWithoutUninstall':True,'samePackageAndUid':True,'favorites':True,'playlists':True,'voicePhrases':True,'sound':True},indent=2))
+print('Same-key Onda reinstall passed: favorites, playlists, voice phrases and sound settings retained.')
 # Reset only the emulator test fixture, so the existing regression suite starts in its normal state.
 shell('pm','clear',PACKAGE)
