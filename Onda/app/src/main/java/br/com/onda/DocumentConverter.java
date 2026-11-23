@@ -68,7 +68,7 @@ final class DocumentConverter {
   void add(String text)throws IOException{
    cancel.check();if(!text.trim().isEmpty())hasText=true;
    if(page==null)newPage();
-   StaticLayout layout=StaticLayout.Builder.obtain(text,0,text.length(),paint,515).setIncludePad(false).setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE).setLineSpacing(3,1).build();
+   StaticLayout layout=StaticLayout.Builder.obtain(text,0,text.length(),paint,515).setIncludePad(false).setLineSpacing(3,1).build();
    for(int line=0;line<layout.getLineCount();line++){
     cancel.check();int top=layout.getLineTop(line),bottom=layout.getLineBottom(line),height=bottom-top;if(y+height>802)newPage();
     canvas.save();canvas.clipRect(40,y,555,y+height);canvas.translate(40,y-top);layout.draw(canvas);canvas.restore();y+=height;

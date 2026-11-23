@@ -1,3 +1,4 @@
+# Review 3: use the supported default text line-break strategy.
 # Review 2: close PdfDocument explicitly for Android API compatibility.
 name: Onda - Documentos e PDF 0780
 on:
