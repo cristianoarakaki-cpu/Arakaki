@@ -28,18 +28,40 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - name: Reutilizar assinatura de teste
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: Onda/.signing/debug.keystore
           key: onda-musica-debug-signing-v1
-      - name: Preparar assinatura persistente de teste
+      - name: Conferir assinatura recuperavel sem expor chaves
+        id: signing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ONDA_KEYSTORE_BASE64: ${{ secrets.ONDA_KEYSTORE_BASE64 }}
         run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/caches?per_page=100" --jq '.actions_caches[] | select(.key | contains("signing")) | {key,ref,last_accessed_at}'
           mkdir -p Onda/.signing
-          if [ ! -f Onda/.signing/debug.keystore ]; then
-            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
-          fi
-          keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
-          python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
+          python - <<'PYSIGNING'
+          import os,base64,hashlib,subprocess
+          from pathlib import Path
+          key=Path('Onda/.signing/debug.keystore')
+          supplied=os.environ.get('ONDA_KEYSTORE_BASE64','').strip()
+          if supplied:key.write_bytes(base64.b64decode(supplied,validate=True))
+          expected=Path('Onda/signing-certificate.sha256').read_text().strip()
+          def digest():
+              if not key.is_file():return ''
+              cert=subprocess.check_output(['keytool','-exportcert','-keystore',str(key),'-storepass','android','-alias','androiddebugkey'],stderr=subprocess.DEVNULL)
+              return hashlib.sha256(cert).hexdigest()
+          actual=digest()
+          available=actual==expected
+          if not available:
+              if key.exists():key.unlink()
+              subprocess.run(['keytool','-genkeypair','-keystore',str(key),'-storepass','android','-keypass','android','-alias','androiddebugkey','-dname','CN=Onda Validation Only','-keyalg','RSA','-keysize','2048','-validity','30'],check=True)
+              actual=digest()
+              print('::warning::Original signing key unavailable. Compile and test only; publishing/updating is disabled. Temporary validation key will not be cached or distributed as an update.')
+          Path('/tmp/onda-validation-certificate.sha256').write_text(actual)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('available='+str(available).lower()+'\n')
+          print('Original signing certificate recovered:',available)
+          PYSIGNING
       - name: Reutilizar apenas bibliotecas de fonte nativa identica
         run: |
           git diff --exit-code 2a8b4415ffe80898d6ef59392ac65f7878e20863 HEAD -- Onda/app/src/main/cpp Onda/settings.gradle Onda/build.gradle Onda/signing-certificate.sha256
@@ -89,7 +111,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -f 4 /tmp/onda-compact.apk /tmp/onda-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks Onda/.signing/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey --out Onda/app/build/outputs/apk/debug/app-debug.apk /tmp/onda-aligned.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-final-certificate.txt
-          python -c 'from pathlib import Path; s=Path("/tmp/onda-final-certificate.txt").read_text(); expected=Path("Onda/signing-certificate.sha256").read_text().strip(); assert "Signer #1 certificate SHA-256 digest: "+expected in s, "Assinatura final incorreta"'
+          python -c 'from pathlib import Path; s=Path("/tmp/onda-final-certificate.txt").read_text(); expected=Path("/tmp/onda-validation-certificate.sha256").read_text().strip(); assert "Signer #1 certificate SHA-256 digest: "+expected in s, "Assinatura final incorreta"'
       - name: Conferir pacote independente
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging Onda/app/build/outputs/apk/debug/app-debug.apk > /tmp/onda-package.txt
@@ -106,7 +128,7 @@ jobs:
           PYCOMPARE
       - uses: actions/upload-artifact@v4
         with:
-          name: Onda-Android-APK
+          name: ${{ steps.signing.outputs.available == 'true' && 'Onda-Android-APK' || 'Onda-Validation-NOT-AN-UPDATE' }}
           path: Onda/app/build/outputs/apk/debug/app-debug.apk
 
 
@@ -187,7 +209,7 @@ jobs:
           info=subprocess.check_output([str(sdk/'aapt'),'dump','badging',str(a)],text=True)
           assert "versionCode='105'" in info and "versionName='0.78.0'" in info and "name='br.com.onda.musica'" in info
           cert=subprocess.check_output([str(sdk/'apksigner'),'verify','--print-certs',str(a)],text=True)
-          assert Path('Onda/signing-certificate.sha256').read_text().strip() in cert
+          assert Path('/tmp/onda-validation-certificate.sha256').read_text().strip() in cert
           with zipfile.ZipFile(a) as z:
               assert not any(name.endswith('.gguf') for name in z.namelist())
               assert 'assets/AI-MODELS-NOTICE.txt' in z.namelist() and 'assets/LLAMA-CPP-LICENSE.txt' in z.namelist()
@@ -201,9 +223,11 @@ jobs:
           print('DOCUMENT_APK_PROOF='+json.dumps(proof))
           PYVERIFY
       - name: Preparar publicação da atualização
+        if: steps.signing.outputs.available == 'true'
         id: update_release
         run: python Onda/tools/prepare_release.py
       - name: Publicar APK para atualização pelo app
+        if: steps.signing.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           ONDA_TAG: ${{ steps.update_release.outputs.tag }}
@@ -245,6 +269,7 @@ jobs:
             test "$PUBLISHED" = true
           fi
       - name: Conferir download publico
+        if: steps.signing.outputs.available == 'true'
         run: |
           python - <<'PYPUBLIC'
           import urllib.request,hashlib,json,zipfile,io
@@ -262,3 +287,15 @@ jobs:
               for i in range(0,len(encoded),4096):print(encoded[i:i+4096])
               print('DOCUMENT_IMAGE_END '+name)
           PYPUBLIC
+      - name: Registrar validacao sem liberar assinatura incompatível
+        if: steps.signing.outputs.available != 'true'
+        run: |
+          python - <<'PYBLOCKED'
+          import base64
+          from pathlib import Path
+          print('VALIDATION_COMPLETE_SIGNING_BLOCKED: documents tests and layouts passed; original keystore required before release.')
+          for name in ['document-converter.png','battery-library.png']:
+              encoded=base64.b64encode((Path('Onda/ui-preview')/name).read_bytes()).decode();print('DOCUMENT_IMAGE_BEGIN '+name)
+              for i in range(0,len(encoded),4096):print(encoded[i:i+4096])
+              print('DOCUMENT_IMAGE_END '+name)
+          PYBLOCKED
