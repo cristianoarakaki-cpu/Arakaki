@@ -1,3 +1,4 @@
+# Verify owner-configured signing secret and preserve the installed legacy app.
 name: Onda - Nova assinatura e transferencia 0780
 on:
   push:
