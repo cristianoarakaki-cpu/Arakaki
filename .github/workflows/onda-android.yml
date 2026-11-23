@@ -41,11 +41,17 @@ jobs:
           path: Onda/.signing/debug.keystore
           key: onda-musica-debug-signing-v1
       - name: Preparar assinatura persistente de teste
+        env:
+          ONDA_KEYSTORE_BASE64: ${{ secrets.ONDA_KEYSTORE_BASE64 }}
         run: |
           mkdir -p Onda/.signing
-          if [ ! -f Onda/.signing/debug.keystore ]; then
-            keytool -genkeypair -keystore Onda/.signing/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=Onda Musica Debug,O=Onda,C=BR" -keyalg RSA -keysize 2048 -validity 10000
-          fi
+          python - <<'PYKEY'
+          import os,base64
+          from pathlib import Path
+          supplied=os.environ.get('ONDA_KEYSTORE_BASE64','').strip()
+          if supplied:Path('Onda/.signing/debug.keystore').write_bytes(base64.b64decode(supplied,validate=True))
+          assert Path('Onda/.signing/debug.keystore').is_file(),'Original signing key unavailable. Restore ONDA_KEYSTORE_BASE64 before releasing; never replace the certificate.'
+          PYKEY
           keytool -exportcert -keystore Onda/.signing/debug.keystore -storepass android -alias androiddebugkey -file /tmp/onda-signing.der
           python -c 'from pathlib import Path; import hashlib; p=Path("Onda/signing-certificate.sha256"); actual=hashlib.sha256(Path("/tmp/onda-signing.der").read_bytes()).hexdigest(); assert not p.exists() or p.read_text().strip()==actual, "Assinatura mudou: recupere a chave antes de distribuir"'
       - name: Compilar a versão anterior para conferir atualização
