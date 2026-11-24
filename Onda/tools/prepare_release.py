@@ -31,15 +31,15 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Coletâneas editáveis
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Análise de coletâneas em segundo plano
 
-Abra Faixas no tocador. A análise por pausas continua disponível; agora é possível adicionar divisões manualmente e usar ⋮ em cada faixa para editar nome, início e fim, remover uma divisão ou salvar apenas aquele trecho em MP3 de 128, 192, 256 ou 320 kbps. Não identifica nomes de músicas automaticamente. Divisões por pausas são aproximadas e precisam ser conferidas.
+Correção: minimizar o Onda, apagar a tela ou fechar a tela de faixas não cancela mais a análise da coletânea. Um serviço de primeiro plano realiza a leitura local, exibe o andamento na notificação e permite cancelar. Ao voltar à tela, o resultado e o andamento são recuperados. O resultado pertence sempre ao arquivo analisado, mesmo se outro áudio for selecionado durante o processamento. Uma análise por vez.
 
-Os limites são compartilhados entre faixas vizinhas, sem sobreposição nem lacunas. O início da primeira e o fim da última permanecem fixos. As marcações anteriores continuam compatíveis. Editar ou reanalisar libera a seleção e a repetição do trecho anterior, mantendo a posição; selecione novamente a faixa depois. Arquivo inteiro libera o trecho sem reiniciar a coletânea nem mudar uma pausa. O botão de repetição do tocador continua repetindo a faixa escolhida.
+A reprodução é pausada quando você solicita a análise e não reinicia automaticamente ao concluir. A análise continua procurando pausas aproximadas, sem identificar nomes de músicas. Os arquivos originais são preservados. Cancelar mantém as marcações anteriores. Se o Android encerrar o processo ou atingir seu limite de processamento em segundo plano, o Onda informa a interrupção, preserva as marcações e permite iniciar novamente; não reinicia trabalho sozinho.
 
-A exportação cria um novo MP3 no destino escolhido pelo Android e permite compartilhar o arquivo pronto. Decodifica somente o trecho necessário, com memória limitada, sem cópia WAV da coletânea inteira e sem serviços pagos. O arquivo original não é alterado. Mantenha a tela de exportação aberta; sair cancela e remove o destino incompleto quando o provedor permite. A compatibilidade depende dos codecs Android e da leitura direta do arquivo local.
+Economia de bateria: serviço e bloqueio parcial de CPU existem somente durante a análise solicitada; são liberados ao terminar, cancelar ou interromper. Sem manter a tela acesa, copiar a coletânea inteira, acesso à internet, novos modelos ou serviços pagos. Notificações de progresso menos frequentes em segundo plano. A permissão de notificação é solicitada no Android 13+ para acompanhar o andamento; o comportamento também está sujeito às regras do Android e do fabricante.
 
-Mesma assinatura e pacote do Onda Novo 0.79.0, preservando os dados numa atualização normal. Música, vídeo, downloads, rádio, PDF, IA local e demais recursos existentes preservados. Nenhum serviço contínuo ou modelo obrigatório acrescentado.
+Faixas editáveis, repetição de trechos e exportação MP3 da versão 0.80.0 preservadas. A exportação MP3 continua sendo uma operação da própria tela; esta correção trata especificamente da análise da coletânea. Mesma assinatura e pacote do Onda Novo instalado; atualização mantém seus dados.
 
 Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)
