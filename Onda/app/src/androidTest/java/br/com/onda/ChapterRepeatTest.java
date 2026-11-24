@@ -112,6 +112,18 @@ public class ChapterRepeatTest {
         waitFor(()->!AudioChapterPlayback.selected(player.getCurrentMediaItem())&&player.getPlaybackState()==Player.STATE_READY);
         ins.runOnMainSync(()->{assertFalse(player.getPlayWhenReady());assertEquals(34150,player.getCurrentPosition(),100);assertEquals(2,player.getMediaItemCount());assertEquals("701",player.getCurrentMediaItem().mediaId);assertEquals(Player.REPEAT_MODE_OFF,player.getRepeatMode());assertEquals(96600,player.getDuration());});
     }
+    private void inputs(android.view.View view,List<EditText> found){if(view instanceof EditText)found.add((EditText)view);if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)inputs(group.getChildAt(i),found);}}
+    @Test public void visibleEditorSavesFractionalLimitsAndReleasesStaleLoop()throws Exception{
+        Uri uri=Uri.fromFile(file);byte[] original=java.nio.file.Files.readAllBytes(file.toPath());MediaItem selected=AudioChapterPlayback.configure(AudioChapterPlayback.select(item("701",uri),markers,1,AudioChapterStore.stamp(c,uri)),true);
+        ins.runOnMainSync(()->{player.setRepeatMode(Player.REPEAT_MODE_ONE);player.setMediaItem(selected,1500);player.prepare();player.pause();});waitFor(()->player.getPlaybackState()==Player.STATE_READY);
+        screen=(AudioChaptersActivity)ins.startActivitySync(new Intent(c,AudioChaptersActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));waitFor(()->field(screen,"data")!=null&&!(Boolean)field(screen,"loading"));
+        ins.runOnMainSync(()->{try{ListView list=(ListView)field(screen,"list");android.view.ViewGroup row=(android.view.ViewGroup)list.getAdapter().getView(1,null,list);((Button)row.getChildAt(1)).performClick();((AlertDialog)field(screen,"optionsDialog")).getListView().performItemClick(null,0,0);}catch(Exception error){throw new RuntimeException(error);}});ins.waitForIdleSync();
+        ins.runOnMainSync(()->{try{AlertDialog dialog=(AlertDialog)field(screen,"editDialog");List<EditText> fields=new ArrayList<>();inputs(dialog.getWindow().getDecorView(),fields);assertEquals(3,fields.size());assertEquals("0:32.650",fields.get(1).getText().toString());fields.get(0).setText("Minha segunda música");fields.get(1).setText("0:33.125");fields.get(2).setText("1:05.100");dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();}catch(Exception error){throw new RuntimeException(error);}});
+        waitFor(()->!(Boolean)field(screen,"loading")&&((AudioChapterStore.Data)field(screen,"data")).chapters.get(1).start==33125&&!AudioChapterPlayback.selected(player.getCurrentMediaItem()));
+        AudioChapterStore.Data saved=AudioChapterStore.load(c,uri,AudioChapterStore.stamp(c,uri),96600);assertEquals("Minha segunda música",saved.chapters.get(1).title);assertEquals(65100,saved.chapters.get(2).start);assertArrayEquals(original,java.nio.file.Files.readAllBytes(file.toPath()));
+        ins.runOnMainSync(()->{assertFalse(player.getPlayWhenReady());assertEquals(34150,player.getCurrentPosition(),100);assertEquals(Player.REPEAT_MODE_OFF,player.getRepeatMode());});
+        android.graphics.Bitmap image=ins.getUiAutomation().takeScreenshot();assertNotNull(image);try(OutputStream out=new FileOutputStream(new File(c.getFilesDir(),"chapter-editor.png"))){image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}finally{image.recycle();}
+    }
     @Test public void restoreRequiresMatchingOriginalAndCurrentMarkerBoundaries()throws Exception{
         Uri uri=Uri.fromFile(file);MediaItem base=item("701",uri);
         MediaItem chosen=AudioChapterPlayback.configure(AudioChapterPlayback.select(base,markers,1,AudioChapterStore.stamp(c,uri)),true);

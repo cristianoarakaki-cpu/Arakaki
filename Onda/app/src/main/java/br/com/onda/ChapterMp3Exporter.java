@@ -53,7 +53,7 @@ final class ChapterMp3Exporter {
             return timestamp>=to||until<total;
         }
         private static long ceilFrames(long us,int rate){return us/1000000*rate+(us%1000000*rate+999999)/1000000;}
-        void finish()throws IOException{if(encoder==null||frames==0)throw new IOException("Nenhum áudio encontrado neste trecho");encoder.finish();control.progress((to-from)/1000,(to-from)/1000);}
+        void finish()throws IOException{if(encoder==null||frames==0)throw new IOException("Nenhum áudio encontrado neste trecho");if(frames*1000/rate+250<(to-from)/1000)throw new IOException("O arquivo terminou antes do fim da faixa. Confira os horários.");encoder.finish();control.progress((to-from)/1000,(to-from)/1000);}
         public void close(){if(encoder!=null)encoder.close();}
     }
 }

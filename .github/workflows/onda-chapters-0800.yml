@@ -156,8 +156,9 @@ jobs:
             adb shell svc data disable
             adb shell am instrument -w -e class br.com.onda.AudioChapterTest,br.com.onda.ChapterRepeatTest,br.com.onda.ChapterExportTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-chapter-tests.txt
             cat /tmp/onda-chapter-tests.txt
-            python -c 's=open("/tmp/onda-chapter-tests.txt").read(); assert "OK (10 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-chapter-tests.txt").read(); assert "OK (11 tests)" in s and "FAILURES" not in s'
             mkdir -p Onda/ui-preview
+            adb exec-out run-as br.com.onda.player cat files/chapter-editor.png > Onda/ui-preview/chapter-editor.png
             adb shell am force-stop br.com.onda.player
             adb shell am instrument -w -e class br.com.onda.ScreenLayoutReviewTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-screen-tests.txt
             cat /tmp/onda-screen-tests.txt
