@@ -1,3 +1,4 @@
+# Bound export chunks to 4096 frames for low-rate resampling and JNI limits.
 name: Onda - Coletaneas editaveis 0800
 on:
   push:

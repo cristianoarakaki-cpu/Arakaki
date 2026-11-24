@@ -48,7 +48,7 @@ final class ChapterMp3Exporter {
             int total=buffer.remaining()/(channels*2);
             int skip=(int)Math.min(total,ceilFrames(Math.max(0,from-timestamp),rate));
             int until=(int)Math.min(total,ceilFrames(Math.max(0,to-timestamp),rate));
-            if(until>skip){buffer.position(buffer.position()+skip*channels*2);buffer.limit(buffer.position()+(until-skip)*channels*2);ShortBuffer pcm=buffer.slice().order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();while(pcm.hasRemaining()){control.check();int count=Math.min(pcm.remaining(),samples.length);count-=count%channels;pcm.get(samples,0,count);encoder.write(samples,count/channels);frames+=count/channels;}}
+            if(until>skip){buffer.position(buffer.position()+skip*channels*2);buffer.limit(buffer.position()+(until-skip)*channels*2);ShortBuffer pcm=buffer.slice().order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();while(pcm.hasRemaining()){control.check();int count=Math.min(pcm.remaining(),4096*channels);count-=count%channels;pcm.get(samples,0,count);encoder.write(samples,count/channels);frames+=count/channels;}}
             long now=SystemClock.elapsedRealtime();if(now-lastProgress>=750){lastProgress=now;control.progress(Math.max(0,Math.min(to-from,timestamp-from))/1000,(to-from)/1000);}
             return timestamp>=to||until<total;
         }
