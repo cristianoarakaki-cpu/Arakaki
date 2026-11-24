@@ -49,7 +49,7 @@ public class ChapterExportService extends Service {
   Snapshot active=state(c);if(active!=null&&active.running||live!=null&&live.finished||transfer.get()!=null||batchTransfer.get()!=null)return false;
   plan.validate();if(!batchTransfer.compareAndSet(null,plan))return false;
   try{
-   Intent root=new Intent(c,ChapterExportService.class).setAction("batch").putExtra("token",plan.token);root.setClipData(ClipData.newRawUri("Pasta do Onda",plan.tree));root.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);androidx.core.content.ContextCompat.startForegroundService(c,root);
+   Intent root=new Intent(c,ChapterExportService.class).setAction("batch").putExtra("token",plan.token);root.setClipData(ClipData.newRawUri("Pasta do Onda",plan.tree));root.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);androidx.core.content.ContextCompat.startForegroundService(c,root);
    Intent source=new Intent(c,ChapterExportService.class).setAction("batch_source").putExtra("token",plan.token);if("content".equals(plan.source.getScheme())){source.setClipData(ClipData.newRawUri("Coletânea",plan.source));source.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);}c.startService(source);return true;
   }catch(RuntimeException error){batchTransfer.compareAndSet(plan,null);c.stopService(new Intent(c,ChapterExportService.class));throw error;}
  }
@@ -89,7 +89,7 @@ public class ChapterExportService extends Service {
  private void runBatch(){
   processing=Thread.currentThread();ChapterBatchPlan plan=batchPlan;int done=0,failed=0,index=0;long elapsed=0;Uri folder=null;Snapshot outcome;
   try{
-   check();ChapterBatchStore.save(this,plan);plan.validateSource(this);check();OndaFolders.configure(this,plan.tree);check();Uri audio=OndaFolders.directory(this,"mp3");
+   check();ChapterBatchStore.save(this,plan);plan.validateSource(this);check();Uri onda=OndaFolders.root(this,plan.tree);check();Uri audio=OndaFolders.child(this,onda,"Áudios");getSharedPreferences(OndaFolders.PREF,0).edit().putString("tree",plan.tree.toString()).apply();
    String name=DownloadLinks.filename(plan.title)+" - "+new java.text.SimpleDateFormat("yyyyMMdd-HHmmss",java.util.Locale.ROOT).format(new java.util.Date())+" - "+plan.token.substring(0,6);
    folder=DocumentsContract.createDocument(getContentResolver(),audio,DocumentsContract.Document.MIME_TYPE_DIR,name);if(folder==null)throw new IOException("Não foi possível criar a pasta da seleção");
    for(ChapterBatchPlan.Row row:plan.rows){

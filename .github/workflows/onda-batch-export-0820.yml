@@ -1,3 +1,4 @@
+# Preserve the incoming batch token across Activity recreation and grant tree descendants.
 name: Onda - Exportacao de varias faixas 0820
 on:
   push:
@@ -156,7 +157,7 @@ jobs:
             adb shell svc data disable
             adb shell am instrument -w -e class br.com.onda.AudioChapterTest,br.com.onda.ChapterRepeatTest,br.com.onda.ChapterExportTest,br.com.onda.ChapterBackgroundTest,br.com.onda.ChapterExportBackgroundTest,br.com.onda.ChapterDetectionTest,br.com.onda.ChapterBatchTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-chapter-tests.txt
             cat /tmp/onda-chapter-tests.txt
-            python -c 's=open("/tmp/onda-chapter-tests.txt").read(); assert "OK (29 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-chapter-tests.txt").read(); assert "OK (30 tests)" in s and "FAILURES" not in s'
             mkdir -p Onda/ui-preview
             adb exec-out run-as br.com.onda.player cat files/chapter-editor.png > Onda/ui-preview/chapter-editor.png
             adb exec-out run-as br.com.onda.player cat files/chapter-background.png > Onda/ui-preview/chapter-background-api29.png
@@ -184,7 +185,7 @@ jobs:
             adb shell pm grant br.com.onda.player android.permission.POST_NOTIFICATIONS
             adb shell am instrument -w -e class br.com.onda.ChapterBackgroundTest,br.com.onda.ChapterExportBackgroundTest,br.com.onda.ChapterBatchTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-background-api35-tests.txt
             cat /tmp/onda-background-api35-tests.txt
-            python -c 's=open("/tmp/onda-background-api35-tests.txt").read(); assert "OK (15 tests)" in s and "FAILURES" not in s'
+            python -c 's=open("/tmp/onda-background-api35-tests.txt").read(); assert "OK (16 tests)" in s and "FAILURES" not in s'
             adb exec-out run-as br.com.onda.player cat files/chapter-background.png > Onda/ui-preview/chapter-background-api35.png
             adb exec-out run-as br.com.onda.player cat files/chapter-export-background.png > Onda/ui-preview/chapter-export-api35.png
             adb exec-out run-as br.com.onda.player cat files/chapter-batch.png > Onda/ui-preview/chapter-batch-api35.png
