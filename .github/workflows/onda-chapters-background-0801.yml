@@ -1,3 +1,4 @@
+# Recreate the singleTask library only after finishing its earlier Activity in the lifecycle test.
 # Foreground scan survives Activity stop/destroy; exercised on Android 10 and Android 15.
 name: Onda - Analise em segundo plano 0801
 on:
