@@ -2,7 +2,7 @@ package br.com.onda;
 import android.provider.*;import android.content.*;import android.net.Uri;import android.content.ContentValues;import android.database.*;import android.os.*;import java.io.*;import java.util.*;
 /** Test APK only: a DocumentsContract-compatible fixture backed by isolated real files. */
 public class BatchTestDocumentsProvider extends ContentProvider {
- private File root(){File root=new File(getContext().getFilesDir(),"chapter-batch-test");root.mkdirs();return root;}
+ private File root(){File root=new File(getContext().getFilesDir(),"chapter-batch-test");root.mkdirs();try{return root.getCanonicalFile();}catch(IOException e){return root;}}
  private File file(String id)throws FileNotFoundException{try{File root=root().getCanonicalFile(),file="root".equals(id)?root:new File(root,id.substring(5)).getCanonicalFile();if(!id.equals("root")&&!id.startsWith("root/"))throw new IOException();if(!file.equals(root)&&!file.getPath().startsWith(root.getPath()+File.separator))throw new IOException();return file;}catch(Exception e){throw new FileNotFoundException("Invalid test document");}}
  private String id(File file){String base=root().getAbsolutePath();return file.getAbsolutePath().equals(base)?"root":"root/"+file.getAbsolutePath().substring(base.length()+1);}
  private final String[] columns={DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE,DocumentsContract.Document.COLUMN_SIZE,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_FLAGS};

@@ -1,3 +1,4 @@
+# Normalize fixture paths across Android aliases /data/user/0 and /data/data.
 # Preserve the incoming batch token across Activity recreation and grant tree descendants.
 name: Onda - Exportacao de varias faixas 0820
 on:
