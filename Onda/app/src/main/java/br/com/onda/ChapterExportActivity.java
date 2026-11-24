@@ -38,11 +38,20 @@ public class ChapterExportActivity extends Activity {
     private static String safeName(String value){String result=value==null?"Faixa":value.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]","_").trim();return result.isEmpty()?"Faixa":result.substring(0,Math.min(100,result.length()));}
     private boolean validInput(){return source!=null&&("file".equals(source.getScheme())||"content".equals(source.getScheme()))&&stamp!=null&&start>=0&&end>start&&end<=duration;}
     private void controls(){if(export==null)return;export.setEnabled(validInput()&&!otherBusy);export.setText(busy?"Cancelar conversão":"Salvar MP3");quality.setText("Novos MP3: "+Mp3Quality.get(this)+" kbps");quality.setEnabled(!busy);progress.setVisibility(busy?View.VISIBLE:View.GONE);share.setVisibility(saved==null?View.GONE:View.VISIBLE);if(other!=null)other.setVisibility(otherBusy?View.VISIBLE:View.GONE);}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==CREATE&&result==RESULT_OK&&data!=null){Uri target=data.getData();if(target!=null&&target.equals(source)){status.setText("Escolha um novo arquivo; não sobrescreva a coletânea.");return;}if(target!=null&&"content".equals(target.getScheme()))try{int grants=data.getFlags()&(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);if(grants!=0&&(data.getFlags()&Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)!=0)getContentResolver().takePersistableUriPermission(target,grants);}catch(SecurityException|IllegalArgumentException ignored){}pending=target;}}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==CREATE&&result==RESULT_OK&&data!=null){Uri target=data.getData();if(target!=null&&target.equals(source)){status.setText("Escolha um novo arquivo; não sobrescreva a coletânea.");return;}rememberAccess(target,data);pending=target;}}
+    private void rememberAccess(Uri target,Intent result){
+        if(target==null||!"content".equals(target.getScheme())||(result.getFlags()&Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)==0)return;
+        boolean read=(result.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0,write=(result.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION)!=0;
+        try{
+            if(read&&write)getContentResolver().takePersistableUriPermission(target,Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            else if(read)getContentResolver().takePersistableUriPermission(target,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            else if(write)getContentResolver().takePersistableUriPermission(target,Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        }catch(SecurityException|IllegalArgumentException ignored){}
+    }
     private void sync(){
         ChapterExportService.Snapshot state=ChapterExportService.state(this);boolean own=state!=null&&state.job.matches(source,stamp,start,end);otherBusy=state!=null&&state.running&&!own;busy=own&&state.running;
         if(own){saved="done".equals(state.phase)?state.job.target:null;status.setText(state.message);progress.setIndeterminate(state.total<=0);if(state.total>0)progress.setProgress((int)Math.min(100,state.at*100/state.total));}
-        else if(otherBusy)status.setText("Já há uma conversão em andamento: "+state.job.title+".");controls();
+        else if(otherBusy)status.setText("Já há uma conversão em andamento: "+state.job.title+".");else if(saved==null)status.setText(validInput()?"Escolha onde salvar a nova faixa.":"Abra Faixas da coletânea, toque em ⋮ e escolha Salvar faixa em MP3.");controls();
     }
     @Override protected void onStart(){super.onStart();started=true;ChapterExportService.listen(listener);sync();}
     @Override protected void onResume(){super.onResume();if(pending!=null&&!busy){Uri target=pending;pending=null;convert(target);}}

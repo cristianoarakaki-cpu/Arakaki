@@ -1,3 +1,4 @@
+# Retain document permissions using the exact platform grant constants accepted by lint.
 # Set URI ClipData before adding grant flags; writing needs no seek on a new empty destination.
 # Detach the completed notification so service shutdown cannot remove the result action.
 # Recreate the singleTask library only after finishing its earlier Activity in the lifecycle test.
