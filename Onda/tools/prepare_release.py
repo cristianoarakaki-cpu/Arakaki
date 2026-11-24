@@ -31,17 +31,15 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Várias faixas em MP3
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Modos de escuta
 
-Abra Faixas no tocador e toque em ⇩ no topo. Marque as faixas desejadas, ou use Marcar todas/Limpar, escolha a qualidade MP3 e toque em Salvar selecionadas. A autorização da pasta do Onda é reutilizada; se necessário, o Android pede a pasta. Cada operação cria uma subpasta nova em Onda/Áudios. Os nomes preservam a numeração original das faixas e não sobrescrevem exportações anteriores.
+Em Menu → Estúdio de som, escolha Equilibrado (volume gradual e transição de 1 segundo), Transições suaves (volume gradual e transição de 3 segundos) ou Sem equilíbrio ou transição. Também é possível ajustar a duração manualmente. As escolhas preservam equalizador, graves, realce de áudio baixo e ajustes de fala. Os controles anteriores continuam disponíveis.
 
-A conversão é sequencial, continua com o app minimizado ou a tela apagada e mostra o andamento na notificação. Qualidade, nomes e horários ficam fixados no pedido. Uma conversão de áudio por vez, individual ou em seleção. Cancelar mantém os MP3 já concluídos. Uma falha numa faixa é registrada e as demais continuam, desde que o arquivo e as divisões ainda sejam válidos.
+O volume desce no fim e sobe na próxima música, sem sobreposição e sem um segundo tocador. O tempo da transição respeita a velocidade de reprodução. Pausar, buscar uma posição ou trocar a velocidade restaura o ganho e recalcula a transição. Trechos de coletâneas, rádios, YouTube, prévias e temporizador por faixas não recebem fade; o equilíbrio gradual continua disponível para áudio compatível no tocador.
 
-Ver resultados mostra o relatório da última seleção. Toque num arquivo concluído para ouvir no Onda ou compartilhar pelo Android. Os arquivos também ficam na pasta de áudios do Onda. O arquivo original e as marcações são preservados. Nenhum arquivo existente é aberto para sobrescrita; cada destino é criado novo e conferido antes de gravar.
+Nenhuma varredura, novo modelo, serviço pago ou animação contínua. Processamento aproveita o tocador existente; não há análise de arquivos em segundo plano para escolher esses modos. Isso não representa garantia de consumo zero ou de volume igual em todas as gravações. Não foi incluída análise de humor ou identificação de ritmo.
 
-Se o Android encerrar o processo à força ou atingir seu limite de processamento, a operação não reinicia sozinha. Os arquivos concluídos permanecem; confira o relatório e a pasta, pois o arquivo em processamento pode estar incompleto. Provedores de nuvem dependem das permissões e da conexão do próprio provedor.
-
-Processamento local sem serviços pagos, novos modelos ou cópia WAV da coletânea inteira. Serviço e bloqueio parcial de CPU duram apenas durante a conversão solicitada, sendo liberados ao terminar ou cancelar. Análise com sensibilidades ajustáveis, exportação individual MP3, repetição de trechos e demais recursos anteriores preservados. Mesma assinatura e pacote do Onda Novo instalado; atualize sem desinstalar.
+Exportação de várias faixas em MP3, relatório, compartilhamento e demais recursos da versão anterior preservados. Mesma assinatura e pacote do Onda Novo instalado; atualize sem desinstalar.
 
 Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)

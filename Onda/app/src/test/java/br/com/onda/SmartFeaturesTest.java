@@ -36,7 +36,10 @@ public class SmartFeaturesTest {
   assertEquals(.5,FadeMath.gain(1000,2000,0,1),.0001);
   assertEquals(1,FadeMath.gain(3000,2000,0,1),.0001);
   assertEquals(48000,FadeMath.delay(60000,10000,1,2000));
-  assertEquals(24000,FadeMath.delay(60000,10000,2,2000));
+  assertEquals(23000,FadeMath.delay(60000,10000,2,2000));
+  assertEquals(98000,FadeMath.delay(60000,10000,.5f,2000));
+  assertEquals(-1,FadeMath.delay(7000,0,2,2000));
+  assertEquals(-1,FadeMath.delay(60000,0,Float.NaN,2000));
   assertEquals(-1,FadeMath.delay(-1,0,1,2000));
   assertEquals(-1,FadeMath.delay(3000,0,1,2000));
   assertEquals(-1,FadeMath.delay(60000,0,1,0));
