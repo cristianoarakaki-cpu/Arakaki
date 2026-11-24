@@ -1,3 +1,4 @@
+# Transfer the open destination within the app process; Android service intents cannot carry file descriptors.
 # Retain document permissions using the exact platform grant constants accepted by lint.
 # Set URI ClipData before adding grant flags; writing needs no seek on a new empty destination.
 # Detach the completed notification so service shutdown cannot remove the result action.

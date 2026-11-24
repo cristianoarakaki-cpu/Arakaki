@@ -16,17 +16,25 @@ public class ChapterExportService extends Service {
  }
  static Snapshot state(Context c){Snapshot state=current;if(state!=null)return state;try{String text=c.getSharedPreferences(PREF,0).getString("last","");if(text.isEmpty())return null;JSONObject j=new JSONObject(text);String phase=j.getString("phase"),message=j.getString("message");if("running".equals(phase)||"cancelling".equals(phase)){phase="interrupted";message="O Android interrompeu a conversão. Confira o destino antes de tentar novamente; ele pode estar incompleto.";}state=new Snapshot(ChapterExportJob.parse(j.getJSONObject("job").toString()),phase,message,j.optLong("at"),j.optLong("total"));current=state;}catch(Exception ignored){}return state;}
  static void listen(Listener listener){listeners.add(listener);}static void unlisten(Listener listener){listeners.remove(listener);}
+ // Activities and this service share one process. Android rejects descriptors inside startService
+ // Intents, so a short-lived slot transfers ownership locally, without keeping the Activity alive.
+ private static final Handler transferMain=new Handler(Looper.getMainLooper());
+ private static final java.util.concurrent.atomic.AtomicReference<Transfer> transfer=new java.util.concurrent.atomic.AtomicReference<>();
+ private static final class Transfer{
+  final String token;final AssetFileDescriptor descriptor;final Runnable timeout;
+  Transfer(String token,AssetFileDescriptor descriptor){this.token=token;this.descriptor=descriptor;timeout=()->{if(transfer.compareAndSet(this,null))close(descriptor);};}
+ }
+ private static AssetFileDescriptor take(String token){Transfer slot=transfer.get();if(slot!=null&&slot.token.equals(token)&&transfer.compareAndSet(slot,null)){transferMain.removeCallbacks(slot.timeout);return slot.descriptor;}return null;}
  static boolean start(Context c,ChapterExportJob job)throws IOException{
-  Snapshot active=state(c);if(active!=null&&active.running||live!=null&&live.finished)return false;
+  Snapshot active=state(c);if(active!=null&&active.running||live!=null&&live.finished||transfer.get()!=null)return false;
   if(!job.valid())throw new IOException("Conversão inválida");
-  // Pass an already-open write descriptor, granting only READ on the source URI.
-  // This supports read-only source providers without requesting write access to the original.
-  try(AssetFileDescriptor target=c.getContentResolver().openAssetFileDescriptor(job.target,"rw")){
-   if(target==null)throw new IOException("Não foi possível abrir o destino");
-   Intent intent=new Intent(c,ChapterExportService.class).putExtra("job",job.json().toString()).putExtra("destination",target);
+  AssetFileDescriptor destination=c.getContentResolver().openAssetFileDescriptor(job.target,"rw");if(destination==null)throw new IOException("Não foi possível abrir o destino");
+  Transfer slot=new Transfer(job.token,destination);if(!transfer.compareAndSet(null,slot)){close(destination);return false;}
+  try{
+   Intent intent=new Intent(c,ChapterExportService.class).putExtra("job",job.json().toString()).putExtra("transfer",job.token);
    ClipData clip=ClipData.newRawUri("Destino MP3",job.target);if("content".equals(job.source.getScheme()))clip.addItem(new ClipData.Item(job.source));intent.setClipData(clip);intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-   androidx.core.content.ContextCompat.startForegroundService(c,intent);return true;
-  }catch(JSONException error){throw new IOException(error);}
+   transferMain.postDelayed(slot.timeout,15000);androidx.core.content.ContextCompat.startForegroundService(c,intent);return true;
+  }catch(JSONException|RuntimeException error){transferMain.removeCallbacks(slot.timeout);if(transfer.compareAndSet(slot,null))close(destination);if(error instanceof RuntimeException)throw (RuntimeException)error;throw new IOException(error);}
  }
  static void cancel(Context c,Snapshot state){if(state!=null&&state.running)c.startService(new Intent(c,ChapterExportService.class).setAction("cancel").putExtra("token",state.job.token));}
  private final Handler main=new Handler(Looper.getMainLooper());private final ExecutorService worker=Executors.newSingleThreadExecutor();
@@ -36,7 +44,7 @@ public class ChapterExportService extends Service {
  @Override public int onStartCommand(Intent intent,int flags,int startId){
   if(intent==null){if(job==null)stopSelf(startId);return START_NOT_STICKY;}
   if("cancel".equals(intent.getAction())){if(job!=null&&job.job.token.equals(intent.getStringExtra("token")))requestCancel();else if(job==null)stopSelf(startId);return START_NOT_STICKY;}
-  AssetFileDescriptor descriptor=intent.getParcelableExtra("destination");if(job!=null){close(descriptor);return START_NOT_STICKY;}
+  AssetFileDescriptor descriptor=take(intent.getStringExtra("transfer"));if(job!=null){close(descriptor);return START_NOT_STICKY;}
   try{ChapterExportJob request=ChapterExportJob.parse(intent.getStringExtra("job"));if(descriptor==null)throw new IOException("Destino indisponível");pending=descriptor;job=new Snapshot(request,"running","Preparando a conversão. Pode minimizar o Onda.",0,request.end-request.start);
    if(Build.VERSION.SDK_INT>=35)startForeground(NOTICE,notice(job),ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING);else if(Build.VERSION.SDK_INT>=29)startForeground(NOTICE,notice(job),ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);else startForeground(NOTICE,notice(job));
    wake=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"Onda:ChapterExport");wake.acquire();publish(job,true);worker.execute(this::run);
