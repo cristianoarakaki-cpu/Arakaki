@@ -24,7 +24,6 @@ final class ChapterExportTask {
    try(MediaInput.Direct input=MediaInput.open(c,job.source)){if(input==null)throw new IOException("Este arquivo não permite leitura direta. Salve-o no celular e tente novamente.");ChapterMp3Exporter.convert(input,temporary,job.bitrate,job.start,job.end,control);}
    control.check();if(!job.stamp.equals(AudioChapterStore.stamp(c,job.source)))throw new IOException("O arquivo original mudou durante a conversão.");
    control.stage("Salvando o MP3 no destino escolhido…");
-   Os.lseek(target.getFileDescriptor(),0,OsConstants.SEEK_SET);
    try(InputStream in=new BufferedInputStream(new FileInputStream(temporary));OutputStream out=new android.os.ParcelFileDescriptor.AutoCloseOutputStream(android.os.ParcelFileDescriptor.dup(target.getFileDescriptor()))){
     byte[] bytes=new byte[65536];int count;while((count=in.read(bytes))!=-1){control.check();out.write(bytes,0,count);}out.flush();control.check();complete=true;
    }

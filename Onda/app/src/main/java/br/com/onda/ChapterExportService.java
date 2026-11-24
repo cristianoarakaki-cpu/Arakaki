@@ -24,7 +24,7 @@ public class ChapterExportService extends Service {
   try(AssetFileDescriptor target=c.getContentResolver().openAssetFileDescriptor(job.target,"rw")){
    if(target==null)throw new IOException("Não foi possível abrir o destino");
    Intent intent=new Intent(c,ChapterExportService.class).putExtra("job",job.json().toString()).putExtra("destination",target);
-   ClipData clip=ClipData.newRawUri("Destino MP3",job.target);if("content".equals(job.source.getScheme()))clip.addItem(new ClipData.Item(job.source));intent.setClipData(clip).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+   ClipData clip=ClipData.newRawUri("Destino MP3",job.target);if("content".equals(job.source.getScheme()))clip.addItem(new ClipData.Item(job.source));intent.setClipData(clip);intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
    androidx.core.content.ContextCompat.startForegroundService(c,intent);return true;
   }catch(JSONException error){throw new IOException(error);}
  }
