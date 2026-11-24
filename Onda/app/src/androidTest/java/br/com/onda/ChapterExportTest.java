@@ -4,7 +4,7 @@ import org.junit.Test;import static org.junit.Assert.*;import static androidx.te
 public class ChapterExportTest {
     private final android.content.Context c=getInstrumentation().getTargetContext();
     private ChapterMp3Exporter.Control control(){return new ChapterMp3Exporter.Control(){public void check()throws IOException{if(Thread.currentThread().isInterrupted())throw new InterruptedIOException();}public void progress(long at,long duration){assertTrue(at>=0&&at<=duration);}};}
-    private double decodedRms(File file,long expectedDurationMs)throws Exception{
+    double decodedRms(File file,long expectedDurationMs)throws Exception{
         MediaExtractor ex=new MediaExtractor();MediaCodec decoder=null;long count=0;double squares=0;
         try{ex.setDataSource(file.getPath());MediaFormat format=ex.getTrackFormat(0);assertEquals("audio/mpeg",format.getString(MediaFormat.KEY_MIME));assertEquals(expectedDurationMs,format.getLong(MediaFormat.KEY_DURATION)/1000,350);ex.selectTrack(0);decoder=MediaCodec.createDecoderByType("audio/mpeg");decoder.configure(format,null,null,0);decoder.start();boolean inputEnd=false,end=false;MediaCodec.BufferInfo info=new MediaCodec.BufferInfo();
             for(int step=0;step<2000&&!end;step++){

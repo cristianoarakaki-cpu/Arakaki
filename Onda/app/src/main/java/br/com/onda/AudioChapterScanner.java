@@ -10,10 +10,10 @@ import java.util.*;
 
 /** Decode on explicit request, constant-size PCM windows; no encoder, copy, network client or service. */
 final class AudioChapterScanner {
-    interface Control {void check()throws IOException;void progress(long position,long duration);}
+    interface Control {void check()throws IOException;void progress(long position,long duration);default int mode(){return -1;}}
     static final class Result {final long duration;final List<Long> starts;Result(long duration,List<Long> starts){this.duration=duration;this.starts=starts;}}
     private static final class Energy {
-        final SilenceChapters detector=new SilenceChapters();int rate,channels,frames;long windowStartUs,endUs;double squares;boolean initialized;
+        final SilenceChapters detector;Energy(int mode){detector=new SilenceChapters(mode);}int rate,channels,frames;long windowStartUs,endUs;double squares;boolean initialized;
         void format(MediaFormat f)throws IOException{int nextRate=f.getInteger(MediaFormat.KEY_SAMPLE_RATE),nextChannels=f.getInteger(MediaFormat.KEY_CHANNEL_COUNT);if(nextRate<8000||nextRate>192000||nextChannels<1||nextChannels>2||(f.containsKey(MediaFormat.KEY_PCM_ENCODING)&&f.getInteger(MediaFormat.KEY_PCM_ENCODING)!=AudioFormat.ENCODING_PCM_16BIT))throw new IOException("O áudio não tem um formato compatível com a análise neste aparelho.");if(rate!=0&&(rate!=nextRate||channels!=nextChannels))throw new IOException("O formato mudou durante a análise.");rate=nextRate;channels=nextChannels;}
         void samples(ByteBuffer buffer,int offset,int size,long timestampUs)throws IOException{if(rate==0||size%(2*channels)!=0)throw new IOException("Bloco de áudio inválido.");ByteBuffer pcm=buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN);pcm.position(offset);pcm.limit(offset+size);long base=Math.max(endUs,Math.max(0,timestampUs));if(initialized&&base-endUs>250000)flush();int read=0;while(pcm.remaining()>=2*channels){if(!initialized){windowStartUs=base+read*1000000L/rate;initialized=true;}for(int ch=0;ch<channels;ch++){double sample=pcm.getShort()/32768.0;squares+=sample*sample;}frames++;read++;endUs=base+read*1000000L/rate;if(frames>=rate/10){flush();}}}
         void flush(){if(frames==0)return;long start=windowStartUs/1000,length=Math.max(1,(frames*1000L)/rate);detector.window(start,length,squares/(frames*(double)channels));frames=0;squares=0;initialized=false;}
@@ -21,7 +21,7 @@ final class AudioChapterScanner {
     }
     static Result scan(Context context,Uri uri,Control control)throws IOException{
         MediaInput.Direct source=MediaInput.open(context,uri);if(source==null)throw new IOException("Não foi possível abrir um áudio local com busca. Disponibilize o arquivo no celular primeiro.");
-        MediaExtractor extractor=new MediaExtractor();MediaCodec decoder=null;boolean started=false;Energy energy=new Energy();long declared=0,lastProgress=0;
+        MediaExtractor extractor=new MediaExtractor();MediaCodec decoder=null;boolean started=false;Energy energy=new Energy(control.mode()>=0?control.mode():ChapterDetection.get(context));long declared=0,lastProgress=0;
         try(MediaInput.Direct ignored=source){
             control.check();source.bind(extractor);int track=AudioTracks.select(extractor);MediaFormat format=extractor.getTrackFormat(track);extractor.selectTrack(track);if(format.containsKey(MediaFormat.KEY_DURATION))declared=Math.max(0,format.getLong(MediaFormat.KEY_DURATION)/1000);
             if("audio/raw".equals(format.getString(MediaFormat.KEY_MIME))){energy.format(format);ByteBuffer raw=ByteBuffer.allocate(65536);while(true){control.check();raw.clear();int size=extractor.readSampleData(raw,0);if(size<0)break;if((extractor.getSampleFlags()&MediaExtractor.SAMPLE_FLAG_ENCRYPTED)!=0)throw new IOException("Áudio protegido não é analisado.");energy.samples(raw,0,size,extractor.getSampleTime());extractor.advance();long now=SystemClock.elapsedRealtime();if(now-lastProgress>=750){lastProgress=now;control.progress(energy.endUs/1000,declared);}}

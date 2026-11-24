@@ -47,7 +47,7 @@ public class ChapterScanService extends Service {
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private volatile boolean cancelled,finished;private volatile Thread processing;private Snapshot job;
-    private PowerManager.WakeLock wake;private long lastNotice;
+    private PowerManager.WakeLock wake;private long lastNotice;private int detectionMode;
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public void onCreate(){super.onCreate();live=this;((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel(CHANNEL,"Análise de coletâneas",NotificationManager.IMPORTANCE_LOW));}
     @Override public int onStartCommand(Intent intent,int flags,int startId){
@@ -56,7 +56,7 @@ public class ChapterScanService extends Service {
         if(job!=null)return START_NOT_STICKY;
         String source=intent.getStringExtra("source");Uri uri=source==null?null:Uri.parse(source);if(uri==null||!("file".equals(uri.getScheme())||"content".equals(uri.getScheme()))){stopSelf(startId);return START_NOT_STICKY;}
         String title=intent.getStringExtra("title");if(title==null||title.trim().isEmpty())title="Coletânea";
-        job=new Snapshot(java.util.UUID.randomUUID().toString(),uri,intent.getStringExtra("owner"),title,"running","Analisando coletânea. Pode minimizar ou apagar a tela.",0,Math.max(0,intent.getLongExtra("duration",0)));
+        detectionMode=ChapterDetection.get(this);job=new Snapshot(java.util.UUID.randomUUID().toString(),uri,intent.getStringExtra("owner"),title,"running","Analisando coletânea. Pode minimizar ou apagar a tela.",0,Math.max(0,intent.getLongExtra("duration",0)));
         try{
             Notification notice=notice(job);
             if(Build.VERSION.SDK_INT>=35)startForeground(NOTICE,notice,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING);
@@ -84,7 +84,7 @@ public class ChapterScanService extends Service {
         processing=Thread.currentThread();Snapshot initial=job,result;
         try{
             check();String stamp=AudioChapterStore.stamp(this,initial.uri);
-            AudioChapterScanner.Control control=new AudioChapterScanner.Control(){public void check()throws IOException{ChapterScanService.this.check();}public void progress(long at,long total){long now=SystemClock.elapsedRealtime();if(now-lastNotice<750)return;lastNotice=now;
+            AudioChapterScanner.Control control=new AudioChapterScanner.Control(){public int mode(){return detectionMode;}public void check()throws IOException{ChapterScanService.this.check();}public void progress(long at,long total){long now=SystemClock.elapsedRealtime();if(now-lastNotice<750)return;lastNotice=now;
                 Snapshot update=initial.with("running","Analisando "+AudioChaptersActivity.time(at)+(total>0?" de "+AudioChaptersActivity.time(total):"")+". Continua com a tela apagada.",at,total);
                 main.post(()->{if(finished||cancelled||job==null)return;publish(update,false);long cadence=PowerPolicy.progressInterval(OndaApplication.userVisible(ChapterScanService.this));if(now-lastNotification>=cadence){lastNotification=now;notifyState(update);}});
             }};

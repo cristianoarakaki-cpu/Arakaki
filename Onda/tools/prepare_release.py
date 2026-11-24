@@ -31,15 +31,17 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Análise de coletâneas em segundo plano
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — MP3 em segundo plano e detecção ajustável
 
-Correção: minimizar o Onda, apagar a tela ou fechar a tela de faixas não cancela mais a análise da coletânea. Um serviço de primeiro plano realiza a leitura local, exibe o andamento na notificação e permite cancelar. Ao voltar à tela, o resultado e o andamento são recuperados. O resultado pertence sempre ao arquivo analisado, mesmo se outro áudio for selecionado durante o processamento. Uma análise por vez.
+Salvar faixa em MP3 agora continua ao minimizar o Onda, apagar a tela ou fechar a tela de exportação. A notificação mostra o andamento, permite cancelar e abre o resultado. Ao voltar, o botão Compartilhar reaparece para o MP3 concluído. Uma conversão por vez, com trecho e qualidade fixados no pedido. A análise em segundo plano da versão anterior foi preservada.
 
-A reprodução é pausada quando você solicita a análise e não reinicia automaticamente ao concluir. A análise continua procurando pausas aproximadas, sem identificar nomes de músicas. Os arquivos originais são preservados. Cancelar mantém as marcações anteriores. Se o Android encerrar o processo ou atingir seu limite de processamento em segundo plano, o Onda informa a interrupção, preserva as marcações e permite iniciar novamente; não reinicia trabalho sozinho.
+O original nunca é aberto para escrita. O destino deve ser um arquivo novo e vazio; aliases do original e destinos com conteúdo são rejeitados. Um descritor do destino é mantido durante a operação, evitando depender da tela para gravar. Cancelamento tenta remover a cópia incompleta; provedores que recusam exclusão podem deixar um arquivo vazio. Se o Android encerrar o processo à força, o destino pode estar incompleto; o Onda informa a interrupção e não retoma sozinho. Alguns provedores podem exigir novo acesso para compartilhar depois de fechar o aplicativo.
 
-Economia de bateria: serviço e bloqueio parcial de CPU existem somente durante a análise solicitada; são liberados ao terminar, cancelar ou interromper. Sem manter a tela acesa, copiar a coletânea inteira, acesso à internet, novos modelos ou serviços pagos. Notificações de progresso menos frequentes em segundo plano. A permissão de notificação é solicitada no Android 13+ para acompanhar o andamento; o comportamento também está sujeito às regras do Android e do fabricante.
+Em Faixas → Detecção, escolha Conservadora (pausas claras, faixas de pelo menos 30 s), Equilibrada (25 s) ou Sensível (20 s). Equilibrada é o padrão para novas análises. Os modos adaptáveis consideram o volume do arquivo, toleram ruído de fundo baixo e confirmam a retomada do som para reduzir cortes em estalos. Sensibilidade maior pode criar divisões extras em trechos suaves. São estimativas de limites, sem reconhecer nomes de músicas; mixes contínuos podem não separar. Os horários e nomes continuam editáveis, e marcações existentes não são alteradas sem solicitar análise.
 
-Faixas editáveis, repetição de trechos e exportação MP3 da versão 0.80.0 preservadas. A exportação MP3 continua sendo uma operação da própria tela; esta correção trata especificamente da análise da coletânea. Mesma assinatura e pacote do Onda Novo instalado; atualização mantém seus dados.
+Processamento local, sem serviços pagos, modelos novos, cópia WAV da coletânea inteira ou monitoramento contínuo. Recursos e bloqueio parcial de CPU são liberados ao terminar ou cancelar. Permita notificações para acompanhar o andamento. A duração em segundo plano está sujeita às regras do Android e do fabricante.
+
+Mesma assinatura e pacote do Onda Novo instalado, preservando os dados em uma atualização normal. Música, vídeo, downloads, rádios, PDF e IA local existentes preservados.
 
 Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)

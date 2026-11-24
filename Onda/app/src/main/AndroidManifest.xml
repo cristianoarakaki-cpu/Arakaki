@@ -26,6 +26,7 @@
             <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><data android:scheme="content" /><data android:scheme="file" /><data android:mimeType="audio/*" /><data android:mimeType="application/ogg" /><data android:mimeType="application/x-ogg" /></intent-filter>
         </activity>
         <service android:name=".VideoBackgroundService" android:foregroundServiceType="mediaPlayback" android:exported="false" />
+        <service android:name=".ChapterExportService" android:foregroundServiceType="dataSync|mediaProcessing" android:exported="false" />
         <service android:name=".ChapterScanService" android:foregroundServiceType="dataSync|mediaProcessing" android:exported="false" />
         <service android:name=".MediaDownloadService" android:foregroundServiceType="dataSync" android:exported="false" />
         <activity android:name=".DownloadsActivity" android:launchMode="singleTop" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden" >
