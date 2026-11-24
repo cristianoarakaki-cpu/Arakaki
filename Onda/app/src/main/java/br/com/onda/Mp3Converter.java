@@ -11,6 +11,13 @@ final class Mp3Converter {
  private static native int encode(long handle,short[] pcm,int frames,byte[] bytes,int channels)throws IOException;
  private static native int flush(long handle,byte[] bytes)throws IOException;
  private static native void close(long handle);
+ static final class Encoder implements AutoCloseable {
+  private long handle;private final OutputStream output;private final int channels;private final byte[] bytes=new byte[32768];
+  Encoder(OutputStream output,int rate,int channels,int bitrate)throws IOException{if(!Mp3Quality.valid(bitrate)||channels<1||channels>2||rate<=0)throw new IOException("Qualidade MP3 inválida");this.output=output;this.channels=channels;handle=open(rate,channels,bitrate);}
+  void write(short[] pcm,int frames)throws IOException{int count=encode(handle,pcm,frames,bytes,channels);if(count>0)output.write(bytes,0,count);}
+  void finish()throws IOException{int count=flush(handle,bytes);if(count>0)output.write(bytes,0,count);}
+  public void close(){if(handle!=0){Mp3Converter.close(handle);handle=0;}}
+ }
  static void convert(File source,File output,int bitrate,DownloadMux.Cancel cancel)throws IOException {convertInput(MediaInput.file(source),output,bitrate,cancel);}
  static void convertInput(MediaInput source,File output,int bitrate,DownloadMux.Cancel cancel)throws IOException {
   if(!Mp3Quality.valid(bitrate))throw new IOException("Qualidade MP3 inválida");

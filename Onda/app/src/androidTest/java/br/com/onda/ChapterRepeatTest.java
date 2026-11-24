@@ -102,6 +102,16 @@ public class ChapterRepeatTest {
         assertEquals("[\"701\",\"702\"]",c.getSharedPreferences("music_resume",0).getString("queue",""));
         assertArrayEquals(original,java.nio.file.Files.readAllBytes(file.toPath()));
     }
+    @Test public void leavingChapterKeepsAbsolutePositionPauseAndQueue()throws Exception{
+        Uri uri=Uri.fromFile(file);MediaItem selected=AudioChapterPlayback.configure(AudioChapterPlayback.select(item("701",uri),markers,1,AudioChapterStore.stamp(c,uri)),true);
+        ins.runOnMainSync(()->{player.setRepeatMode(Player.REPEAT_MODE_ONE);player.setMediaItems(Arrays.asList(selected,item("702",uri)),0,1500);player.prepare();player.pause();});
+        waitFor(()->player.getPlaybackState()==Player.STATE_READY&&AudioChapterPlayback.clipped(player.getCurrentMediaItem()));
+        ListenableFuture<SessionResult>[] result=new ListenableFuture[1];
+        ins.runOnMainSync(()->{Bundle args=new Bundle();args.putString("id","701");args.putString("uri",uri.toString());result[0]=player.sendCustomCommand(new SessionCommand(AudioChapterPlayback.CLEAR,Bundle.EMPTY),args);});
+        assertEquals(SessionResult.RESULT_SUCCESS,result[0].get(10,TimeUnit.SECONDS).resultCode);
+        waitFor(()->!AudioChapterPlayback.selected(player.getCurrentMediaItem())&&player.getPlaybackState()==Player.STATE_READY);
+        ins.runOnMainSync(()->{assertFalse(player.getPlayWhenReady());assertEquals(34150,player.getCurrentPosition(),100);assertEquals(2,player.getMediaItemCount());assertEquals("701",player.getCurrentMediaItem().mediaId);assertEquals(Player.REPEAT_MODE_OFF,player.getRepeatMode());assertEquals(96600,player.getDuration());});
+    }
     @Test public void restoreRequiresMatchingOriginalAndCurrentMarkerBoundaries()throws Exception{
         Uri uri=Uri.fromFile(file);MediaItem base=item("701",uri);
         MediaItem chosen=AudioChapterPlayback.configure(AudioChapterPlayback.select(base,markers,1,AudioChapterStore.stamp(c,uri)),true);

@@ -31,19 +31,17 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Meu smartphone e correção do backup
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Coletâneas editáveis
 
-Menu → Meu smartphone: fabricante/modelo, Android e correção de segurança, processador/arquiteturas informadas, RAM e armazenamento, bateria, energia, rede ativa e sensores anunciados pelo Android. Compartilhe um relatório somente quando escolher. Sem IMEI, número de série, nomes de redes, contas, lista de apps ou envio automático. Leitura sob demanda; sem monitoramento contínuo.
+Abra Faixas no tocador. A análise por pausas continua disponível; agora é possível adicionar divisões manualmente e usar ⋮ em cada faixa para editar nome, início e fim, remover uma divisão ou salvar apenas aquele trecho em MP3 de 128, 192, 256 ou 320 kbps. Não identifica nomes de músicas automaticamente. Divisões por pausas são aproximadas e precisam ser conferidas.
 
-Testes manuais: cores exibidas, nove áreas de toque, sinal sonoro de até dois segundos, gravação local de microfone por até quatro segundos para ouvir e avaliar, vibração e sensores comuns por até oito segundos. Microfone pede permissão só ao testar. Recursos são liberados ao sair e a gravação temporária é apagada. Resultados de som/tela/microfone/vibração são observações do usuário; receber leituras de sensor não comprova calibração. Não é laudo, antivírus, medição de desgaste/capacidade real da bateria nem garantia de funcionamento de todo o hardware.
+Os limites são compartilhados entre faixas vizinhas, sem sobreposição nem lacunas. O início da primeira e o fim da última permanecem fixos. As marcações anteriores continuam compatíveis. Editar ou reanalisar libera a seleção e a repetição do trecho anterior, mantendo a posição; selecione novamente a faixa depois. Arquivo inteiro libera o trecho sem reiniciar a coletânea nem mudar uma pausa. O botão de repetição do tocador continua repetindo a faixa escolhida.
 
-Backup: a mensagem genérica de 8 MB do antigo também era exibida ao rejeitar favoritas de downloads locais sem duração cadastrada. A correção permite essas referências no novo formato de metadados v2, mantém leitura de v1 válido, diferencia falhas de acesso/validação/tamanho/memória e amplia o limite de segurança para 64 MB. Restauração mantém dados atuais e não associa faixas ausentes ou ambíguas.
+A exportação cria um novo MP3 no destino escolhido pelo Android e permite compartilhar o arquivo pronto. Decodifica somente o trecho necessário, com memória limitada, sem cópia WAV da coletânea inteira e sem serviços pagos. O arquivo original não é alterado. Mantenha a tela de exportação aberta; sair cancela e remove o destino incompleto quando o provedor permite. A compatibilidade depende dos codecs Android e da leitura direta do arquivo local.
 
-RECUPERAÇÃO DO ANTIGO: a nova instalação não pode alterar o app com assinatura perdida nem ler seus dados privados. Os anexos Recuperar-backup-Onda.py e RECUPERAR-BACKUP-LEIA-ME.txt oferecem recuperação opcional por um PC com Python3 e ADB, via USB e depuração autorizada pelo dono. A ferramenta lê metadados, não modifica o app antigo e não envia dados à internet. Requer que o build antigo aceite run-as e que o Android libere a consulta dos títulos; não há contorno de restrições. O JSON recuperado importa no Onda Novo após conferir a prévia. Áudios precisam continuar no celular; downloads não indexados podem precisar ser abertos novamente no novo. Histórico, ajustes, favoritos de vídeo/YouTube e modelos não entram nesse backup. Mantenha o antigo instalado até conferir a recuperação.
+Mesma assinatura e pacote do Onda Novo 0.79.0, preservando os dados numa atualização normal. Música, vídeo, downloads, rádio, PDF, IA local e demais recursos existentes preservados. Nenhum serviço contínuo ou modelo obrigatório acrescentado.
 
-Esta versão atualiza Onda Novo 0.78.0 (pacote br.com.onda.player), com a mesma nova assinatura preservada por backup criptografado e Secret privado do proprietário, sem depender de cache. A instalação antiga br.com.onda.musica permanece separada. Canal onda-player-update.json. Recursos de música, vídeo, downloads, rádios, fotos/IA local, conversor de PDF, OCR e voz preservados. Não há novos serviços pagos ou modelos obrigatórios.
-
-Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME Library GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; outros avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
+Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)
 
 with open(os.environ['GITHUB_OUTPUT'], 'a') as file:

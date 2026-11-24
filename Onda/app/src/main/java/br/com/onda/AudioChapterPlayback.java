@@ -9,7 +9,7 @@ import org.json.JSONObject;
 /** Native, non-destructive chapter bounds. Positions saved outside the player stay absolute. */
 @androidx.media3.common.util.UnstableApi
 final class AudioChapterPlayback {
-    static final String SELECT="audio_chapter_select";
+    static final String SELECT="audio_chapter_select", CLEAR="audio_chapter_clear";
     private static final String START="onda.chapter.start",END="onda.chapter.end",
             DURATION="onda.chapter.duration",TITLE="onda.chapter.title",STAMP="onda.chapter.stamp";
 
@@ -49,6 +49,13 @@ final class AudioChapterPlayback {
         MediaItem result=item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(b).build()).build();
         if(!selected(result))throw new IllegalArgumentException("Limites da faixa inválidos");
         return result;
+    }
+    static MediaItem clear(MediaItem item){
+        if(!selected(item))return item;
+        Bundle b=new Bundle(extras(item));
+        for(String key:new String[]{START,END,DURATION,TITLE,STAMP})b.remove(key);
+        return item.buildUpon().setClippingConfiguration(new MediaItem.ClippingConfiguration.Builder().build())
+                .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(b).build()).build();
     }
     static MediaItem configure(MediaItem item,boolean repeat){
         if(!selected(item))return item;
