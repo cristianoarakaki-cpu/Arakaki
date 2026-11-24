@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
  <application>
+  <provider android:name="br.com.onda.BatchTestDocumentsProvider" android:authorities="br.com.onda.player.test.batchdocs" android:exported="true" android:grantUriPermissions="true"><intent-filter><action android:name="android.content.action.DOCUMENTS_PROVIDER" /></intent-filter></provider>
   <service android:name="br.com.onda.PdfTestTtsService" android:label="Onda test voice" android:exported="true">
    <intent-filter><action android:name="android.intent.action.TTS_SERVICE" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
   </service>
