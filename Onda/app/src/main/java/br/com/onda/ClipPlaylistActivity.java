@@ -151,6 +151,13 @@ public final class ClipPlaylistActivity extends Activity {
         transport = Ui.button(this, "Tocar playlist", v -> toggle());
         Ui.primary(transport);
         root.addView(transport);
+        root.addView(Ui.button(this, "Montar MP3 com estes trechos", v -> {
+            if (clips().length() < 2) {
+                status.setText("Escolha uma playlist com pelo menos dois trechos.");
+                return;
+            }
+            startActivity(new android.content.Intent(this, MixMp3Activity.class).putExtra("clips", clips().toString()));
+        }));
         render();
     }
 
