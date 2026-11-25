@@ -1,3 +1,4 @@
+# Capture Android crashes and independent test output before enforcing gates.
 name: Onda - Modos de escuta 0830
 on:
   push:
@@ -154,8 +155,11 @@ jobs:
             adb shell pm grant br.com.onda.player android.permission.RECORD_AUDIO
             adb shell svc wifi disable
             adb shell svc data disable
+            adb logcat -c
             adb shell am instrument -w -e class br.com.onda.AudioEvolutionTest,br.com.onda.ListeningModesTest,br.com.onda.ChapterRepeatTest,br.com.onda.ChapterBatchTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-chapter-tests.txt
             cat /tmp/onda-chapter-tests.txt
+            adb logcat -b crash -d > /tmp/onda-crash-tests.txt
+            cat /tmp/onda-crash-tests.txt
             python -c 's=open("/tmp/onda-chapter-tests.txt").read(); assert "OK (19 tests)" in s and "FAILURES" not in s'
             mkdir -p Onda/ui-preview
             adb exec-out run-as br.com.onda.player cat files/chapter-batch.png > Onda/ui-preview/chapter-batch-api29.png
@@ -182,6 +186,8 @@ jobs:
             adb shell pm grant br.com.onda.player android.permission.POST_NOTIFICATIONS
             adb shell am instrument -w -e class br.com.onda.ListeningModesTest,br.com.onda.ChapterBatchTest br.com.onda.player.test/androidx.test.runner.AndroidJUnitRunner > /tmp/onda-background-api35-tests.txt
             cat /tmp/onda-background-api35-tests.txt
+            adb logcat -b crash -d > /tmp/onda-crash35-tests.txt
+            cat /tmp/onda-crash35-tests.txt
             python -c 's=open("/tmp/onda-background-api35-tests.txt").read(); assert "OK (12 tests)" in s and "FAILURES" not in s'
             adb exec-out run-as br.com.onda.player cat files/chapter-batch.png > Onda/ui-preview/chapter-batch-api35.png
             adb exec-out run-as br.com.onda.player cat files/listening-modes.png > Onda/ui-preview/listening-modes-api35.png
