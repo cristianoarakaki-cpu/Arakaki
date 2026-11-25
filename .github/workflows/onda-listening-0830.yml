@@ -1,3 +1,4 @@
+# Exercise the actual mode dialog ListView callback without accessibility-tree startup races.
 # Capture Android crashes and independent test output before enforcing gates.
 name: Onda - Modos de escuta 0830
 on:
