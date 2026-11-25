@@ -15,16 +15,16 @@ public class ChapterExportActivity extends Activity {
     private static final int CREATE=71;
     private boolean started,busy,otherBusy;
     private final ChapterExportService.Listener listener=state->{if(started&&!isDestroyed())sync();};
-    private Uri source,pending,saved;private String stamp,name,memoryTag;private long start,end,duration;
+    private int restorationProfile;private Uri source,pending,saved;private String stamp,name,memoryTag;private long start,end,duration;
     private TextView status;private Button export,quality,share,other;private ProgressBar progress;
     static void open(Context context,Uri uri,String stamp,AudioChapterStore.Data data,int index){
         context.startActivity(new Intent(context,ChapterExportActivity.class).putExtra("source",uri.toString()).putExtra("stamp",stamp).putExtra("name",AudioChapterStore.label(data,index)).putExtra("start",data.chapters.get(index).start).putExtra("end",index+1<data.chapters.size()?data.chapters.get(index+1).start:data.duration).putExtra("duration",data.duration));
     }
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);Intent input=getIntent();String sourceText=input.getStringExtra("source");source=sourceText==null?input.getData():Uri.parse(sourceText);stamp=input.getStringExtra("stamp");memoryTag=input.getStringExtra("memory_tag");name=input.getStringExtra("name");start=input.getLongExtra("start",-1);end=input.getLongExtra("end",-1);duration=input.getLongExtra("duration",0);
+        super.onCreate(state);Intent input=getIntent();String sourceText=input.getStringExtra("source");source=sourceText==null?input.getData():Uri.parse(sourceText);restorationProfile=input.getIntExtra("restoration_profile",0);stamp=input.getStringExtra("stamp");memoryTag=input.getStringExtra("memory_tag");name=input.getStringExtra("name");start=input.getLongExtra("start",-1);end=input.getLongExtra("end",-1);duration=input.getLongExtra("duration",0);
         if(state!=null){String uri=state.getString("pending"),complete=state.getString("saved");pending=uri==null?null:Uri.parse(uri);saved=complete==null?null:Uri.parse(complete);}
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(Ui.dp(this,16),Ui.dp(this,8)+i.getSystemWindowInsetTop(),Ui.dp(this,16),Ui.dp(this,8)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
-        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.addView(Ui.button(this,"‹",v->finish()),new LinearLayout.LayoutParams(Ui.dp(this,48),-2));TextView heading=Ui.text(this,"Salvar faixa em MP3",20,Ui.TEXT);heading.setMaxLines(2);header.addView(heading,new LinearLayout.LayoutParams(0,-2,1));root.addView(header);
+        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.addView(Ui.button(this,"‹",v->finish()),new LinearLayout.LayoutParams(Ui.dp(this,48),-2));TextView heading=Ui.text(this,restorationProfile>0?"Salvar áudio restaurado":"Salvar faixa em MP3",20,Ui.TEXT);heading.setMaxLines(2);header.addView(heading,new LinearLayout.LayoutParams(0,-2,1));root.addView(header);
         ScrollView scroll=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);scroll.addView(body);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         body.addView(Ui.text(this,name==null?"Escolha uma faixa na tela de coletâneas.":name,20,Ui.CYAN));
         if(validInput())body.addView(Ui.text(this,ChapterEdits.format(start)+" → "+ChapterEdits.format(end),16,Ui.TEXT));
@@ -36,7 +36,7 @@ public class ChapterExportActivity extends Activity {
         share=Ui.button(this,"Compartilhar MP3 salvo",v->{if(saved==null)return;Intent send=new Intent(Intent.ACTION_SEND).setType("audio/mpeg").putExtra(Intent.EXTRA_STREAM,saved).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);send.setClipData(ClipData.newRawUri("Faixa MP3",saved));try{startActivity(Intent.createChooser(send,"Compartilhar faixa"));}catch(ActivityNotFoundException error){status.setText("Nenhum aplicativo disponível para compartilhar.");}catch(SecurityException error){status.setText("O provedor não manteve acesso ao MP3. Abra o arquivo salvo pelo Android para compartilhar.");}});body.addView(share);other=Ui.button(this,"Ver conversão em andamento",v->{ChapterExportService.Snapshot active=ChapterExportService.state(this);if(active!=null&&active.running)startActivity(active.screen(this));});body.addView(other);controls();
     }
     private static String safeName(String value){String result=value==null?"Faixa":value.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]","_").trim();return result.isEmpty()?"Faixa":result.substring(0,Math.min(100,result.length()));}
-    private boolean validInput(){return source!=null&&("file".equals(source.getScheme())||"content".equals(source.getScheme()))&&stamp!=null&&start>=0&&end>start&&end<=duration;}
+    private boolean validInput(){return RestorationDsp.valid(restorationProfile)&&source!=null&&("file".equals(source.getScheme())||"content".equals(source.getScheme()))&&stamp!=null&&start>=0&&end>start&&end<=duration;}
     private void controls(){if(export==null)return;export.setEnabled(validInput()&&!otherBusy);export.setText(busy?"Cancelar conversão":"Salvar MP3");quality.setText("Novos MP3: "+Mp3Quality.get(this)+" kbps");quality.setEnabled(!busy);progress.setVisibility(busy?View.VISIBLE:View.GONE);share.setVisibility(saved==null?View.GONE:View.VISIBLE);if(other!=null)other.setVisibility(otherBusy?View.VISIBLE:View.GONE);}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==CREATE&&result==RESULT_OK&&data!=null){Uri target=data.getData();if(target!=null&&target.equals(source)){status.setText("Escolha um novo arquivo; não sobrescreva a coletânea.");return;}rememberAccess(target,data);pending=target;}}
     private void rememberAccess(Uri target,Intent result){
@@ -49,7 +49,7 @@ public class ChapterExportActivity extends Activity {
         }catch(SecurityException|IllegalArgumentException ignored){}
     }
     private void sync(){
-        ChapterExportService.Snapshot state=ChapterExportService.state(this);boolean own=state!=null&&state.batch==null&&state.job.matches(source,stamp,start,end);otherBusy=state!=null&&state.running&&!own;busy=own&&state.running;
+        ChapterExportService.Snapshot state=ChapterExportService.state(this);boolean own=state!=null&&state.batch==null&&state.job.restorationProfile==restorationProfile&&state.job.matches(source,stamp,start,end);otherBusy=state!=null&&state.running&&!own;busy=own&&state.running;
         if(own){saved="done".equals(state.phase)?state.job.target:null;status.setText(state.message);progress.setIndeterminate(state.total<=0);if(state.total>0)progress.setProgress((int)Math.min(100,state.at*100/state.total));}
         else if(otherBusy)status.setText("Já há uma conversão em andamento: "+state.job.title+".");else if(saved==null)status.setText(validInput()?"Escolha onde salvar a nova faixa.":"Abra Faixas da coletânea, toque em ⋮ e escolha Salvar faixa em MP3.");controls();
     }
@@ -57,11 +57,11 @@ public class ChapterExportActivity extends Activity {
     @Override protected void onResume(){super.onResume();if(pending!=null&&!busy){Uri target=pending;pending=null;convert(target);}}
     private void convert(Uri target){
         if(!validInput())return;ChapterExportService.Snapshot active=ChapterExportService.state(this);if(active!=null&&active.running){sync();return;}
-        ChapterExportJob job=new ChapterExportJob(java.util.UUID.randomUUID().toString(),source,target,stamp,name,start,end,duration,Mp3Quality.get(this),memoryTag);
+        ChapterExportJob job=new ChapterExportJob(java.util.UUID.randomUUID().toString(),source,target,stamp,name,start,end,duration,Mp3Quality.get(this),memoryTag,restorationProfile);
         try{if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},914);if(ChapterExportService.start(this,job)){busy=true;saved=null;progress.setIndeterminate(true);status.setText("Preparando a conversão em segundo plano…");controls();}else sync();}
         catch(IOException|RuntimeException error){busy=false;status.setText(DownloadFailure.describe("Iniciar conversão",error));controls();}
     }
-    private void cancel(){ChapterExportService.Snapshot state=ChapterExportService.state(this);if(state!=null&&state.batch==null&&state.running&&state.job.matches(source,stamp,start,end)){ChapterExportService.cancel(this,state);status.setText("Cancelando conversão…");}}
+    private void cancel(){ChapterExportService.Snapshot state=ChapterExportService.state(this);if(state!=null&&state.batch==null&&state.running&&state.job.restorationProfile==restorationProfile&&state.job.matches(source,stamp,start,end)){ChapterExportService.cancel(this,state);status.setText("Cancelando conversão…");}}
     @Override protected void onStop(){started=false;ChapterExportService.unlisten(listener);super.onStop();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);pending=null;saved=null;recreate();}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);if(pending!=null)state.putString("pending",pending.toString());if(saved!=null)state.putString("saved",saved.toString());}

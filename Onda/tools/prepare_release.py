@@ -31,15 +31,13 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Marcações próprias na Memória Multimídia
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Restaurador local de gravações
 
-No menu do tocador, do vídeo ou do PDF, escolha Marcar na memória. Dê um nome como Solo de guitarra, Refrão ou Explicação sobre juros. Em áudio e vídeo, confira início e fim, com milissegundos; em PDF, a página atual é capturada. Os horários são fixados ao abrir o formulário. O formulário não pausa a música nem solicita foco de áudio.
+No menu principal, escolha Restaurar gravação e selecione um áudio ou vídeo do celular. Experimente Voz suave ou Música suave, escolha a posição e prepare até 12 segundos para comparar o original e a cópia tratada. Nada toca automaticamente.
 
-As marcações ficam nos trechos favoritos da Memória Multimídia e podem ser encontradas pela busca digitada ou por voz. Abrir um resultado usa o arquivo e a posição guardados. Para áudio e vídeo, continua disponível salvar o áudio do trecho em MP3 e compartilhar o MP3 salvo. Texto pode ser copiado ou compartilhado.
+O tratamento usa filtros suaves para graves de fundo e chiado agudo, com expansão leve nas pausas e proteção de picos. Pode reduzir agudos e detalhes suaves; não recupera informações perdidas ou áudio saturado. Compare antes de salvar. Não usa IA generativa, servidores, contas ou modelos adicionais.
 
-Toque numa marcação própria para renomear ou excluir apenas essa marcação. A busca e os favoritos são atualizados juntos. As notas próprias ficam separadas do índice de transcrições, PDFs e legendas: reanalisar o conteúdo não apaga as anotações. Se o arquivo original mudar, novas notas não serão misturadas aos horários antigos; confira e remova as marcações antigas do arquivo antes de criar outras.
-
-Este recurso é manual: não identifica automaticamente solos ou instrumentos. Não baixa modelos, não lê o áudio e não cria um serviço em segundo plano para guardar uma nota. Salva somente metadados no celular, sem alterar os arquivos, a fila do tocador ou as favoritas de músicas. A análise opcional da versão anterior continua disponível separadamente.
+Salve uma cópia em MP3 na qualidade selecionada. O arquivo original é preservado. A cópia completa usa o serviço de conversão já existente e continua ao minimizar o Onda ou apagar a tela, com progresso e cancelamento pela notificação. A prévia é curta, usa memória limitada e para ao sair da tela; nada é processado continuamente quando o recurso está ocioso.
 
 Pacote e assinatura permanentes do Onda Novo preservados; atualize sem desinstalar. Recursos anteriores mantidos. Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)

@@ -15,14 +15,14 @@ final class ChapterExportTask {
     dev=b.st_dev;inode=b.st_ino;owned=true;
    }
    if(!job.stamp.equals(AudioChapterStore.stamp(c,job.source)))throw new IOException("O arquivo original mudou. Selecione a faixa novamente.");
-   AudioChapterStore.Data data=AudioChapterStore.load(c,job.source,job.stamp,job.duration);boolean matching=false;
+   AudioChapterStore.Data data=AudioChapterStore.load(c,job.source,job.stamp,job.duration);boolean matching=job.restorationProfile>0;
    if(data!=null)for(int i=0;i<data.chapters.size();i++)if(data.chapters.get(i).start==job.start&&(i+1<data.chapters.size()?data.chapters.get(i+1).start:data.duration)==job.end)matching=true;
    if(!job.memoryTag.isEmpty()){try(MemoryStore store=new MemoryStore(c)){MemoryStore.Hit hit=store.tag(job.memoryTag);matching=hit!=null&&hit.page<0&&hit.source.uri.equals(job.source.toString())&&hit.source.stamp.equals(job.stamp)&&hit.start==job.start&&hit.end==job.end;}}
    if(!matching)throw new IOException("Os horários foram alterados. Selecione a faixa novamente.");
    File[] leftovers=c.getCacheDir().listFiles();if(leftovers!=null)for(File old:leftovers)if(old.getName().matches("chapter-export-job-[0-9a-f-]+\\.mp3")&&old.lastModified()<System.currentTimeMillis()-86400000L)old.delete();
    temporary=new File(c.getCacheDir(),"chapter-export-job-"+java.util.UUID.randomUUID()+".mp3");
-   control.stage("Convertendo o trecho • "+job.bitrate+" kbps. Pode apagar a tela.");
-   try(MediaInput.Direct input=MediaInput.open(c,job.source)){if(input==null)throw new IOException("Este arquivo não permite leitura direta. Salve-o no celular e tente novamente.");ChapterMp3Exporter.convert(input,temporary,job.bitrate,job.start,job.end,control);}
+   control.stage((job.restorationProfile>0?"Restaurando a cópia • ":"Convertendo o trecho • ")+job.bitrate+" kbps. Pode apagar a tela.");
+   try(MediaInput.Direct input=MediaInput.open(c,job.source)){if(input==null)throw new IOException("Este arquivo não permite leitura direta. Salve-o no celular e tente novamente.");ChapterMp3Exporter.convert(input,temporary,job.bitrate,job.start,job.end,job.restorationProfile,control);}
    control.check();if(!job.stamp.equals(AudioChapterStore.stamp(c,job.source)))throw new IOException("O arquivo original mudou durante a conversão.");
    control.stage("Salvando o MP3 no destino escolhido…");
    try(InputStream in=new BufferedInputStream(new FileInputStream(temporary));OutputStream out=new android.os.ParcelFileDescriptor.AutoCloseOutputStream(android.os.ParcelFileDescriptor.dup(target.getFileDescriptor()))){
