@@ -1,4 +1,5 @@
 name: Onda - Restaurador Local 0880
+# Validate layout constants before distribution.
 on:
   push:
     branches: [main]
