@@ -16,7 +16,7 @@ public class MixMp3Test {
                 left.add(samples[i]);
             }
         });
-        short[] first = new short[8], second = new short[24];
+        short[] first = new short[4], second = new short[24];
         Arrays.fill(first, (short) 10000);
         Arrays.fill(second, (short) -10000);
         mix.begin(overlap);

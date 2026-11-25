@@ -1,5 +1,5 @@
 name: Onda - Montar MP3 0900
-# Validate enlarged titles and mixed playback before distribution.
+# Validate resampled duration, transitions and Android layouts.
 on:
   push:
     branches: [main]
