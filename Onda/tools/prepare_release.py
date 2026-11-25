@@ -31,15 +31,17 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Edite a mistura do DJ
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Memória Multimídia local
 
-Em Menu → DJ Pessoal, segure uma música ou use o menu → Editar seleção. Mova a faixa para cima ou para baixo ou remova da prévia. O menu → Desfazer remoção recupera a última faixa removida, uma vez. Quantidade e duração estimada são atualizadas após cada edição.
+Abra Menu → Memória Multimídia, ou diga Abra memória. Em Adicionar, escolha um PDF com texto, um áudio/vídeo acompanhado de legenda SRT/VTT, ou transcrição local de fala. A busca procura palavras e prefixos do conteúdo indexado, aceita acentos e simplifica perguntas em português; não é busca semântica nem identifica solos musicais.
 
-As alterações atingem somente a prévia: não apagam arquivos, favoritas ou playlists e não alteram a música ou a fila em execução. Para começar a seleção ajustada, toque em Ouvir seleção ou numa faixa. Para guardar a ordem editada, use Salvar seleção como playlist. O diálogo de salvar mantém a seleção existente no momento em que foi aberto.
+Os resultados abrem PDFs na página e mídias no horário encontrado. É possível marcar favoritos, copiar ou compartilhar o texto e salvar apenas o áudio do trecho em MP3. A exportação usa o serviço de conversão existente, continua minimizada e respeita a qualidade escolhida. Não há recorte de vídeo MP4 nesta entrega. Confira os horários antes de exportar.
 
-Nova mistura ou trocar o modo/duração gera outra seleção e encerra a possibilidade de desfazer a remoção anterior. A prévia é temporária e pode ser recriada se o Android recriar a tela; salve como playlist para guardar seus ajustes. Não há novas varreduras periódicas ou processamento de áudio para editar a lista.
+Transcrição de fala é opcional: no menu, Preparar voz por Wi-Fi baixa um modelo de cerca de 60 MB. Não há download automático ao escolher um arquivo. Reconhecimento roda no celular, depende de memória, codecs e compatibilidade do aparelho e pode errar, principalmente em músicas. Os horários de voz são aproximados, em janelas de até 20 segundos. A infraestrutura nativa ARM existente foi preservada. O microfone de busca usa o serviço de reconhecimento do Android.
 
-Seleções por duração, modos de escuta, exportação em lote MP3 e demais recursos anteriores preservados. Processamento local, sem novo serviço pago. Mesma assinatura e pacote do Onda Novo; atualize sem desinstalar.
+PDFs precisam permitir extração de texto. Não há OCR de todas as páginas nesta análise; PDFs digitalizados podem não produzir resultados. Legendas aceitam até 4 MB e PDFs até 64 MB, respeitando a capacidade do leitor. Até 100 resultados por busca, refináveis por palavras. O arquivo original permanece inalterado. Reindexe em Arquivos lembrados após alterações. Remover da memória apaga o índice e suas marcações, sem apagar o arquivo.
+
+Análise explícita em serviço com notificação, cancelamento e liberação de recursos ao terminar. Não há escuta permanente, varredura periódica ou envio dos arquivos pelo Onda. Se houver falha ou cancelamento durante a extração, a transação preserva o índice anterior. Encerramento forçado pelo Android exige iniciar novamente; resultados concluídos ficam no armazenamento privado do app. Atualização preserva dados pelo mesmo pacote e assinatura. Todos os recursos anteriores permanecem disponíveis.
 
 Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)

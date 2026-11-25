@@ -49,6 +49,8 @@
         <activity android:name=".LocalConverterActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".OndaFilesActivity" android:exported="false" />
         <activity android:name=".DownloadCenterActivity" android:exported="false" />
+        <activity android:name=".MemoryActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <service android:name=".MemoryIndexService" android:foregroundServiceType="dataSync|mediaProcessing" android:exported="false" />
         <activity android:name=".UnifiedSearchActivity" android:exported="false" />
         <activity android:name=".ShelfActivity" android:exported="false" />
         <activity android:name=".DeviceDiagnosticsActivity" android:exported="false" />

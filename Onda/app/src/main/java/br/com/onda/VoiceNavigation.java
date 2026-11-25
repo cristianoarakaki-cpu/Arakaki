@@ -22,6 +22,7 @@ final class VoiceNavigation {
             case OPEN_VIDEOS:screen=VideoActivity.class;break;
             case OPEN_MUSIC:screen=MainActivity.class;break;
             case OPEN_PDF:screen=PdfActivity.class;break;
+            case OPEN_MEMORY:screen=MemoryActivity.class;break;
             case OPEN_SOUND:screen=SoundActivity.class;break;
             case OPEN_CONVERTER:screen=LocalConverterActivity.class;break;
             case OPEN_PLAYLISTS:screen=PlaylistsActivity.class;break;

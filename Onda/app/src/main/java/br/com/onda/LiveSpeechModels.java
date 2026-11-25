@@ -13,10 +13,11 @@ final class LiveSpeechModels {
   final String label,file,sha;final long bytes;Model(String l,String f,long b,String s){label=l;file=f;bytes=b;sha=s;}
  }
  interface Progress {void changed(long bytes,long total);}
+ static File verified(Context c,Model m,BooleanSupplier cancelled)throws Exception{File file=path(c,m);if(!installed(c,m)||!hash(file,cancelled).equals(m.sha))throw new IOException("Prepare novamente o modelo de voz; ele está ausente ou alterado.");return file;}
  static File path(Context c,Model m){return new File(new File(c.getFilesDir(),"live-models"),m.file);}
  static boolean installed(Context c,Model m){File f=path(c,m);return f.isFile()&&f.length()==m.bytes;}
- static File obtain(Context c,Model m,boolean wifi,BooleanSupplier cancelled,Progress progress)throws Exception{
-  File file=path(c,m);File folder=file.getParentFile();if(!folder.isDirectory()&&!folder.mkdirs())throw new IOException("Não foi possível salvar o modelo.");
+ static synchronized File obtain(Context c,Model m,boolean wifi,BooleanSupplier cancelled,Progress progress)throws Exception{
+  check(cancelled);File file=path(c,m);File folder=file.getParentFile();if(!folder.isDirectory()&&!folder.mkdirs())throw new IOException("Não foi possível salvar o modelo.");
   if(installed(c,m)&&hash(file,cancelled).equals(m.sha))return file;
   if(wifi){ConnectivityManager cm=(ConnectivityManager)c.getSystemService(Context.CONNECTIVITY_SERVICE);NetworkCapabilities caps=cm==null?null:cm.getNetworkCapabilities(cm.getActiveNetwork());if(caps==null||!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))throw new IOException("Conecte ao Wi-Fi ou escolha Dados móveis para baixar o modelo.");}
   if(folder.getUsableSpace()<m.bytes+32L*1024*1024)throw new IOException("Libere espaço para o modelo de reconhecimento.");

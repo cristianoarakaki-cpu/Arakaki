@@ -15,13 +15,13 @@ public class ChapterExportActivity extends Activity {
     private static final int CREATE=71;
     private boolean started,busy,otherBusy;
     private final ChapterExportService.Listener listener=state->{if(started&&!isDestroyed())sync();};
-    private Uri source,pending,saved;private String stamp,name;private long start,end,duration;
+    private Uri source,pending,saved;private String stamp,name,memoryTag;private long start,end,duration;
     private TextView status;private Button export,quality,share,other;private ProgressBar progress;
     static void open(Context context,Uri uri,String stamp,AudioChapterStore.Data data,int index){
         context.startActivity(new Intent(context,ChapterExportActivity.class).putExtra("source",uri.toString()).putExtra("stamp",stamp).putExtra("name",AudioChapterStore.label(data,index)).putExtra("start",data.chapters.get(index).start).putExtra("end",index+1<data.chapters.size()?data.chapters.get(index+1).start:data.duration).putExtra("duration",data.duration));
     }
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);Intent input=getIntent();String sourceText=input.getStringExtra("source");source=sourceText==null?input.getData():Uri.parse(sourceText);stamp=input.getStringExtra("stamp");name=input.getStringExtra("name");start=input.getLongExtra("start",-1);end=input.getLongExtra("end",-1);duration=input.getLongExtra("duration",0);
+        super.onCreate(state);Intent input=getIntent();String sourceText=input.getStringExtra("source");source=sourceText==null?input.getData():Uri.parse(sourceText);stamp=input.getStringExtra("stamp");memoryTag=input.getStringExtra("memory_tag");name=input.getStringExtra("name");start=input.getLongExtra("start",-1);end=input.getLongExtra("end",-1);duration=input.getLongExtra("duration",0);
         if(state!=null){String uri=state.getString("pending"),complete=state.getString("saved");pending=uri==null?null:Uri.parse(uri);saved=complete==null?null:Uri.parse(complete);}
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);Ui.background(root);root.setOnApplyWindowInsetsListener((v,i)->{root.setPadding(Ui.dp(this,16),Ui.dp(this,8)+i.getSystemWindowInsetTop(),Ui.dp(this,16),Ui.dp(this,8)+i.getSystemWindowInsetBottom());return i;});setContentView(root);
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.addView(Ui.button(this,"‹",v->finish()),new LinearLayout.LayoutParams(Ui.dp(this,48),-2));TextView heading=Ui.text(this,"Salvar faixa em MP3",20,Ui.TEXT);heading.setMaxLines(2);header.addView(heading,new LinearLayout.LayoutParams(0,-2,1));root.addView(header);
@@ -57,7 +57,7 @@ public class ChapterExportActivity extends Activity {
     @Override protected void onResume(){super.onResume();if(pending!=null&&!busy){Uri target=pending;pending=null;convert(target);}}
     private void convert(Uri target){
         if(!validInput())return;ChapterExportService.Snapshot active=ChapterExportService.state(this);if(active!=null&&active.running){sync();return;}
-        ChapterExportJob job=new ChapterExportJob(java.util.UUID.randomUUID().toString(),source,target,stamp,name,start,end,duration,Mp3Quality.get(this));
+        ChapterExportJob job=new ChapterExportJob(java.util.UUID.randomUUID().toString(),source,target,stamp,name,start,end,duration,Mp3Quality.get(this),memoryTag);
         try{if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},914);if(ChapterExportService.start(this,job)){busy=true;saved=null;progress.setIndeterminate(true);status.setText("Preparando a conversão em segundo plano…");controls();}else sync();}
         catch(IOException|RuntimeException error){busy=false;status.setText(DownloadFailure.describe("Iniciar conversão",error));controls();}
     }

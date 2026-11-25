@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 /** Deterministic commands; unrecognized phrases remain music searches. */
 final class VoiceCommand {
-    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, OPEN_YOUTUBE, OPEN_IMAGES, OPEN_UPDATES, OPEN_DOWNLOADS, OPEN_RADIOS, OPEN_VIDEOS, OPEN_MUSIC, OPEN_PDF, OPEN_SOUND, OPEN_CONVERTER, OPEN_PLAYLISTS, OPEN_QUEUE, OPEN_APPEARANCE, OPEN_FILES, OPEN_CHAPTERS, OPEN_VOICE_PHRASES, OPEN_ASSISTANT, INVALID }
+    enum Action { SEARCH, PLAY_QUERY, PLAY_PLAYLIST, ADD_PLAYLIST, PLAY, PAUSE, NEXT, PREVIOUS, FAVORITES, FAVORITE_ADD, FAVORITE_REMOVE, SHUFFLE_ON, SHUFFLE_OFF, REPEAT_ONE, REPEAT_ALL, REPEAT_OFF, HELP, SLEEP, DJ_PERSONAL, DJ_TRAVEL, DJ_DOWNLOADS, DJ_VARIETY, DJ_ARTIST, DJ_UNIQUE, DJ_FAVORITES_UNIQUE, DJ_EXPLAIN, DJ_AVOID, SLEEP_TRACKS, OPEN_YOUTUBE, OPEN_IMAGES, OPEN_UPDATES, OPEN_DOWNLOADS, OPEN_RADIOS, OPEN_VIDEOS, OPEN_MUSIC, OPEN_PDF, OPEN_SOUND, OPEN_CONVERTER, OPEN_PLAYLISTS, OPEN_QUEUE, OPEN_APPEARANCE, OPEN_FILES, OPEN_CHAPTERS, OPEN_VOICE_PHRASES, OPEN_ASSISTANT, OPEN_MEMORY, INVALID }
     final Action action;final String query;final int minutes;
     private VoiceCommand(Action action,String query,int minutes){this.action=action;this.query=query;this.minutes=minutes;}
     static VoiceCommand of(Action action){return new VoiceCommand(action,"",0);}
@@ -79,6 +79,7 @@ final class VoiceCommand {
             case "radio":case "radios":case "radios online":case "radio online":return Action.OPEN_RADIOS;
             case "video":case "videos":return Action.OPEN_VIDEOS;
             case "musica":case "musicas":case "biblioteca":case "tocador":return Action.OPEN_MUSIC;
+            case "memoria":case "memoria multimidia":return Action.OPEN_MEMORY;
             case "pdf":case "leitor de pdf":return Action.OPEN_PDF;
             case "som":case "estudio de som":case "equalizador":return Action.OPEN_SOUND;
             case "conversor":case "conversor local":return Action.OPEN_CONVERTER;
