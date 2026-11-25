@@ -127,6 +127,8 @@ public final class ClipPlaylistActivity extends Activity {
         });
         setContentView(root);
         LinearLayout header = new LinearLayout(this);
+        header.setBaselineAligned(false);
+        header.setGravity(Gravity.CENTER_VERTICAL);
         Button back = Ui.button(this, "‹", v -> finish());
         back.setContentDescription("Voltar");
         header.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 48), -2));

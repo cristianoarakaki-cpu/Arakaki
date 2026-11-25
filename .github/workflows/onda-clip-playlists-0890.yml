@@ -1,5 +1,5 @@
 name: Onda - Playlists de Trechos 0890
-# Validate layout constants before distribution.
+# Validate enlarged titles and mixed playback before distribution.
 on:
   push:
     branches: [main]
