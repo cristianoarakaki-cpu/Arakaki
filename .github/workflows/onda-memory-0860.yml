@@ -1,3 +1,4 @@
+# Keep prior index searchable during analysis; recognition time is not decoder stalling.
 name: Onda - Memoria Multimidia 0860
 on:
   push:
