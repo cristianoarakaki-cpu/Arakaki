@@ -31,13 +31,11 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Restaurador local de gravações
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Playlists de trechos
 
-No menu principal, escolha Restaurar gravação e selecione um áudio ou vídeo do celular. Experimente Voz suave ou Música suave, escolha a posição e prepare até 12 segundos para comparar o original e a cópia tratada. Nada toca automaticamente.
+Na Memória Multimídia, toque num trecho de áudio ou vídeo e escolha Adicionar à playlist de trechos. Abra suas playlists pelo menu da Memória Multimídia. Toque numa faixa para mover, remover ou começar a reprodução por ela.
 
-O tratamento usa filtros suaves para graves de fundo e chiado agudo, com expansão leve nas pausas e proteção de picos. Pode reduzir agudos e detalhes suaves; não recupera informações perdidas ou áudio saturado. Compare antes de salvar. Não usa IA generativa, servidores, contas ou modelos adicionais.
-
-Salve uma cópia em MP3 na qualidade selecionada. O arquivo original é preservado. A cópia completa usa o serviço de conversão já existente e continua ao minimizar o Onda ou apagar a tela, com progresso e cancelamento pela notificação. A prévia é curta, usa memória limitada e para ao sair da tela; nada é processado continuamente quando o recurso está ocioso.
+O Onda toca apenas os horários selecionados e segue para o próximo trecho, inclusive ao alternar áudio e vídeo. As playlists guardam referências aos arquivos locais e funcionam offline. A reprodução ocorre na tela da playlist e é interrompida ao sair dela.
 
 Pacote e assinatura permanentes do Onda Novo preservados; atualize sem desinstalar. Recursos anteriores mantidos. Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)
