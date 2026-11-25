@@ -1,3 +1,4 @@
+# Match the existing native 12-second guard with 8-second windows and explicit supported language.
 # Keep prior index searchable during analysis; recognition time is not decoder stalling.
 name: Onda - Memoria Multimidia 0860
 on:
