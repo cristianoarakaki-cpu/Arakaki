@@ -1,3 +1,4 @@
+# Wait for the Android default cancel-button message to dismiss the dialog.
 name: Onda - DJ por duracao 0840
 on:
   push:
