@@ -16,7 +16,7 @@ public class PlaybackService extends MediaSessionService {
     private final ExecutorService resumeWorker=Executors.newSingleThreadExecutor();
     private boolean restoring=true,destroyed,youtubeSession,chapterUpdating;
     private String savedQueue="[]";private final ShelfCheckpoint shelfCheckpoint=new ShelfCheckpoint();
-    private final Runnable checkpoint=new Runnable(){public void run(){if(player==null||RadioMedia.is(player.getCurrentMediaItem()))return;saveResume(false);if(player.isPlaying())timer.postDelayed(this,15000);}};
+    private final Runnable checkpoint=new Runnable(){public void run(){if(!needsCheckpoint())return;saveResume(false);if(needsCheckpoint())timer.postDelayed(this,15000);}};
     private DjSession personalDj;private long historyDuration;private boolean completed;
     private final TrackSleep trackSleep=new TrackSleep();
     private final SpeechProcessor speech=new SpeechProcessor();
@@ -42,9 +42,9 @@ public class PlaybackService extends MediaSessionService {
                 if(DjSession.deviceAudio(old)&&old.localConfiguration!=null&&(next==null||!old.mediaId.equals(next.mediaId)))ShelfStore.remember(PlaybackService.this,"audio",old.localConfiguration.uri.toString(),String.valueOf(old.mediaMetadata.title),reason==Player.DISCONTINUITY_REASON_AUTO_TRANSITION?0:AudioChapterPlayback.absolute(old,oldPosition.positionMs),AudioChapterPlayback.duration(old,0));
             }
             @Override public void onAudioSessionIdChanged(int id){applySound();}
-            @Override public void onMediaItemTransition(MediaItem item,int reason){if(session!=null&&!session.getSessionExtras().isEmpty())session.setSessionExtras(Bundle.EMPTY);applyRadioData();player.setWakeMode(RadioMedia.is(item)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);if(RadioMedia.is(item)||YouTubeAudio.is(item)){if(beforeRadioSpeed==null)beforeRadioSpeed=player.getPlaybackParameters();player.setPlaybackParameters(PlaybackParameters.DEFAULT);}else if(beforeRadioSpeed!=null){PlaybackParameters restore=beforeRadioSpeed;beforeRadioSpeed=null;player.setPlaybackParameters(restore);}
+            @Override public void onMediaItemTransition(MediaItem item,int reason){if(session!=null&&!session.getSessionExtras().isEmpty())session.setSessionExtras(Bundle.EMPTY);applyRadioData();if(RadioMedia.is(item)||YouTubeAudio.is(item)){if(beforeRadioSpeed==null)beforeRadioSpeed=player.getPlaybackParameters();player.setPlaybackParameters(PlaybackParameters.DEFAULT);}else if(beforeRadioSpeed!=null){PlaybackParameters restore=beforeRadioSpeed;beforeRadioSpeed=null;player.setPlaybackParameters(restore);}
                 boolean smooth=outgoing&&(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT);cancelFade(false);incoming=smooth&&localFadeItem(item);player.setVolume(incoming?0:baseVolume);
-                if(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)finishListening();resetHistory(item);String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;player.setWakeMode("https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
+                if(reason==Player.MEDIA_ITEM_TRANSITION_REASON_AUTO||reason==Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)finishListening();resetHistory(item);String scheme=item!=null&&item.localConfiguration!=null?item.localConfiguration.uri.getScheme():null;player.setWakeMode(RadioMedia.is(item)||"https".equalsIgnoreCase(scheme)||"http".equalsIgnoreCase(scheme)?C.WAKE_MODE_NETWORK:C.WAKE_MODE_LOCAL);
             }
             @Override public void onEvents(Player p,Player.Events e){
                 if(e.size()==1&&e.contains(Player.EVENT_VOLUME_CHANGED))return;
@@ -53,7 +53,11 @@ public class PlaybackService extends MediaSessionService {
                 if(restoring&&e.contains(Player.EVENT_TIMELINE_CHANGED)&&p.getMediaItemCount()>0)restoring=false;
                 boolean queueChanged=e.contains(Player.EVENT_TIMELINE_CHANGED);
                 if(queueChanged||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_POSITION_DISCONTINUITY)||e.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)||e.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)||e.contains(Player.EVENT_REPEAT_MODE_CHANGED))saveResume(queueChanged);
-                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){if(p.isPlaying())VideoBackgroundService.stopForMusic(PlaybackService.this);timer.removeCallbacks(checkpoint);if(p.isPlaying()&&!RadioMedia.is(p.getCurrentMediaItem()))timer.postDelayed(checkpoint,15000);}
+                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)&&p.isPlaying())VideoBackgroundService.stopForMusic(PlaybackService.this);
+                if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)||e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)){
+                    timer.removeCallbacks(checkpoint);
+                    if(needsCheckpoint())timer.postDelayed(checkpoint,15000);
+                }
                 if(e.contains(Player.EVENT_IS_PLAYING_CHANGED)){soundRoutes.refresh();sound.playing(p.isPlaying());float value=sound.headroom();if(value!=baseVolume){baseVolume=value;cancelFade(true);}}
                 if(e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||e.contains(Player.EVENT_IS_PLAYING_CHANGED)||e.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)){updateListening();}
                 if(e.contains(Player.EVENT_POSITION_DISCONTINUITY)&&!e.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)){cancelFade(true);}
@@ -99,6 +103,11 @@ public class PlaybackService extends MediaSessionService {
                 else return Futures.immediateFuture(new SessionResult(SessionError.ERROR_NOT_SUPPORTED));return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));}
         }).build();
         restoreResume();
+    }
+    private boolean needsCheckpoint(){
+        if(player==null||!player.isPlaying())return false;
+        MediaItem item=player.getCurrentMediaItem();
+        return DjSession.deviceAudio(item)||YouTubeAudio.is(item);
     }
     private void saveResume(boolean rebuild){
         if(restoring||destroyed||player==null)return;

@@ -31,9 +31,9 @@ manifest = {
 (output / 'onda-player-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
 shutil.copyfile(root / 'tools/recover_legacy_backup.py', output / 'Recuperar-backup-Onda.py')
 shutil.copyfile(root / 'tools/RECUPERAR-BACKUP-LEIA-ME.txt', output / 'RECUPERAR-BACKUP-LEIA-ME.txt')
-(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Compartilhe faixas da coletânea
+(output / 'notes.md').write_text(f"""Onda Novo {version_name} — Menos trabalho durante a reprodução
 
-Na tela Faixas da coletânea, escolha Compartilhar faixas, marque uma ou várias e edite o nome de cada MP3 antes de enviar pelo Android. O menu de cada faixa também permite compartilhá-la. Durante a reprodução, a faixa atual aparece em azul com o texto Tocando agora.
+O destaque de faixa passou a ser atualizado nas transições e nos eventos do tocador. Os controles evitam redesenhar valores iguais e a gravação periódica da posição fica restrita a músicas do celular e áudio do YouTube. Rádio, vídeo e conversões mantêm seus fluxos de reprodução e processamento.
 
 Pacote e assinatura permanentes do Onda Novo preservados; atualize sem desinstalar. Recursos anteriores mantidos. Licenças: aplicativo GPLv3+; llama.cpp e Whisper.cpp MIT; NewPipe GPLv3+; LAME GPLv2+; LibVLC LGPL2.1+; PDFBox Android Apache2.0. Fontes acompanham a release; demais avisos no app. Sem garantia. Pacote `{package_name}`, código {version_code}.
 """)

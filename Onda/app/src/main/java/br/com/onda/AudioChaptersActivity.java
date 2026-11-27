@@ -49,7 +49,12 @@ public class AudioChaptersActivity extends Activity {
                     else high=middle-1;
                 }
             }
-            main.postDelayed(chapterTicker,750);
+            int next=active+1;
+            if(next<data.chapters.size()){
+                long boundary=data.chapters.get(next).start;
+                main.postDelayed(chapterTicker,PlaybackRefresh.untilBoundary(
+                        position,boundary,player.getPlaybackParameters().speed));
+            }
         }
         if(playingChapter!=active){
             playingChapter=active;

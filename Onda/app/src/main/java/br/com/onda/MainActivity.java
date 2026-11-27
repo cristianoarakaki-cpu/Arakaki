@@ -47,7 +47,11 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs;
     private final Runnable progress = new Runnable() { public void run() {
         if (!screenStarted||keyboardVisible) return;
-        if (player != null && !seeking) { seek.setProgress((int)player.getCurrentPosition()); elapsed.setText(time(player.getCurrentPosition())); }
+        if (player != null && !seeking) {
+            long position = player.getCurrentPosition();
+            if (seek.getProgress() != (int) position) seek.setProgress((int) position);
+            PlaybackRefresh.text(elapsed, time(position));
+        }
         if (player != null && player.isPlaying()) handler.postDelayed(this, 1000);
     }};
 
